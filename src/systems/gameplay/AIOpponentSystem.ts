@@ -229,11 +229,35 @@ export class AIOpponentSystem {
         
         // Get difficulty info
         const diffInfo = this.getDifficultyInfo();
+        const bgColor = this.getDifficultyColor();
+        
+        // Create layered badge with glow effect
+        // Outer glow
+        const glow = this.scene.add.rectangle(0, 0, 130, 35, bgColor, 0.3);
+        glow.setStrokeStyle(2, bgColor, 0.5);
         
         // Badge background (wider for description)
-        const bgColor = this.getDifficultyColor();
         const bg = this.scene.add.rectangle(0, 0, 120, 30, bgColor, 0.9);
         bg.setStrokeStyle(1, 0xFFFFFF);
+        
+        // Add icon based on difficulty
+        let icon = '';
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                icon = '🎯';
+                break;
+            case AIDifficulty.MEDIUM:
+                icon = '⚡';
+                break;
+            case AIDifficulty.HARD:
+                icon = '🔥';
+                break;
+        }
+        
+        const iconText = this.scene.add.text(-45, 0, icon, {
+            fontSize: '16px'
+        });
+        iconText.setOrigin(0.5);
         
         // Difficulty text
         const text = this.scene.add.text(0, -7, this.config.difficulty, {
@@ -250,19 +274,53 @@ export class AIOpponentSystem {
         });
         desc.setOrigin(0.5);
         
-        this.difficultyBadge.add([bg, text, desc]);
+        this.difficultyBadge.add([glow, bg, iconText, text, desc]);
         this.difficultyBadge.setDepth(999);
         
-        // Pulse animation
-        this.scene.tweens.add({
-            targets: this.difficultyBadge,
-            scaleX: 1.1,
-            scaleY: 1.1,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        // Different animations based on difficulty
+        if (this.config.difficulty === AIDifficulty.HARD) {
+            // Intense pulsing for hard mode
+            this.scene.tweens.add({
+                targets: glow,
+                scaleX: 1.3,
+                scaleY: 1.3,
+                alpha: 0.6,
+                duration: 500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Power2'
+            });
+            
+            // Rotate icon
+            this.scene.tweens.add({
+                targets: iconText,
+                angle: 360,
+                duration: 3000,
+                repeat: -1,
+                ease: 'Linear'
+            });
+        } else if (this.config.difficulty === AIDifficulty.MEDIUM) {
+            // Moderate pulsing
+            this.scene.tweens.add({
+                targets: this.difficultyBadge,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 1500,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        } else {
+            // Gentle pulsing for easy
+            this.scene.tweens.add({
+                targets: this.difficultyBadge,
+                y: this.launcher.y + 42,
+                duration: 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
     }
     
     private getDifficultyColor(): number {
@@ -595,15 +653,20 @@ export class AIOpponentSystem {
                                     if (!this.isPositionOccupied(targetHex)) {
                                         const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
                                         
-                                        // High score for adjacent pairs (easy match)
-                                        const score = 100 + bubbles.length * 10;
+                                        // Calculate chain reaction potential
+                                        const chainScore = this.predictChainReaction(targetHex, color);
+                                        
+                                        // High score for adjacent pairs (easy match) + chain bonus
+                                        const score = 100 + bubbles.length * 10 + chainScore;
                                         
                                         options.push({
                                             position: pixelPos,
                                             hexPosition: targetHex,
                                             score: score,
                                             color: color,
-                                            reasoning: `Complete line of ${this.getColorName(color)}`,
+                                            reasoning: chainScore > 0 ? 
+                                                `Chain combo! ${this.getColorName(color)} (${chainScore} pts)` :
+                                                `Complete line of ${this.getColorName(color)}`,
                                             matchCount: 3
                                         });
                                     }
@@ -616,15 +679,20 @@ export class AIOpponentSystem {
                                 if (middlePos && !this.isPositionOccupied(middlePos)) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(middlePos);
                                     
-                                    // Good score for filling gaps
-                                    const score = 80 + bubbles.length * 10;
+                                    // Calculate chain reaction potential
+                                    const chainScore = this.predictChainReaction(middlePos, color);
+                                    
+                                    // Good score for filling gaps + chain bonus
+                                    const score = 80 + bubbles.length * 10 + chainScore;
                                     
                                     options.push({
                                         position: pixelPos,
                                         hexPosition: middlePos,
                                         score: score,
                                         color: color,
-                                        reasoning: `Bridge ${this.getColorName(color)} bubbles`,
+                                        reasoning: chainScore > 0 ?
+                                            `Chain bridge ${this.getColorName(color)} (${chainScore} pts)` :
+                                            `Bridge ${this.getColorName(color)} bubbles`,
                                         matchCount: 3
                                     });
                                 }
@@ -646,14 +714,19 @@ export class AIOpponentSystem {
                                 
                                 if (adjacentCount >= 2) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
-                                    const score = 60 + adjacentCount * 20;
+                                    
+                                    // Predict chain reactions
+                                    const chainScore = this.predictChainReaction(neighbor, color);
+                                    const score = 60 + adjacentCount * 20 + chainScore;
                                     
                                     options.push({
                                         position: pixelPos,
                                         hexPosition: neighbor,
                                         score: score,
                                         color: color,
-                                        reasoning: `Group ${adjacentCount + 1} ${this.getColorName(color)}`,
+                                        reasoning: chainScore > 0 ?
+                                            `Chain group ${adjacentCount + 1} ${this.getColorName(color)} (${chainScore} pts)` :
+                                            `Group ${adjacentCount + 1} ${this.getColorName(color)}`,
                                         matchCount: adjacentCount + 1
                                     });
                                 }
@@ -663,6 +736,10 @@ export class AIOpponentSystem {
                 });
             }
         });
+        
+        // Add defensive options
+        const defensiveOptions = this.findDefensiveShots();
+        options.push(...defensiveOptions);
         
         // Sort by score
         options.sort((a, b) => b.score - a.score);
@@ -850,7 +927,72 @@ export class AIOpponentSystem {
         });
     }
     
-    private findDefensiveShot(): ITargetOption | null {
+    private predictChainReaction(position: IHexPosition, color: BubbleColor): number {
+        let chainScore = 0;
+        const visited = new Set<string>();
+        const toCheck: IHexPosition[] = [position];
+        
+        // Simulate placing the bubble and check what would pop
+        while (toCheck.length > 0) {
+            const current = toCheck.pop()!;
+            const key = `${current.q},${current.r}`;
+            
+            if (visited.has(key)) continue;
+            visited.add(key);
+            
+            // Get neighbors and check for potential chains
+            const neighbors = this.bubbleGrid.getNeighbors(current);
+            
+            for (const neighbor of neighbors) {
+                const bubble = this.getBubbleAtPosition(neighbor);
+                if (bubble) {
+                    // Check if placing our bubble would cause this to pop
+                    const wouldPop = this.wouldCauseMatch(neighbor, color);
+                    if (wouldPop) {
+                        chainScore += 50; // Bonus for each additional pop
+                        
+                        // Check for further chains
+                        const furtherNeighbors = this.bubbleGrid.getNeighbors(neighbor);
+                        furtherNeighbors.forEach(fn => {
+                            if (!visited.has(`${fn.q},${fn.r}`)) {
+                                toCheck.push(fn);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        
+        return chainScore;
+    }
+    
+    private wouldCauseMatch(position: IHexPosition, placedColor: BubbleColor): boolean {
+        const bubble = this.getBubbleAtPosition(position);
+        if (!bubble) return false;
+        
+        const bubbleColor = bubble.getColor();
+        if (bubbleColor === null || bubbleColor === undefined) return false;
+        
+        // Check if this bubble would be part of a match after placing the new bubble
+        const neighbors = this.bubbleGrid.getNeighbors(position);
+        let sameColorCount = 0;
+        
+        for (const neighbor of neighbors) {
+            const neighborBubble = this.getBubbleAtPosition(neighbor);
+            if (neighborBubble && neighborBubble.getColor() === bubbleColor) {
+                sameColorCount++;
+            }
+            // Check if the position we're placing at would connect
+            if (neighbor.q === position.q && neighbor.r === position.r && placedColor === bubbleColor) {
+                sameColorCount++;
+            }
+        }
+        
+        return sameColorCount >= 2; // Would form a match of 3+
+    }
+    
+    private findDefensiveShots(): ITargetOption[] {
+        const defensiveOptions: ITargetOption[] = [];
         // Look for positions that would block player's potential matches
         // Focus on the lower part of the grid where player shoots
         const gridBubbles = this.getGridBubbles();
@@ -859,7 +1001,7 @@ export class AIOpponentSystem {
         // Find bubbles in player's zone (lower half)
         const playerZoneBubbles = gridBubbles.filter(b => b.y > centerY);
         
-        if (playerZoneBubbles.length === 0) return null;
+        if (playerZoneBubbles.length === 0) return defensiveOptions;
         
         // Group by color in player zone
         const colorGroups = new Map<BubbleColor, Bubble[]>();
@@ -891,23 +1033,47 @@ export class AIOpponentSystem {
                             const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
                             const score = 20 + bubbles.length * 5;
                             
-                            if (score > bestScore) {
-                                bestScore = score;
-                                bestDefensive = {
-                                    position: pixelPos,
-                                    hexPosition: neighbor,
-                                    score: score,
-                                    color: Bubble.getRandomColor(), // Different color to block
-                                    reasoning: `Blocking ${this.getColorName(color)} group`
-                                };
-                            }
+                            // Create defensive option
+                            defensiveOptions.push({
+                                position: pixelPos,
+                                hexPosition: neighbor,
+                                score: score,
+                                color: Bubble.getRandomColor(), // Different color to block
+                                reasoning: `Blocking ${this.getColorName(color)} group`
+                            });
                         }
                     }
                 }
             }
         });
         
-        return bestDefensive;
+        // Also check for critical defensive positions (near objective)
+        const objectiveY = 100; // Near top where objective would be
+        const criticalBubbles = gridBubbles.filter(b => b.y < objectiveY + 100);
+        
+        if (criticalBubbles.length > 3) {
+            // Find positions that would prevent bubbles from reaching objective
+            criticalBubbles.forEach(bubble => {
+                const pos = bubble.getGridPosition();
+                if (pos) {
+                    const neighbors = this.bubbleGrid.getNeighbors(pos);
+                    neighbors.forEach(neighbor => {
+                        if (!this.isPositionOccupied(neighbor)) {
+                            const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                            defensiveOptions.push({
+                                position: pixelPos,
+                                hexPosition: neighbor,
+                                score: 150, // High priority for critical defense
+                                color: Bubble.getRandomColor(),
+                                reasoning: 'Critical defense near objective'
+                            });
+                        }
+                    });
+                }
+            });
+        }
+        
+        return defensiveOptions;
     }
     
     private getSmartRandomTarget(): ITargetOption {
@@ -1301,28 +1467,85 @@ export class AIOpponentSystem {
     }
     
     private addShootEffects(target: ITargetOption): void {
-        // Screen flash for hard difficulty perfect shots
-        if (this.config.difficulty === AIDifficulty.HARD && target.score >= 40) {
-            // Flash effect
+        const difficultyColor = this.getDifficultyColor();
+        
+        // Different effects based on difficulty and shot quality
+        if (this.config.difficulty === AIDifficulty.HARD && target.score >= 100) {
+            // Epic shot effect for hard mode chain reactions
             const flash = this.scene.add.rectangle(
                 this.scene.cameras.main.centerX,
                 this.scene.cameras.main.centerY,
                 this.scene.cameras.main.width,
                 this.scene.cameras.main.height,
                 0xFF0000,
-                0.1
+                0.15
             );
             flash.setDepth(2000);
             
             this.scene.tweens.add({
                 targets: flash,
                 alpha: 0,
-                duration: 200,
+                duration: 300,
                 onComplete: () => flash.destroy()
             });
             
             // Camera shake for powerful shots
-            this.scene.cameras.main.shake(100, 0.003);
+            this.scene.cameras.main.shake(150, 0.005);
+            
+            // Show "PERFECT SHOT!" text
+            const perfectText = this.scene.add.text(
+                this.scene.cameras.main.centerX,
+                150,
+                'PERFECT SHOT!',
+                {
+                    fontSize: '32px',
+                    color: '#FFD700',
+                    fontStyle: 'bold',
+                    stroke: '#FF0000',
+                    strokeThickness: 4
+                }
+            );
+            perfectText.setOrigin(0.5);
+            perfectText.setDepth(2001);
+            perfectText.setScale(0);
+            
+            this.scene.tweens.add({
+                targets: perfectText,
+                scale: 1.2,
+                duration: 300,
+                ease: 'Back.easeOut',
+                onComplete: () => {
+                    this.scene.time.delayedCall(500, () => {
+                        this.scene.tweens.add({
+                            targets: perfectText,
+                            scale: 0,
+                            alpha: 0,
+                            duration: 200,
+                            onComplete: () => perfectText.destroy()
+                        });
+                    });
+                }
+            });
+        } else if (this.config.difficulty === AIDifficulty.MEDIUM && target.score >= 80) {
+            // Good shot effect for medium mode
+            const flash = this.scene.add.rectangle(
+                this.launcher.x,
+                this.launcher.y,
+                100,
+                100,
+                difficultyColor,
+                0.3
+            );
+            flash.setDepth(1000);
+            
+            this.scene.tweens.add({
+                targets: flash,
+                scale: 3,
+                alpha: 0,
+                duration: 400,
+                ease: 'Power2',
+                onComplete: () => flash.destroy()
+            });
         }
         
         // Particle effect at launcher
@@ -1381,6 +1604,29 @@ export class AIOpponentSystem {
     }
     
     private showTargetMarker(position: { x: number; y: number }): void {
+        // Only show target markers based on difficulty
+        let showMarker = false;
+        let markerDuration = 0;
+        
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                showMarker = true; // Always show for easy
+                markerDuration = 800;
+                break;
+            case AIDifficulty.MEDIUM:
+                showMarker = Math.random() < 0.3; // 30% chance
+                markerDuration = 500;
+                break;
+            case AIDifficulty.HARD:
+                showMarker = false; // Never show for hard
+                break;
+        }
+        
+        if (!showMarker) {
+            console.log(`🎯 AI targeting (${position.x.toFixed(0)}, ${position.y.toFixed(0)})`);
+            return;
+        }
+        
         // Create a visual marker where the AI is aiming
         const marker = this.scene.add.graphics();
         marker.setDepth(999);
@@ -1389,6 +1635,26 @@ export class AIOpponentSystem {
         const color = this.getDifficultyColor();
         marker.lineStyle(2, color, 0.8);
         
+        // Animated rings
+        for (let i = 0; i < 3; i++) {
+            const ring = this.scene.add.graphics();
+            ring.setDepth(998);
+            ring.lineStyle(1, color, 0.4 - i * 0.1);
+            ring.strokeCircle(position.x, position.y, 10 + i * 8);
+            
+            // Animate rings expanding
+            this.scene.tweens.add({
+                targets: ring,
+                alpha: 0,
+                scaleX: 1.5 + i * 0.2,
+                scaleY: 1.5 + i * 0.2,
+                duration: markerDuration,
+                delay: i * 100,
+                ease: 'Power2',
+                onComplete: () => ring.destroy()
+            });
+        }
+        
         // Circle
         marker.strokeCircle(position.x, position.y, 15);
         
@@ -1396,12 +1662,16 @@ export class AIOpponentSystem {
         marker.lineBetween(position.x - 10, position.y, position.x + 10, position.y);
         marker.lineBetween(position.x, position.y - 10, position.x, position.y + 10);
         
+        // Dot in center
+        marker.fillStyle(color, 1);
+        marker.fillCircle(position.x, position.y, 3);
+        
         // Pulse animation
         this.scene.tweens.add({
             targets: marker,
             alpha: 0,
             scale: 1.5,
-            duration: 1000,
+            duration: markerDuration,
             ease: 'Power2',
             onComplete: () => marker.destroy()
         });
