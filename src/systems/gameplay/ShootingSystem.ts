@@ -7,7 +7,7 @@ import { TrajectoryPreview } from './TrajectoryPreview';
 import { BubbleQueue } from './BubbleQueue';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleGrid } from './BubbleGrid';
-import { ARENA_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
+import { ARENA_CONFIG, Z_LAYERS, BUBBLE_CONFIG } from '@/config/ArenaConfig';
 
 export interface IProjectile {
     bubble: Bubble;
@@ -241,10 +241,21 @@ export class ShootingSystem {
                     );
                     
                     if (attachPos) {
-                        // Attach to grid
-                        projectile.isActive = false;
-                        this.gridAttachmentSystem.attachToGrid(projectile.bubble, attachPos);
-                        continue;
+                        // Validate that the position is reasonable (not too far from hit point)
+                        const pixelPos = this.bubbleGrid?.hexToPixel(attachPos);
+                        if (pixelPos) {
+                            const distance = Phaser.Math.Distance.Between(
+                                projectile.bubble.x, projectile.bubble.y,
+                                pixelPos.x, pixelPos.y
+                            );
+                            
+                            // Only attach if distance is reasonable (within 2 bubble diameters)
+                            if (distance < BUBBLE_CONFIG.SIZE * 2) {
+                                projectile.isActive = false;
+                                this.gridAttachmentSystem.attachToGrid(projectile.bubble, attachPos);
+                                continue;
+                            }
+                        }
                     }
                 }
             }

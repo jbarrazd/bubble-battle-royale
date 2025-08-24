@@ -10,8 +10,8 @@ export class BubbleGrid {
     constructor(centerX: number, centerY: number) {
         this.centerX = centerX;
         this.centerY = centerY;
-        // Add gap to hexSize for proper spacing
-        this.hexSize = (BUBBLE_CONFIG.SIZE + BUBBLE_CONFIG.GAP) / 2;
+        // Use bubble radius plus small spacing
+        this.hexSize = (BUBBLE_CONFIG.SIZE / 2) + 1;
         this.gridMap = new Map();
         this.initializeGrid();
     }
@@ -28,8 +28,17 @@ export class BubbleGrid {
     }
 
     public hexToPixel(hex: IHexPosition): IPixelPosition {
-        const x = this.hexSize * 3/2 * hex.q;
-        const y = this.hexSize * Math.sqrt(3) * (hex.r + hex.q/2);
+        // Simple offset grid for bubble shooters
+        // Odd rows are offset by half a bubble width
+        const rowHeight = this.hexSize * Math.sqrt(3);
+        const colWidth = this.hexSize * 2;
+        
+        // Calculate position with offset for odd rows
+        const isOddRow = Math.abs(hex.r) % 2 === 1;
+        const xOffset = isOddRow ? this.hexSize : 0;
+        
+        const x = hex.q * colWidth + xOffset;
+        const y = hex.r * rowHeight;
         
         return {
             x: this.centerX + x,
@@ -41,10 +50,20 @@ export class BubbleGrid {
         const x = pixel.x - this.centerX;
         const y = pixel.y - this.centerY;
         
-        const q = (2/3 * x) / this.hexSize;
-        const r = (-1/3 * x + Math.sqrt(3)/3 * y) / this.hexSize;
+        const rowHeight = this.hexSize * Math.sqrt(3);
+        const colWidth = this.hexSize * 2;
         
-        return this.roundHex(q, r);
+        // Estimate row
+        const r = Math.round(y / rowHeight);
+        
+        // Adjust x for odd row offset
+        const isOddRow = Math.abs(r) % 2 === 1;
+        const adjustedX = isOddRow ? x - this.hexSize : x;
+        
+        // Estimate column
+        const q = Math.round(adjustedX / colWidth);
+        
+        return { q, r, s: -q - r };
     }
 
     private roundHex(q: number, r: number): IHexPosition {
@@ -70,19 +89,37 @@ export class BubbleGrid {
     }
 
     public getNeighbors(hex: IHexPosition): IHexPosition[] {
-        const directions = [
-            { q: 1, r: 0, s: -1 },
-            { q: 1, r: -1, s: 0 },
-            { q: 0, r: -1, s: 1 },
-            { q: -1, r: 0, s: 1 },
-            { q: -1, r: 1, s: 0 },
-            { q: 0, r: 1, s: -1 }
-        ];
+        // For offset grid, neighbors depend on whether we're in an odd or even row
+        const isOddRow = Math.abs(hex.r) % 2 === 1;
+        
+        let directions: Array<{q: number, r: number}> = [];
+        
+        if (!isOddRow) {
+            // Even row neighbors
+            directions = [
+                { q: 0, r: -1 },   // Top
+                { q: 1, r: 0 },    // Right
+                { q: 0, r: 1 },    // Bottom
+                { q: -1, r: 1 },   // Bottom-left
+                { q: -1, r: 0 },   // Left
+                { q: -1, r: -1 }   // Top-left
+            ];
+        } else {
+            // Odd row neighbors (offset by half)
+            directions = [
+                { q: 0, r: -1 },   // Top
+                { q: 1, r: -1 },   // Top-right
+                { q: 1, r: 0 },    // Right
+                { q: 1, r: 1 },    // Bottom-right
+                { q: 0, r: 1 },    // Bottom
+                { q: -1, r: 0 }    // Left
+            ];
+        }
         
         return directions.map(dir => ({
             q: hex.q + dir.q,
             r: hex.r + dir.r,
-            s: hex.s + dir.s
+            s: 0 // Not used in offset grid
         }));
     }
 

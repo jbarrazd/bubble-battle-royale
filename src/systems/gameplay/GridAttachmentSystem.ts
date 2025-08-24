@@ -39,7 +39,8 @@ export class GridAttachmentSystem {
      */
     public checkCollision(projectile: Bubble): Bubble | null {
         const projectilePos = { x: projectile.x, y: projectile.y };
-        const collisionRadius = BUBBLE_CONFIG.SIZE; // Diameter for collision
+        // Use bubble diameter for collision detection
+        const collisionRadius = BUBBLE_CONFIG.SIZE - 2; // Slightly less than diameter for proper touching
         
         for (const gridBubble of this.gridBubbles) {
             if (!gridBubble.visible) continue;
@@ -49,6 +50,7 @@ export class GridAttachmentSystem {
                 gridBubble.x, gridBubble.y
             );
             
+            // Check if bubbles are touching
             if (distance < collisionRadius) {
                 return gridBubble;
             }
@@ -63,32 +65,87 @@ export class GridAttachmentSystem {
     public findAttachmentPosition(projectile: Bubble, hitBubble: Bubble): IHexPosition | null {
         // Get hex position of hit bubble
         const hitHexPos = hitBubble.getGridPosition();
-        if (!hitHexPos) return null;
+        if (!hitHexPos) {
+            console.warn('Hit bubble has no grid position');
+            return null;
+        }
         
-        // Get all neighbor positions
-        const neighbors = this.bubbleGrid.getNeighbors(hitHexPos);
+        console.log('Hit bubble at hex:', hitHexPos, 'pixel:', { x: hitBubble.x, y: hitBubble.y });
+        console.log('Projectile at:', { x: projectile.x, y: projectile.y });
         
-        // Find closest empty neighbor to projectile position
+        // Calculate impact angle
+        const dx = projectile.x - hitBubble.x;
+        const dy = projectile.y - hitBubble.y;
+        const angle = Math.atan2(dy, dx);
+        const angleDeg = (angle * 180 / Math.PI + 360) % 360;
+        
+        console.log('Impact angle:', angleDeg.toFixed(1), 'degrees');
+        
+        // For offset grid, we need to consider the row offset when getting neighbors
+        // In an offset grid, odd rows have different neighbor offsets
+        const isOddRow = Math.abs(hitHexPos.r) % 2 === 1;
+        
+        // Define neighbor offsets for offset grid
+        // Even rows and odd rows have different neighbor patterns
+        let neighborOffsets: Array<{q: number, r: number, angle: number}> = [];
+        
+        if (!isOddRow) {
+            // Even row neighbors
+            neighborOffsets = [
+                { q: 0, r: -1, angle: 270 },  // Top
+                { q: 1, r: 0, angle: 0 },     // Right  
+                { q: 0, r: 1, angle: 90 },    // Bottom
+                { q: -1, r: 1, angle: 135 },  // Bottom-left
+                { q: -1, r: 0, angle: 180 },  // Left
+                { q: -1, r: -1, angle: 225 }  // Top-left
+            ];
+        } else {
+            // Odd row neighbors (offset by half)
+            neighborOffsets = [
+                { q: 0, r: -1, angle: 270 },  // Top
+                { q: 1, r: -1, angle: 315 },  // Top-right
+                { q: 1, r: 0, angle: 0 },     // Right
+                { q: 1, r: 1, angle: 45 },    // Bottom-right
+                { q: 0, r: 1, angle: 90 },    // Bottom
+                { q: -1, r: 0, angle: 180 }   // Left
+            ];
+        }
+        
+        // Find the best neighbor based on impact angle
         let bestNeighbor: IHexPosition | null = null;
-        let minDistance = Infinity;
+        let minAngleDiff = 360;
         
-        for (const neighbor of neighbors) {
-            // Check if position is empty
-            if (this.isPositionOccupied(neighbor)) continue;
+        for (const offset of neighborOffsets) {
+            const neighbor: IHexPosition = {
+                q: hitHexPos.q + offset.q,
+                r: hitHexPos.r + offset.r,
+                s: 0 // Not used in offset grid
+            };
             
-            // Get pixel position of this hex
-            const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+            // Skip if position is occupied
+            if (this.isPositionOccupied(neighbor)) {
+                console.log('Position occupied:', neighbor);
+                continue;
+            }
             
-            // Calculate distance from projectile
-            const distance = Phaser.Math.Distance.Between(
-                projectile.x, projectile.y,
-                pixelPos.x, pixelPos.y
-            );
+            // Calculate angle difference
+            let angleDiff = Math.abs(angleDeg - offset.angle);
+            if (angleDiff > 180) angleDiff = 360 - angleDiff;
             
-            if (distance < minDistance) {
-                minDistance = distance;
+            console.log('Checking neighbor:', neighbor, 'angle:', offset.angle, 'diff:', angleDiff.toFixed(1));
+            
+            // Choose the neighbor with the closest angle match
+            if (angleDiff < minAngleDiff) {
+                minAngleDiff = angleDiff;
                 bestNeighbor = neighbor;
             }
+        }
+        
+        if (bestNeighbor) {
+            const pixelPos = this.bubbleGrid.hexToPixel(bestNeighbor);
+            console.log('Best attachment position - hex:', bestNeighbor, 'pixel:', pixelPos);
+        } else {
+            console.warn('No valid attachment position found');
         }
         
         return bestNeighbor;
@@ -98,7 +155,9 @@ export class GridAttachmentSystem {
      * Check if a hex position is occupied
      */
     private isPositionOccupied(hexPos: IHexPosition): boolean {
+        // Simply check if any bubble has this grid position
         return this.gridBubbles.some(bubble => {
+            if (!bubble.visible) return false;
             const pos = bubble.getGridPosition();
             return pos && pos.q === hexPos.q && pos.r === hexPos.r;
         });
@@ -111,26 +170,30 @@ export class GridAttachmentSystem {
         if (this.attachmentInProgress) return;
         this.attachmentInProgress = true;
         
-        // Get pixel position for hex
+        // Get exact pixel position for this hex coordinate
         const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
         
-        // Set grid position
+        console.log('Attaching bubble to hex:', hexPos, 'pixel:', pixelPos);
+        
+        // Set grid position BEFORE moving
         bubble.setGridPosition(hexPos);
         
-        // Animate snap to position
+        // Immediately snap to correct position (no animation for now to debug)
+        bubble.x = pixelPos.x;
+        bubble.y = pixelPos.y;
+        
+        // Add to grid bubbles
+        this.addGridBubble(bubble);
+        
+        // Small visual feedback
         this.scene.tweens.add({
             targets: bubble,
-            x: pixelPos.x,
-            y: pixelPos.y,
             scaleX: 1.1,
             scaleY: 1.1,
-            duration: 100,
+            duration: 50,
             ease: 'Back.easeOut',
             yoyo: true,
             onComplete: () => {
-                // Add to grid bubbles
-                this.addGridBubble(bubble);
-                
                 // Check for disconnected bubbles
                 this.checkDisconnectedBubbles();
                 

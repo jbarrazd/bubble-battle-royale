@@ -13,11 +13,11 @@ export const ARENA_CONFIG: IArenaConfig = {
 
 export const BUBBLE_CONFIG = {
     SIZE: 32,
-    GAP: 4,  // Increased gap for better spacing
+    GAP: 0,  // No gap - bubbles touch perfectly
     COLORS: 5,
     POOL_SIZE: 150, // For object pooling
-    HEX_WIDTH: 36,  // SIZE + GAP (32 + 4)
-    HEX_HEIGHT: 31, // For proper hexagonal tessellation
+    HEX_WIDTH: 32,  // Just the SIZE
+    HEX_HEIGHT: 28, // SIZE * 0.866 for perfect hexagonal packing
     ANIMATION_DURATION: 200,
     FALL_SPEED: 500
 };
