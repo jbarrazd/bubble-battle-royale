@@ -40,6 +40,7 @@ export class AIOpponentSystem {
     private shootTimer?: Phaser.Time.TimerEvent;
     private isActive: boolean = false;
     private shotCount: number = 0; // Track shot count for variety
+    private lastColor: BubbleColor | null = null; // Track last color to avoid repetition
     
     constructor(
         scene: Scene,
@@ -226,20 +227,30 @@ export class AIOpponentSystem {
             this.launcher.y + 40
         );
         
-        // Badge background
+        // Get difficulty info
+        const diffInfo = this.getDifficultyInfo();
+        
+        // Badge background (wider for description)
         const bgColor = this.getDifficultyColor();
-        const bg = this.scene.add.rectangle(0, 0, 80, 20, bgColor, 0.9);
+        const bg = this.scene.add.rectangle(0, 0, 120, 30, bgColor, 0.9);
         bg.setStrokeStyle(1, 0xFFFFFF);
         
         // Difficulty text
-        const text = this.scene.add.text(0, 0, this.config.difficulty, {
+        const text = this.scene.add.text(0, -7, this.config.difficulty, {
             fontSize: '12px',
             color: '#FFFFFF',
             fontStyle: 'bold'
         });
         text.setOrigin(0.5);
         
-        this.difficultyBadge.add([bg, text]);
+        // Description text
+        const desc = this.scene.add.text(0, 6, diffInfo.description, {
+            fontSize: '9px',
+            color: '#FFFFFF'
+        });
+        desc.setOrigin(0.5);
+        
+        this.difficultyBadge.add([bg, text, desc]);
         this.difficultyBadge.setDepth(999);
         
         // Pulse animation
@@ -262,6 +273,26 @@ export class AIOpponentSystem {
                 return 0xFFC107; // Amber
             case AIDifficulty.HARD:
                 return 0xF44336; // Red
+        }
+    }
+    
+    private getDifficultyInfo(): { description: string; accuracy: string } {
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                return {
+                    description: '80% Random • Slow',
+                    accuracy: '20% Smart'
+                };
+            case AIDifficulty.MEDIUM:
+                return {
+                    description: '60% Smart • Normal',
+                    accuracy: '40% Random'
+                };
+            case AIDifficulty.HARD:
+                return {
+                    description: '90% Optimal • Fast',
+                    accuracy: '10% Random'
+                };
         }
     }
     
@@ -329,69 +360,129 @@ export class AIOpponentSystem {
     }
     
     private selectEasyTarget(): ITargetOption | null {
-        // Easy: 70% random, 30% try to match
+        // Easy: 80% random, 20% try to match (often misses)
         const random = Math.random();
-        console.log(`AI Easy: Random roll = ${random.toFixed(2)} (< 0.7 = random shot)`);
+        console.log(`AI Easy: Strategy roll = ${random.toFixed(2)}`);
         
-        if (random < 0.7) {
-            // Random shot - ensure we get a fresh random target
+        if (random < 0.8) {
+            // 80% - Pure random shot
             const target = this.getRandomTarget();
-            console.log(`AI Easy: Using random shot`);
+            console.log(`AI Easy: Random shot (80% chance)`);
             return target;
         } else {
-            // Try to find a simple match
+            // 20% - Try to be smart but often fail
             const matches = this.analyzeGrid();
-            console.log(`AI Easy: Found ${matches.length} match opportunities`);
             
             if (matches.length > 0) {
-                // Pick a random match opportunity
-                const matchIndex = Math.floor(Math.random() * matches.length);
-                console.log(`AI Easy: Picking match option ${matchIndex}`);
-                return matches[matchIndex];
+                // Easy AI makes mistakes - pick a random match, not the best
+                const randomMatch = matches[Math.floor(Math.random() * matches.length)];
+                
+                // Easy AI has 50% chance to "miss" the match
+                if (Math.random() < 0.5) {
+                    console.log(`AI Easy: Attempting match but missing (simulated error)`);
+                    // Aim slightly off target
+                    randomMatch.position.x += (Math.random() - 0.5) * 100;
+                    randomMatch.position.y += (Math.random() - 0.5) * 50;
+                }
+                
+                return randomMatch;
             }
             
-            console.log(`AI Easy: No matches found, falling back to random`);
             return this.getRandomTarget();
         }
     }
     
     private selectMediumTarget(): ITargetOption | null {
-        // Medium: More strategic, looks for best matches
+        // Medium: 40% random, 60% strategic
+        const random = Math.random();
+        console.log(`AI Medium: Strategy roll = ${random.toFixed(2)}`);
+        
+        if (random < 0.4) {
+            // 40% - Random shot for variety
+            console.log(`AI Medium: Random shot (40% chance)`);
+            return this.getRandomTarget();
+        }
+        
+        // 60% - Strategic play
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Sort by score and pick top 3
+            // Sort by score
             matches.sort((a, b) => b.score - a.score);
-            const topMatches = matches.slice(0, 3);
             
-            // Pick randomly from top matches with bias towards best
-            const weights = [0.5, 0.3, 0.2];
-            const random = Math.random();
-            let accumulator = 0;
+            // Medium picks from top 50% of matches
+            const goodMatches = matches.slice(0, Math.max(1, Math.floor(matches.length / 2)));
             
-            for (let i = 0; i < topMatches.length; i++) {
-                accumulator += weights[i];
-                if (random < accumulator) {
-                    return topMatches[i];
+            // Weighted selection - prefer better matches
+            const weights = goodMatches.map((_, i) => Math.pow(0.7, i));
+            const totalWeight = weights.reduce((a, b) => a + b, 0);
+            
+            let random = Math.random() * totalWeight;
+            for (let i = 0; i < goodMatches.length; i++) {
+                random -= weights[i];
+                if (random <= 0) {
+                    console.log(`AI Medium: Strategic shot - score ${goodMatches[i].score}`);
+                    return goodMatches[i];
                 }
             }
+            
+            return goodMatches[0];
         }
         
-        return this.getRandomTarget();
+        // No matches found, try to set up
+        console.log(`AI Medium: No matches, setting up`);
+        return this.findSetupShot() || this.getRandomTarget();
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: Always picks the best possible shot
+        // Hard: 10% random (for unpredictability), 90% optimal play
+        const random = Math.random();
+        console.log(`AI Hard: Strategy roll = ${random.toFixed(2)}`);
+        
+        if (random < 0.1) {
+            // 10% - Occasional random to be unpredictable
+            console.log(`AI Hard: Tactical random (10% chance)`);
+            return this.getRandomTarget();
+        }
+        
+        // 90% - Optimal play
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Always pick the best scoring option
+            // Sort by score
             matches.sort((a, b) => b.score - a.score);
-            return matches[0];
+            
+            // Hard AI considers multiple factors
+            const bestMatch = matches[0];
+            
+            // Check for combo opportunities (matching would create more matches)
+            const comboMatches = matches.filter(m => m.matchCount && m.matchCount >= 4);
+            if (comboMatches.length > 0) {
+                console.log(`AI Hard: Combo shot detected! Count=${comboMatches[0].matchCount}`);
+                return comboMatches[0];
+            }
+            
+            // Check for defensive plays (block player's potential matches)
+            const defensiveShot = this.findDefensiveShot();
+            if (defensiveShot && defensiveShot.score > bestMatch.score * 0.8) {
+                console.log(`AI Hard: Defensive shot - blocking player`);
+                return defensiveShot;
+            }
+            
+            console.log(`AI Hard: Best match - score ${bestMatch.score}`);
+            return bestMatch;
         }
         
-        // If no good matches, try to set up future matches
-        return this.findSetupShot() || this.getRandomTarget();
+        // No immediate matches - set up for next turn
+        const setupShot = this.findSetupShot();
+        if (setupShot) {
+            console.log(`AI Hard: Setup shot for future match`);
+            return setupShot;
+        }
+        
+        // Last resort - smart random
+        console.log(`AI Hard: Smart random fallback`);
+        return this.getSmartRandomTarget();
     }
     
     private getRandomTarget(): ITargetOption {
@@ -421,8 +512,17 @@ export class AIOpponentSystem {
         // Y position with variation
         const targetY = centerY + 50 + (Math.random() * 150);
         
-        // USE THE EXACT SAME METHOD AS BUBBLE CLASS
-        const randomColor = Bubble.getRandomColor();
+        // Get a random color but avoid repeating the same color
+        let randomColor = Bubble.getRandomColor();
+        
+        // If same as last color, try again (up to 3 times)
+        let attempts = 0;
+        while (randomColor === this.lastColor && attempts < 3) {
+            randomColor = Bubble.getRandomColor();
+            attempts++;
+        }
+        
+        this.lastColor = randomColor;
         
         console.log(`🎲 Shot #${this.shotCount}: pos=${posIndex} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=0x${randomColor.toString(16)}`);
         
@@ -508,17 +608,50 @@ export class AIOpponentSystem {
     }
     
     private calculateShotScore(targetHex: IHexPosition, color: BubbleColor, groupSize: number): number {
-        let score = groupSize * 10; // Base score from group size
+        let score = 0;
         
-        // Bonus for positions closer to objective
+        // Base score from potential match size
+        if (groupSize >= 2) {
+            score = 30; // Would complete a match of 3
+        }
+        if (groupSize >= 3) {
+            score = 50; // Would create a match of 4+
+        }
+        if (groupSize >= 5) {
+            score = 100; // Large match bonus
+        }
+        
+        // Bonus for positions closer to objective (center)
         const distance = Math.abs(targetHex.q) + Math.abs(targetHex.r);
-        score += Math.max(0, 20 - distance * 2);
+        if (distance <= 1) {
+            score += 20; // Adjacent to center
+        } else if (distance <= 3) {
+            score += 10; // Close to center
+        }
         
-        // Bonus for creating larger groups
-        if (groupSize >= 4) score += 15;
-        if (groupSize >= 6) score += 25;
+        // Check how many bubbles this would connect to
+        const neighbors = this.bubbleGrid.getNeighbors(targetHex);
+        let sameColorNeighbors = 0;
+        
+        neighbors.forEach(neighbor => {
+            const bubble = this.getBubbleAtPosition(neighbor);
+            if (bubble && bubble.getColor() === color) {
+                sameColorNeighbors++;
+            }
+        });
+        
+        // More neighbors = better shot
+        score += sameColorNeighbors * 15;
         
         return score;
+    }
+    
+    private getBubbleAtPosition(hexPos: IHexPosition): Bubble | null {
+        const bubbles = this.getGridBubbles();
+        return bubbles.find(bubble => {
+            const pos = bubble.getGridPosition();
+            return pos && pos.q === hexPos.q && pos.r === hexPos.r;
+        }) || null;
     }
     
     private findSetupShot(): ITargetOption | null {
@@ -587,6 +720,122 @@ export class AIOpponentSystem {
             const pos = bubble.getGridPosition();
             return pos && pos.q === hexPos.q && pos.r === hexPos.r;
         });
+    }
+    
+    private findDefensiveShot(): ITargetOption | null {
+        // Look for positions that would block player's potential matches
+        // Focus on the lower part of the grid where player shoots
+        const gridBubbles = this.getGridBubbles();
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Find bubbles in player's zone (lower half)
+        const playerZoneBubbles = gridBubbles.filter(b => b.y > centerY);
+        
+        if (playerZoneBubbles.length === 0) return null;
+        
+        // Group by color in player zone
+        const colorGroups = new Map<BubbleColor, Bubble[]>();
+        playerZoneBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color !== null && color !== undefined) {
+                if (!colorGroups.has(color)) {
+                    colorGroups.set(color, []);
+                }
+                colorGroups.get(color)!.push(bubble);
+            }
+        });
+        
+        // Find large groups that player might complete
+        let bestDefensive: ITargetOption | null = null;
+        let bestScore = 0;
+        
+        colorGroups.forEach((bubbles, color) => {
+            if (bubbles.length >= 2) {
+                // This color group could be dangerous
+                // Find a position to disrupt it
+                const centerBubble = bubbles[Math.floor(bubbles.length / 2)];
+                const pos = centerBubble.getGridPosition();
+                
+                if (pos) {
+                    const neighbors = this.bubbleGrid.getNeighbors(pos);
+                    for (const neighbor of neighbors) {
+                        if (!this.isPositionOccupied(neighbor)) {
+                            const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                            const score = 20 + bubbles.length * 5;
+                            
+                            if (score > bestScore) {
+                                bestScore = score;
+                                bestDefensive = {
+                                    position: pixelPos,
+                                    hexPosition: neighbor,
+                                    score: score,
+                                    color: Bubble.getRandomColor(), // Different color to block
+                                    reasoning: `Blocking ${this.getColorName(color)} group`
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        return bestDefensive;
+    }
+    
+    private getSmartRandomTarget(): ITargetOption {
+        // Smart random - targets areas with more bubbles
+        const gridBubbles = this.getGridBubbles();
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Divide screen into zones and count bubbles
+        const zones = [
+            { x: screenWidth * 0.2, count: 0 },
+            { x: screenWidth * 0.5, count: 0 },
+            { x: screenWidth * 0.8, count: 0 }
+        ];
+        
+        // Count bubbles in each zone
+        gridBubbles.forEach(bubble => {
+            const closestZone = zones.reduce((prev, curr) => 
+                Math.abs(curr.x - bubble.x) < Math.abs(prev.x - bubble.x) ? curr : prev
+            );
+            closestZone.count++;
+        });
+        
+        // Pick zone with most bubbles
+        const targetZone = zones.reduce((prev, curr) => 
+            curr.count > prev.count ? curr : prev
+        );
+        
+        // Add variation
+        const targetX = targetZone.x + (Math.random() - 0.5) * 60;
+        const targetY = centerY + 50 + Math.random() * 150;
+        
+        // Pick most common color
+        const colorCounts = new Map<BubbleColor, number>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color !== null && color !== undefined) {
+                colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+            }
+        });
+        
+        let smartColor = Bubble.getRandomColor();
+        let maxCount = 0;
+        colorCounts.forEach((count, color) => {
+            if (count > maxCount) {
+                maxCount = count;
+                smartColor = color;
+            }
+        });
+        
+        return {
+            position: { x: targetX, y: targetY },
+            score: 5,
+            color: smartColor,
+            reasoning: 'Smart random targeting dense area'
+        };
     }
     
     private getColorName(color: BubbleColor): string {
