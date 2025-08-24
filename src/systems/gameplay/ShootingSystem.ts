@@ -5,6 +5,8 @@ import { BubbleColor } from '@/types/ArenaTypes';
 import { InputManager } from '@/systems/input/InputManager';
 import { TrajectoryPreview } from './TrajectoryPreview';
 import { BubbleQueue } from './BubbleQueue';
+import { GridAttachmentSystem } from './GridAttachmentSystem';
+import { BubbleGrid } from './BubbleGrid';
 import { ARENA_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
 
 export interface IProjectile {
@@ -36,14 +38,22 @@ export class ShootingSystem {
     // Trajectory preview
     private trajectoryPreview: TrajectoryPreview;
     
+    // Grid attachment
+    private gridAttachmentSystem?: GridAttachmentSystem;
+    private bubbleGrid?: BubbleGrid;
+    
     constructor(
         scene: Phaser.Scene,
         inputManager: InputManager,
-        playerLauncher: Launcher
+        playerLauncher: Launcher,
+        gridAttachmentSystem?: GridAttachmentSystem,
+        bubbleGrid?: BubbleGrid
     ) {
         this.scene = scene;
         this.inputManager = inputManager;
         this.playerLauncher = playerLauncher;
+        this.gridAttachmentSystem = gridAttachmentSystem;
+        this.bubbleGrid = bubbleGrid;
         
         // Set arena bounds for wall bouncing
         this.bounds = new Phaser.Geom.Rectangle(
@@ -220,6 +230,25 @@ export class ShootingSystem {
             projectile.bubble.x += projectile.velocity.x * (delta / 1000);
             projectile.bubble.y += projectile.velocity.y * (delta / 1000);
             
+            // Check for grid collision if attachment system is available
+            if (this.gridAttachmentSystem) {
+                const hitBubble = this.gridAttachmentSystem.checkCollision(projectile.bubble);
+                if (hitBubble) {
+                    // Find attachment position
+                    const attachPos = this.gridAttachmentSystem.findAttachmentPosition(
+                        projectile.bubble, 
+                        hitBubble
+                    );
+                    
+                    if (attachPos) {
+                        // Attach to grid
+                        projectile.isActive = false;
+                        this.gridAttachmentSystem.attachToGrid(projectile.bubble, attachPos);
+                        continue;
+                    }
+                }
+            }
+            
             // Check for wall collisions
             this.checkWallCollision(projectile);
             
@@ -247,11 +276,13 @@ export class ShootingSystem {
             projectile.velocity.x = -Math.abs(projectile.velocity.x); // Bounce left
         }
         
-        // Top wall - destroy bubble when it reaches the top
+        // Top wall - bubble explodes when reaching opponent side
         if (bubble.y - radius <= this.bounds.top) {
-            // Bubble reached the top, make it pop and disappear
+            // Bubble reached the top (opponent zone), explode it
             projectile.isActive = false;
             bubble.pop();
+            
+            // TODO: Future feature - if bubble passes near opponent launcher, apply slow debuff
         }
     }
     

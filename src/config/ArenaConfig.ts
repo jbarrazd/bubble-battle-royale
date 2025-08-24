@@ -44,6 +44,7 @@ export const Z_LAYERS = {
     GRID_DEBUG: 2,
     BUBBLES_BACK: 10,
     OBJECTIVE: 20,
+    BUBBLES: 25,  // Main bubble layer for projectiles
     BUBBLES_FRONT: 30,
     LAUNCHERS: 40,
     UI: 50,

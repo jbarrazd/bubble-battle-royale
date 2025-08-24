@@ -7,6 +7,7 @@ import { Launcher } from '@/gameObjects/Launcher';
 import { Objective } from '@/gameObjects/Objective';
 import { InputManager } from '@/systems/input/InputManager';
 import { ShootingSystem } from './ShootingSystem';
+import { GridAttachmentSystem } from './GridAttachmentSystem';
 
 export class ArenaSystem {
     private scene: Scene;
@@ -22,6 +23,7 @@ export class ArenaSystem {
     private debugEnabled: boolean = false;
     private inputManager: InputManager;
     private shootingSystem?: ShootingSystem;
+    private gridAttachmentSystem: GridAttachmentSystem;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -34,6 +36,9 @@ export class ArenaSystem {
         const centerX = scene.cameras.main.centerX;
         const centerY = scene.cameras.main.centerY;
         this.bubbleGrid = new BubbleGrid(centerX, centerY);
+        
+        // Initialize grid attachment system
+        this.gridAttachmentSystem = new GridAttachmentSystem(scene, this.bubbleGrid);
         
         this.initializeZones();
         this.createBubblePool();
@@ -90,11 +95,13 @@ export class ArenaSystem {
         this.createInitialBubbles();
         this.createZoneVisuals();
         
-        // Initialize shooting system after launchers are created
+        // Initialize shooting system with grid attachment
         this.shootingSystem = new ShootingSystem(
             this.scene,
             this.inputManager,
-            this.playerLauncher
+            this.playerLauncher,
+            this.gridAttachmentSystem,
+            this.bubbleGrid
         );
         
         // Enable debug with 'D' key
@@ -152,6 +159,9 @@ export class ArenaSystem {
                     bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
                     bubble.setGridPosition(hexPos);
                     this.bubbles.push(bubble);
+                    
+                    // Register with grid attachment system
+                    this.gridAttachmentSystem.addGridBubble(bubble);
                     
                     // Add some random special bubbles
                     if (Math.random() < 0.1) {
@@ -259,6 +269,11 @@ export class ArenaSystem {
         
         // Draw hexagonal grid
         this.drawHexGrid();
+        
+        // Draw bubble connections
+        if (this.gridAttachmentSystem && this.debugGraphics) {
+            this.gridAttachmentSystem.debugDrawConnections(this.debugGraphics);
+        }
     }
 
     private drawHexGrid(): void {
@@ -400,6 +415,7 @@ export class ArenaSystem {
     public destroy(): void {
         this.inputManager?.destroy();
         this.shootingSystem?.destroy();
+        this.gridAttachmentSystem?.clearGrid();
         this.bubbles.forEach(bubble => bubble.destroy());
         this.bubblePool.forEach(bubble => bubble.destroy());
         this.objective?.destroy();

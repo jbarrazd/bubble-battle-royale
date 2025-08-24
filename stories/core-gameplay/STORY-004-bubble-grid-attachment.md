@@ -1,4 +1,4 @@
-# STORY-004: Bubble Grid Attachment System
+# STORY-004: Bubble Grid Attachment & Bidirectional Gravity System
 
 ## Story Details
 - **ID**: STORY-004
@@ -12,7 +12,8 @@
 ## User Story
 As a player,
 I want my shot bubbles to attach to the grid when they hit other bubbles,
-So that I can build clusters and create strategic matches.
+And I want disconnected bubbles to fall towards their respective player zones,
+So that I can build clusters and strategically cut opponent connections.
 
 ## Acceptance Criteria
 - [ ] MUST detect collision between projectile and grid bubbles
@@ -20,6 +21,12 @@ So that I can build clusters and create strategic matches.
 - [ ] MUST attach to correct neighbor position based on impact angle
 - [ ] MUST stop projectile movement on attachment
 - [ ] MUST add attached bubble to grid data structure
+- [ ] MUST detect disconnected bubble groups after attachment
+- [ ] MUST apply zone-based gravity to disconnected bubbles:
+  - Player zone bubbles fall DOWN towards player
+  - Opponent zone bubbles fall UP towards opponent
+  - Objective zone bubbles remain anchored (the "ceiling")
+- [ ] MUST animate falling bubbles with physics
 - [ ] MUST handle edge cases (grid boundaries, invalid positions)
 - [ ] MUST maintain 60+ FPS performance with full grid
 - [ ] MUST update visual position smoothly
@@ -43,8 +50,18 @@ So that I can build clusters and create strategic matches.
 - Update BubbleGrid data structure
 - Add bubble to correct hex coordinates
 - Maintain parent-child relationships
-- Track connected components
+- Track connected components by zone
 - Update collision bounds
+
+### Bidirectional Gravity System
+- Flood-fill from OBJECTIVE_ZONE bubbles (anchors)
+- Identify disconnected bubble groups per zone
+- Apply directional gravity based on zone:
+  - PLAYER_ZONE: Physics.gravity.y = positive (fall down)
+  - OPPONENT_ZONE: Physics.gravity.y = negative (fall up)
+  - OBJECTIVE_ZONE: Always connected (no gravity)
+- Remove falling bubbles when out of bounds
+- Award points for opponent bubbles that fall
 
 ### Visual Feedback
 - Subtle bounce effect on attachment
@@ -66,8 +83,12 @@ So that I can build clusters and create strategic matches.
 3. **Multiple Neighbors**: Hit point near several bubbles
 4. **Boundary Test**: Attachment at grid edges
 5. **Rapid Fire**: Multiple quick attachments
-6. **Performance**: Full grid (100+ bubbles) at 60+ FPS
-7. **Invalid Position**: Handle impossible attachment points
+6. **Gravity Player Zone**: Disconnected bubbles fall down
+7. **Gravity Opponent Zone**: Disconnected bubbles fall up
+8. **Objective Zone Anchor**: Center bubbles never fall
+9. **Chain Reaction**: Multiple groups fall after one attachment
+10. **Performance**: Full grid (100+ bubbles) at 60+ FPS
+11. **Invalid Position**: Handle impossible attachment points
 
 ## Code Structure
 ```typescript
@@ -77,6 +98,12 @@ interface IGridAttachment {
   findAttachmentPosition(impact: Vector2, hitBubble: Bubble): IHexPosition;
   attachToGrid(bubble: Bubble, position: IHexPosition): void;
   validatePosition(position: IHexPosition): boolean;
+  
+  // Bidirectional gravity system
+  findDisconnectedGroups(): Map<ArenaZone, Bubble[]>;
+  isConnectedToAnchor(bubble: Bubble): boolean;
+  applyZoneGravity(bubbles: Bubble[], zone: ArenaZone): void;
+  animateFallingBubbles(bubbles: Bubble[], direction: 'up' | 'down'): void;
 }
 ```
 
@@ -93,6 +120,13 @@ interface IGridAttachment {
 - [ ] Bubbles snap to correct hex positions
 - [ ] Natural attachment based on impact angle
 - [ ] Grid data structure updates properly
+- [ ] Disconnected groups detected correctly
+- [ ] Bidirectional gravity working per zone:
+  - [ ] Player zone bubbles fall down
+  - [ ] Opponent zone bubbles fall up
+  - [ ] Objective zone bubbles stay anchored
+- [ ] Falling animations smooth and physics-based
+- [ ] Points awarded for dropped opponent bubbles
 - [ ] Smooth visual transitions
 - [ ] No performance degradation
 - [ ] Edge cases handled gracefully
