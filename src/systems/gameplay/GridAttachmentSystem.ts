@@ -228,11 +228,15 @@ export class GridAttachmentSystem {
     private checkDisconnectedBubbles(): void {
         const disconnected = this.findDisconnectedGroups();
         
-        disconnected.forEach((bubbles, zone) => {
-            if (bubbles.length > 0) {
-                this.applyZoneGravity(bubbles, zone);
-            }
+        // Apply bidirectional gravity based on Y position, not zone
+        const allDisconnected: Bubble[] = [];
+        disconnected.forEach((bubbles) => {
+            allDisconnected.push(...bubbles);
         });
+        
+        if (allDisconnected.length > 0) {
+            this.applyBidirectionalGravity(allDisconnected);
+        }
     }
     
     /**
@@ -357,29 +361,41 @@ export class GridAttachmentSystem {
     }
     
     /**
-     * Apply gravity to disconnected bubbles based on zone
+     * Apply bidirectional gravity to disconnected bubbles
      */
-    public applyZoneGravity(bubbles: Bubble[], zone: ArenaZone): void {
-        // Determine fall direction based on zone
-        let direction: 'up' | 'down';
+    public applyBidirectionalGravity(bubbles: Bubble[]): void {
+        const centerY = this.scene.cameras.main.centerY;
         
-        if (zone === ArenaZone.PLAYER) {
-            direction = 'down';  // Player zone bubbles fall down
-        } else if (zone === ArenaZone.OPPONENT) {
-            direction = 'up';    // Opponent zone bubbles fall up
-        } else {
-            // Objective zone bubbles fall based on their position
-            direction = 'down';  // Default to down
+        // Group bubbles by their fall direction
+        const fallingUp: Bubble[] = [];
+        const fallingDown: Bubble[] = [];
+        
+        bubbles.forEach(bubble => {
+            if (bubble.y < centerY) {
+                // Bubbles above center fall up
+                fallingUp.push(bubble);
+            } else {
+                // Bubbles below center fall down
+                fallingDown.push(bubble);
+            }
+        });
+        
+        // Animate each group with appropriate direction
+        if (fallingUp.length > 0) {
+            console.log(`${fallingUp.length} bubbles falling UP (above center)`);
+            this.animateFallingBubbles(fallingUp, 'up');
         }
         
-        console.log(`Applying ${direction} gravity to ${bubbles.length} bubbles in ${zone} zone`);
-        this.animateFallingBubbles(bubbles, direction, zone);
+        if (fallingDown.length > 0) {
+            console.log(`${fallingDown.length} bubbles falling DOWN (below center)`);
+            this.animateFallingBubbles(fallingDown, 'down');
+        }
     }
     
     /**
      * Animate bubbles falling in specified direction
      */
-    private animateFallingBubbles(bubbles: Bubble[], direction: 'up' | 'down', zone: ArenaZone): void {
+    private animateFallingBubbles(bubbles: Bubble[], direction: 'up' | 'down'): void {
         const outOfBounds = direction === 'down' 
             ? this.scene.cameras.main.height + 100
             : -100;
@@ -419,16 +435,12 @@ export class GridAttachmentSystem {
                 ease: 'Quad.easeIn',
                 delay: index * 30, // Stagger the falls for cascade effect
                 onComplete: () => {
-                    // Award points based on zone
-                    let points = 5;
-                    if (zone === ArenaZone.OPPONENT) {
-                        points = 15; // More points for opponent bubbles
-                    } else if (zone === ArenaZone.OBJECTIVE) {
-                        points = 10;
-                    }
+                    // Award points based on position
+                    // Bubbles falling from opponent side (up direction) give more points
+                    const points = direction === 'up' ? 15 : 10;
                     
                     this.scene.events.emit('bubble-dropped', { 
-                        zone: zone, 
+                        direction: direction, 
                         points: points,
                         color: bubble.getColor()
                     });

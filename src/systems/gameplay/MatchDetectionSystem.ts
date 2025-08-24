@@ -240,18 +240,26 @@ export class MatchDetectionSystem {
     private checkFloatingBubbles(): void {
         const disconnected = this.gridAttachmentSystem.findDisconnectedGroups();
         
-        disconnected.forEach((bubbles, zone) => {
-            if (bubbles.length > 0) {
-                // Add points for dropped bubbles
-                if (zone === ArenaZone.OPPONENT) {
-                    const dropScore = bubbles.length * 5;
-                    this.totalScore += dropScore;
-                }
-                
-                // Apply gravity
-                this.gridAttachmentSystem.applyZoneGravity(bubbles, zone);
-            }
+        // Collect all disconnected bubbles
+        const allDisconnected: Bubble[] = [];
+        disconnected.forEach((bubbles) => {
+            allDisconnected.push(...bubbles);
         });
+        
+        if (allDisconnected.length > 0) {
+            // Count bubbles that will fall up (from opponent side)
+            const centerY = this.scene.cameras.main.centerY;
+            const upwardBubbles = allDisconnected.filter(b => b.y < centerY).length;
+            
+            // Add bonus score for upward falling bubbles
+            if (upwardBubbles > 0) {
+                const dropScore = upwardBubbles * 5;
+                this.totalScore += dropScore;
+            }
+            
+            // Apply bidirectional gravity
+            this.gridAttachmentSystem.applyBidirectionalGravity(allDisconnected);
+        }
     }
     
     /**
