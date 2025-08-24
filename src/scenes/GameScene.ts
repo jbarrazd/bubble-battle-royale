@@ -1,7 +1,7 @@
 import { Scene } from 'phaser';
 import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
-import { ArenaSystem } from '@/systems/gameplay/ArenaSystem';
+import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
@@ -120,10 +120,11 @@ export class GameScene extends Scene {
             console.log('GameScene: Instantiating ArenaSystem...');
             this.arenaSystem = new ArenaSystem(this);
             
-            console.log('GameScene: Setting up arena...');
-            this.arenaSystem.setupArena();
+            console.log('GameScene: Setting up arena with AI opponent (EASY)...');
+            // Setup single player mode with AI difficulty
+            this.arenaSystem.setupArena(true, AIDifficulty.EASY);
             
-            console.log('GameScene: Arena created successfully');
+            console.log('GameScene: Arena created successfully with AI opponent');
         } catch (error) {
             console.error('GameScene: Error creating arena:', error);
             throw error;

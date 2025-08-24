@@ -18,9 +18,11 @@ interface IAIConfig {
 
 interface ITargetOption {
     position: { x: number; y: number };
+    hexPosition?: IHexPosition;
     score: number;
     color: BubbleColor;
     reasoning: string;
+    matchCount?: number;
 }
 
 export class AIOpponentSystem {
@@ -176,40 +178,52 @@ export class AIOpponentSystem {
             return this.getRandomTarget();
         } else {
             // Try to find a simple match
-            return this.findSimpleMatch() || this.getRandomTarget();
+            const matches = this.analyzeGrid();
+            if (matches.length > 0) {
+                // Pick a random match opportunity
+                return matches[Math.floor(Math.random() * matches.length)];
+            }
+            return this.getRandomTarget();
         }
     }
     
     private selectMediumTarget(): ITargetOption | null {
-        // Medium: More strategic, looks for matches and occasionally blocks
-        const random = Math.random();
+        // Medium: More strategic, looks for best matches
+        const matches = this.analyzeGrid();
         
-        if (random < 0.3) {
-            return this.getRandomTarget();
-        } else if (random < 0.8) {
-            return this.findBestMatch() || this.getRandomTarget();
-        } else {
-            return this.findBlockingShot() || this.findBestMatch() || this.getRandomTarget();
+        if (matches.length > 0) {
+            // Sort by score and pick top 3
+            matches.sort((a, b) => b.score - a.score);
+            const topMatches = matches.slice(0, 3);
+            
+            // Pick randomly from top matches with bias towards best
+            const weights = [0.5, 0.3, 0.2];
+            const random = Math.random();
+            let accumulator = 0;
+            
+            for (let i = 0; i < topMatches.length; i++) {
+                accumulator += weights[i];
+                if (random < accumulator) {
+                    return topMatches[i];
+                }
+            }
         }
+        
+        return this.getRandomTarget();
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: Optimal play with minimax-style decisions
-        const bestMatch = this.findBestMatch();
-        const blockingShot = this.findBlockingShot();
+        // Hard: Always picks the best possible shot
+        const matches = this.analyzeGrid();
         
-        // Prioritize high-value matches
-        if (bestMatch && bestMatch.score >= 30) {
-            return bestMatch;
+        if (matches.length > 0) {
+            // Always pick the best scoring option
+            matches.sort((a, b) => b.score - a.score);
+            return matches[0];
         }
         
-        // Block opponent if critical
-        if (blockingShot && blockingShot.score >= 25) {
-            return blockingShot;
-        }
-        
-        // Otherwise take best available option
-        return bestMatch || blockingShot || this.getRandomTarget();
+        // If no good matches, try to set up future matches
+        return this.findSetupShot() || this.getRandomTarget();
     }
     
     private getRandomTarget(): ITargetOption {
@@ -229,77 +243,285 @@ export class AIOpponentSystem {
         };
     }
     
-    private findSimpleMatch(): ITargetOption | null {
-        // Look for groups of 2 same-colored bubbles to complete
-        // This is a simplified version - you'd analyze the grid
-        const centerX = this.scene.cameras.main.centerX;
-        const targetY = this.scene.cameras.main.centerY + 100;
+    private analyzeGrid(): ITargetOption[] {
+        const options: ITargetOption[] = [];
+        const gridBubbles = this.getGridBubbles();
         
-        return {
-            position: { x: centerX, y: targetY },
-            score: 15,
-            color: Bubble.getRandomColor(),
-            reasoning: 'Attempting simple match'
-        };
+        if (gridBubbles.length === 0) {
+            return options;
+        }
+        
+        // Group bubbles by color
+        const colorGroups = new Map<BubbleColor, Bubble[]>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color) {
+                if (!colorGroups.has(color)) {
+                    colorGroups.set(color, []);
+                }
+                colorGroups.get(color)!.push(bubble);
+            }
+        });
+        
+        // For each color group, find potential match positions
+        colorGroups.forEach((bubbles, color) => {
+            if (bubbles.length >= 2) {
+                // Find pairs and potential third positions
+                for (let i = 0; i < bubbles.length - 1; i++) {
+                    for (let j = i + 1; j < bubbles.length; j++) {
+                        const bubble1 = bubbles[i];
+                        const bubble2 = bubbles[j];
+                        
+                        // Check if bubbles are neighbors
+                        const pos1 = bubble1.getGridPosition();
+                        const pos2 = bubble2.getGridPosition();
+                        
+                        if (pos1 && pos2) {
+                            const distance = Math.abs(pos1.q - pos2.q) + Math.abs(pos1.r - pos2.r);
+                            
+                            if (distance <= 2) {
+                                // Find common neighbors for match completion
+                                const neighbors1 = this.bubbleGrid.getNeighbors(pos1);
+                                const neighbors2 = this.bubbleGrid.getNeighbors(pos2);
+                                
+                                const commonNeighbors = neighbors1.filter(n1 => 
+                                    neighbors2.some(n2 => n1.q === n2.q && n1.r === n2.r)
+                                );
+                                
+                                commonNeighbors.forEach(targetHex => {
+                                    if (!this.isPositionOccupied(targetHex)) {
+                                        const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
+                                        const score = this.calculateShotScore(targetHex, color, bubbles.length);
+                                        
+                                        options.push({
+                                            position: pixelPos,
+                                            hexPosition: targetHex,
+                                            score: score,
+                                            color: color,
+                                            reasoning: `Match ${bubbles.length} ${this.getColorName(color)} bubbles`,
+                                            matchCount: bubbles.length
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        return options;
     }
     
-    private findBestMatch(): ITargetOption | null {
-        // Analyze grid for best matching opportunity
-        // This would involve checking color frequencies and positions
-        const centerX = this.scene.cameras.main.centerX;
-        const targetY = this.scene.cameras.main.centerY + 80;
+    private calculateShotScore(targetHex: IHexPosition, color: BubbleColor, groupSize: number): number {
+        let score = groupSize * 10; // Base score from group size
         
-        return {
-            position: { x: centerX - 30, y: targetY },
-            score: 25,
-            color: Bubble.getRandomColor(),
-            reasoning: 'Best match opportunity'
-        };
+        // Bonus for positions closer to objective
+        const distance = Math.abs(targetHex.q) + Math.abs(targetHex.r);
+        score += Math.max(0, 20 - distance * 2);
+        
+        // Bonus for creating larger groups
+        if (groupSize >= 4) score += 15;
+        if (groupSize >= 6) score += 25;
+        
+        return score;
     }
     
-    private findBlockingShot(): ITargetOption | null {
-        // Look for player's potential matches and block them
-        // This would analyze the bottom half of the grid
-        const centerX = this.scene.cameras.main.centerX;
-        const targetY = this.scene.cameras.main.centerY + 120;
+    private findSetupShot(): ITargetOption | null {
+        // Try to position bubbles for future matches
+        const gridBubbles = this.getGridBubbles();
+        if (gridBubbles.length === 0) return null;
         
-        return {
-            position: { x: centerX + 40, y: targetY },
-            score: 20,
-            color: Bubble.getRandomColor(),
-            reasoning: 'Blocking player match'
+        // Find the most common color
+        const colorCounts = new Map<BubbleColor, number>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color) {
+                colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+            }
+        });
+        
+        let mostCommonColor: BubbleColor | null = null;
+        let maxCount = 0;
+        colorCounts.forEach((count, color) => {
+            if (count > maxCount) {
+                maxCount = count;
+                mostCommonColor = color;
+            }
+        });
+        
+        if (mostCommonColor) {
+            // Find a good position near existing bubbles of this color
+            const sameBubbles = gridBubbles.filter(b => b.getColor() === mostCommonColor);
+            if (sameBubbles.length > 0) {
+                const randomBubble = sameBubbles[Math.floor(Math.random() * sameBubbles.length)];
+                const pos = randomBubble.getGridPosition();
+                
+                if (pos) {
+                    const neighbors = this.bubbleGrid.getNeighbors(pos);
+                    for (const neighbor of neighbors) {
+                        if (!this.isPositionOccupied(neighbor)) {
+                            const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                            return {
+                                position: pixelPos,
+                                hexPosition: neighbor,
+                                score: 10,
+                                color: mostCommonColor,
+                                reasoning: 'Setting up future match'
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private getGridBubbles(): Bubble[] {
+        // Get bubbles from the game scene
+        const gameScene = this.scene as any;
+        if (gameScene.arenaSystem) {
+            return gameScene.arenaSystem.getBubbles();
+        }
+        return [];
+    }
+    
+    private isPositionOccupied(hexPos: IHexPosition): boolean {
+        const bubbles = this.getGridBubbles();
+        return bubbles.some(bubble => {
+            const pos = bubble.getGridPosition();
+            return pos && pos.q === hexPos.q && pos.r === hexPos.r;
+        });
+    }
+    
+    private getColorName(color: BubbleColor): string {
+        const colorNames: { [key: number]: string } = {
+            0xFF6B6B: 'red',
+            0x4ECDC4: 'cyan',
+            0xFFD93D: 'yellow',
+            0x95E77E: 'green',
+            0xA8E6CF: 'mint',
+            0xDDA0DD: 'purple'
         };
+        return colorNames[color] || 'unknown';
     }
     
     private shoot(target: ITargetOption): void {
         if (!this.shootingSystem) return;
         
-        // Calculate angle from launcher to target
-        const angle = Phaser.Math.Angle.Between(
-            this.launcher.x,
-            this.launcher.y,
-            target.position.x,
-            target.position.y
-        );
+        // Calculate trajectory considering wall bounces if needed
+        const trajectory = this.calculateTrajectory(target.position);
         
-        // Convert to degrees and adjust for launcher orientation
-        const degrees = Phaser.Math.RadToDeg(angle) + 90;
+        // Use the initial angle from trajectory
+        const degrees = trajectory.angle;
+        
+        // Add small random variation based on difficulty
+        let angleVariation = 0;
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                angleVariation = Phaser.Math.Between(-10, 10); // ±10 degrees
+                break;
+            case AIDifficulty.MEDIUM:
+                angleVariation = Phaser.Math.Between(-5, 5); // ±5 degrees
+                break;
+            case AIDifficulty.HARD:
+                angleVariation = Phaser.Math.Between(-2, 2); // ±2 degrees
+                break;
+        }
+        
+        const finalAngle = degrees + angleVariation;
         
         // Set launcher aim
-        this.launcher.setAimAngle(degrees);
+        this.launcher.setAimAngle(finalAngle);
         
         // Load bubble with selected color
         this.launcher.loadBubble(target.color);
         
+        // Visual feedback - show aim line briefly
+        if (this.config.difficulty === AIDifficulty.HARD) {
+            this.showAimLine(finalAngle);
+        }
+        
         // Shoot using the shooting system
         this.scene.events.emit('ai-shoot', {
-            angle: degrees,
+            angle: finalAngle,
             color: target.color,
             launcher: this.launcher
         });
         
         // Play launcher animation
         this.launcher.animateShoot();
+    }
+    
+    private calculateTrajectory(target: { x: number; y: number }): { angle: number; bounces: number } {
+        // Direct shot angle
+        const directAngle = Phaser.Math.Angle.Between(
+            this.launcher.x,
+            this.launcher.y,
+            target.x,
+            target.y
+        );
+        
+        const directDegrees = Phaser.Math.RadToDeg(directAngle) + 90;
+        
+        // Check if direct shot is within launcher constraints (shooting downward)
+        // AI shoots down, so angle should be between 60 and 120 degrees approximately
+        if (directDegrees >= 45 && directDegrees <= 135) {
+            return { angle: directDegrees, bounces: 0 };
+        }
+        
+        // Calculate wall bounce shot if direct shot is not possible
+        const screenWidth = this.scene.cameras.main.width;
+        
+        // Try left wall bounce
+        const leftBounceX = 0;
+        const leftBounceAngle = Phaser.Math.Angle.Between(
+            this.launcher.x,
+            this.launcher.y,
+            leftBounceX,
+            target.y - 100 // Aim higher for bounce
+        );
+        
+        // Try right wall bounce
+        const rightBounceX = screenWidth;
+        const rightBounceAngle = Phaser.Math.Angle.Between(
+            this.launcher.x,
+            this.launcher.y,
+            rightBounceX,
+            target.y - 100
+        );
+        
+        // Choose the better bounce angle
+        const leftDegrees = Phaser.Math.RadToDeg(leftBounceAngle) + 90;
+        const rightDegrees = Phaser.Math.RadToDeg(rightBounceAngle) + 90;
+        
+        if (Math.abs(leftDegrees - 90) < Math.abs(rightDegrees - 90)) {
+            return { angle: leftDegrees, bounces: 1 };
+        } else {
+            return { angle: rightDegrees, bounces: 1 };
+        }
+    }
+    
+    private showAimLine(angle: number): void {
+        // Create temporary aim line for visual feedback
+        const graphics = this.scene.add.graphics();
+        graphics.lineStyle(2, 0xFF0000, 0.5);
+        
+        const radians = Phaser.Math.DegToRad(angle - 90);
+        const distance = 200;
+        const endX = this.launcher.x + Math.cos(radians) * distance;
+        const endY = this.launcher.y + Math.sin(radians) * distance;
+        
+        graphics.lineBetween(this.launcher.x, this.launcher.y, endX, endY);
+        
+        // Fade out and destroy
+        this.scene.tweens.add({
+            targets: graphics,
+            alpha: 0,
+            duration: 500,
+            onComplete: () => graphics.destroy()
+        });
     }
     
     private shootRandom(): void {
