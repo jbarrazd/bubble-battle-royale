@@ -39,6 +39,7 @@ export class AIOpponentSystem {
     private aimPreview?: Phaser.GameObjects.Graphics;
     private shootTimer?: Phaser.Time.TimerEvent;
     private isActive: boolean = false;
+    private shotCount: number = 0; // Track shot count for variety
     
     constructor(
         scene: Scene,
@@ -394,40 +395,47 @@ export class AIOpponentSystem {
     }
     
     private getRandomTarget(): ITargetOption {
-        // Get a truly random position each time
+        // Increment shot counter for variety
+        this.shotCount++;
+        
         const screenWidth = this.scene.cameras.main.width;
-        const screenHeight = this.scene.cameras.main.height;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Use more randomness sources
-        const randomValue1 = Math.random();
-        const randomValue2 = Math.random();
-        const randomValue3 = Math.random();
-        
-        // More varied random positions - use FULL width range
-        // Make sure to cover left, center, and right areas
-        const zones = [
-            { min: screenWidth * 0.1, max: screenWidth * 0.35 },  // Left zone
-            { min: screenWidth * 0.35, max: screenWidth * 0.65 }, // Center zone
-            { min: screenWidth * 0.65, max: screenWidth * 0.9 }   // Right zone
+        // Force different X positions using shot count
+        // Cycle through left, center, right
+        const positions = [
+            screenWidth * 0.2,  // Left
+            screenWidth * 0.5,  // Center
+            screenWidth * 0.8,  // Right
+            screenWidth * 0.35, // Left-center
+            screenWidth * 0.65  // Right-center
         ];
         
-        // Pick a random zone
-        const zoneIndex = Math.floor(randomValue1 * zones.length);
-        const zone = zones[zoneIndex];
-        const targetX = zone.min + (randomValue2 * (zone.max - zone.min));
+        // Use shot count to pick position
+        const posIndex = this.shotCount % positions.length;
+        const baseX = positions[posIndex];
         
-        // Target lower half of screen (AI shoots down)
-        const minY = centerY + 20;
-        const maxY = centerY + 250;
-        const targetY = minY + (randomValue3 * (maxY - minY));
+        // Add some random variation
+        const targetX = baseX + (Math.random() - 0.5) * 60;
         
-        // Random color from available colors - ensure variety
-        const colors = [0xFF6B6B, 0x4ECDC4, 0xFFD93D, 0x95E77E, 0xA8E6CF, 0xDDA0DD];
-        const colorIndex = Math.floor(Math.random() * colors.length);
+        // Y position with variation
+        const targetY = centerY + 50 + (Math.random() * 150);
+        
+        // Colors that definitely exist in the game
+        const colors = [
+            0xFF6B6B, // Red
+            0x4ECDC4, // Cyan  
+            0xFFD93D, // Yellow
+            0x95E77E, // Green
+            0xA8E6CF, // Light green
+            0xDDA0DD  // Purple
+        ];
+        
+        // Cycle through colors
+        const colorIndex = this.shotCount % colors.length;
         const randomColor = colors[colorIndex];
         
-        console.log(`AI: Random target zone=${zoneIndex} pos=(${targetX.toFixed(0)}, ${targetY.toFixed(0)}) color=${colorIndex}`);
+        console.log(`🎲 Shot #${this.shotCount}: pos=${posIndex} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=${colorIndex}`);
         
         return {
             position: { 
@@ -436,7 +444,7 @@ export class AIOpponentSystem {
             },
             score: 0,
             color: randomColor,
-            reasoning: 'Random shot'
+            reasoning: `Random shot #${this.shotCount}`
         };
     }
     
@@ -610,13 +618,23 @@ export class AIOpponentSystem {
         // Show target marker for debugging
         this.showTargetMarker(target.position);
         
-        // Calculate trajectory considering wall bounces if needed
-        const trajectory = this.calculateTrajectory(target.position);
+        // SIMPLIFIED: Just calculate direct angle to target
+        const angleRad = Math.atan2(
+            target.position.y - this.launcher.y,
+            target.position.x - this.launcher.x
+        );
         
-        // Use the initial angle from trajectory
-        const degrees = trajectory.angle;
+        // Convert to degrees (0° = right, 90° = down)
+        let degrees = angleRad * (180 / Math.PI);
         
-        // Add small random variation based on difficulty
+        // Add 90 because launcher expects 90° = down
+        degrees = degrees + 90;
+        
+        // Normalize to 0-360
+        while (degrees < 0) degrees += 360;
+        while (degrees >= 360) degrees -= 360;
+        
+        // Add variation based on difficulty
         let angleVariation = 0;
         switch (this.config.difficulty) {
             case AIDifficulty.EASY:
@@ -632,6 +650,8 @@ export class AIOpponentSystem {
         
         const finalAngle = degrees + angleVariation;
         
+        console.log(`🎯 AI Shooting: target=(${target.position.x.toFixed(0)},${target.position.y.toFixed(0)}) angle=${finalAngle.toFixed(1)}° color=0x${target.color.toString(16)}`);
+        
         // Set launcher aim
         this.launcher.setAimAngle(finalAngle);
         
@@ -639,7 +659,7 @@ export class AIOpponentSystem {
         this.launcher.loadBubble(target.color);
         
         // Visual feedback - show aim line based on difficulty
-        this.showAimLine(finalAngle, trajectory.bounces > 0);
+        this.showAimLine(finalAngle, false);
         
         // Shoot using the shooting system
         this.scene.events.emit('ai-shoot', {

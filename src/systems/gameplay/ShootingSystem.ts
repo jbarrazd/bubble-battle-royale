@@ -225,7 +225,7 @@ export class ShootingSystem {
     private onAIShoot = (data: any): void => {
         if (!this.opponentLauncher) return;
         
-        console.log('ShootingSystem: AI shooting', data);
+        console.log('ShootingSystem: AI shooting angle=' + data.angle + ' color=0x' + data.color.toString(16));
         
         // Create bubble for AI
         const aiBubble = new Bubble(
@@ -236,11 +236,15 @@ export class ShootingSystem {
         );
         
         // Calculate velocity based on angle
-        const radians = Phaser.Math.DegToRad(data.angle - 90);
+        // The angle is already in the correct format (90 = down)
+        // Convert to radians for velocity calculation
+        const radians = Phaser.Math.DegToRad(data.angle - 90); // -90 to convert from down=90 to right=0
         const velocity = new Phaser.Math.Vector2(
             Math.cos(radians) * this.shootSpeed,
             Math.sin(radians) * this.shootSpeed
         );
+        
+        console.log(`ShootingSystem: Velocity x=${velocity.x.toFixed(1)} y=${velocity.y.toFixed(1)}`);
         
         // Create projectile
         const projectile: IProjectile = {
