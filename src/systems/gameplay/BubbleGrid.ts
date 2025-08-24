@@ -10,7 +10,8 @@ export class BubbleGrid {
     constructor(centerX: number, centerY: number) {
         this.centerX = centerX;
         this.centerY = centerY;
-        this.hexSize = BUBBLE_CONFIG.SIZE / 2;
+        // Add gap to hexSize for proper spacing
+        this.hexSize = (BUBBLE_CONFIG.SIZE + BUBBLE_CONFIG.GAP) / 2;
         this.gridMap = new Map();
         this.initializeGrid();
     }
