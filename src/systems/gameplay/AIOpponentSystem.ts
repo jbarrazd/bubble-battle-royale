@@ -332,6 +332,10 @@ export class AIOpponentSystem {
     }
     
     private selectTarget(): ITargetOption | null {
+        // INCREMENT SHOT COUNTER HERE - ONCE PER SHOT
+        this.shotCount++;
+        console.log(`🎯 AI: Selecting target for shot #${this.shotCount}`);
+        
         // Force fresh selection each time
         let result: ITargetOption | null = null;
         
@@ -356,13 +360,17 @@ export class AIOpponentSystem {
             result = this.getRandomTarget();
         }
         
+        // Log what we're returning
+        console.log(`AI: Target selected - x=${result.position.x.toFixed(0)} y=${result.position.y.toFixed(0)} color=${this.getColorName(result.color)}`);
+        
         return result;
     }
     
     private selectEasyTarget(): ITargetOption | null {
         // Easy: 80% random, 20% try to match (often misses)
+        // Shot counter already incremented in selectTarget()
         const random = Math.random();
-        console.log(`AI Easy: Strategy roll = ${random.toFixed(2)}`);
+        console.log(`AI Easy: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
         if (random < 0.8) {
             // 80% - Pure random shot
@@ -394,8 +402,9 @@ export class AIOpponentSystem {
     
     private selectMediumTarget(): ITargetOption | null {
         // Medium: 40% random, 60% strategic
+        // Shot counter already incremented in selectTarget()
         const random = Math.random();
-        console.log(`AI Medium: Strategy roll = ${random.toFixed(2)}`);
+        console.log(`AI Medium: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
         if (random < 0.4) {
             // 40% - Random shot for variety
@@ -435,106 +444,74 @@ export class AIOpponentSystem {
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 25% random (for variety), 75% optimal play
-        const random = Math.random();
-        console.log(`AI Hard: Strategy roll = ${random.toFixed(2)}`);
+        // SIMPLIFIED HARD MODE - Mix of smart and random for actual variety
+        // Shot counter already incremented in selectTarget()
         
-        if (random < 0.25) {
-            // 25% - More random for variety
-            console.log(`AI Hard: Tactical random (25% chance)`);
-            return this.getRandomTarget();
+        const strategy = this.shotCount % 3; // Cycle through 3 strategies
+        console.log(`AI Hard: Using strategy ${strategy} for shot #${this.shotCount}`);
+        
+        switch (strategy) {
+            case 0:
+                // Strategy 1: Try to match
+                console.log(`AI Hard: Attempting match strategy`);
+                const matches = this.analyzeGrid();
+                if (matches.length > 0) {
+                    // Pick from top matches with some randomness
+                    const topCount = Math.min(3, matches.length);
+                    const selectedIndex = Math.floor(Math.random() * topCount);
+                    const selected = matches[selectedIndex];
+                    console.log(`AI Hard: Match found at index ${selectedIndex}`);
+                    return selected;
+                }
+                break;
+                
+            case 1:
+                // Strategy 2: Strategic random
+                console.log(`AI Hard: Strategic random`);
+                return this.getStrategicRandomTarget();
+                
+            case 2:
+                // Strategy 3: Pure random for unpredictability
+                console.log(`AI Hard: Pure random for variety`);
+                return this.getRandomTarget();
         }
         
-        // 90% - Optimal play
-        const matches = this.analyzeGrid();
-        
-        if (matches.length > 0) {
-            // Sort by score
-            matches.sort((a, b) => b.score - a.score);
-            
-            // Hard AI considers multiple factors
-            const bestMatch = matches[0];
-            
-            // Check for combo opportunities (matching would create more matches)
-            const comboMatches = matches.filter(m => m.matchCount && m.matchCount >= 4);
-            if (comboMatches.length > 0) {
-                console.log(`AI Hard: Combo shot detected! Count=${comboMatches[0].matchCount}`);
-                return comboMatches[0];
-            }
-            
-            // Check for defensive plays (block player's potential matches)
-            const defensiveShot = this.findDefensiveShot();
-            if (defensiveShot && defensiveShot.score > bestMatch.score * 0.8) {
-                console.log(`AI Hard: Defensive shot - blocking player`);
-                return defensiveShot;
-            }
-            
-            console.log(`AI Hard: Best match - score ${bestMatch.score}`);
-            return bestMatch;
-        }
-        
-        // No immediate matches - alternate strategies
-        const strategyRoll = Math.random();
-        
-        if (strategyRoll < 0.33) {
-            const setupShot = this.findSetupShot();
-            if (setupShot) {
-                console.log(`AI Hard: Setup shot for future match`);
-                return setupShot;
-            }
-        } else if (strategyRoll < 0.66) {
-            const defensiveShot = this.findDefensiveShot();
-            if (defensiveShot) {
-                console.log(`AI Hard: Defensive positioning`);
-                return defensiveShot;
-            }
-        }
-        
-        // Fallback to regular random for variety
-        console.log(`AI Hard: Random fallback for variety`);
+        // Fallback
+        console.log(`AI Hard: Fallback to random`);
         return this.getRandomTarget();
     }
     
     private getRandomTarget(): ITargetOption {
-        // Increment shot counter for variety
-        this.shotCount++;
-        
+        // DON'T increment here - already done in selectTarget methods
         const screenWidth = this.scene.cameras.main.width;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Force different X positions using shot count
-        // Cycle through left, center, right
-        const positions = [
-            screenWidth * 0.2,  // Left
-            screenWidth * 0.5,  // Center
-            screenWidth * 0.8,  // Right
-            screenWidth * 0.35, // Left-center
-            screenWidth * 0.65  // Right-center
+        // Use current time for true randomness
+        const now = Date.now();
+        const seed = (now + this.shotCount) % 100;
+        
+        // Generate truly random X position
+        const minX = screenWidth * 0.15;
+        const maxX = screenWidth * 0.85;
+        const targetX = minX + (Math.random() * (maxX - minX));
+        
+        // Random Y position
+        const targetY = centerY + 30 + (Math.random() * 200);
+        
+        // Get truly random color
+        const colors = [
+            BubbleColor.RED,
+            BubbleColor.BLUE,
+            BubbleColor.GREEN,
+            BubbleColor.YELLOW,
+            BubbleColor.PURPLE
         ];
         
-        // Use shot count to pick position
-        const posIndex = this.shotCount % positions.length;
-        const baseX = positions[posIndex];
+        // Use multiple sources of randomness
+        const colorIndex = Math.floor((Math.random() * now) % colors.length);
+        const randomColor = colors[colorIndex];
         
-        // Add some random variation
-        const targetX = baseX + (Math.random() - 0.5) * 60;
-        
-        // Y position with variation
-        const targetY = centerY + 50 + (Math.random() * 150);
-        
-        // Get a random color but avoid repeating the same color
-        let randomColor = Bubble.getRandomColor();
-        
-        // If same as last color, try again (up to 3 times)
-        let attempts = 0;
-        while (randomColor === this.lastColor && attempts < 3) {
-            randomColor = Bubble.getRandomColor();
-            attempts++;
-        }
-        
-        this.lastColor = randomColor;
-        
-        console.log(`🎲 Shot #${this.shotCount}: pos=${posIndex} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=0x${randomColor.toString(16)}`);
+        console.log(`🎲 Random: x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=${this.getColorName(randomColor)} seed=${seed}`);
         
         return {
             position: { 
@@ -543,7 +520,39 @@ export class AIOpponentSystem {
             },
             score: 0,
             color: randomColor,
-            reasoning: `Random shot #${this.shotCount}`
+            reasoning: `Random shot`
+        };
+    }
+    
+    private getStrategicRandomTarget(): ITargetOption {
+        // Strategic but with forced variety
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Pick zone based on shot count for variety
+        const zones = [
+            { x: screenWidth * 0.25, label: 'left' },
+            { x: screenWidth * 0.5, label: 'center' },
+            { x: screenWidth * 0.75, label: 'right' }
+        ];
+        
+        const zoneIndex = this.shotCount % zones.length;
+        const zone = zones[zoneIndex];
+        
+        // Position with variation
+        const targetX = zone.x + (Math.random() - 0.5) * 80;
+        const targetY = centerY + 40 + (Math.random() * 160);
+        
+        // Pick a random color each time
+        const strategicColor = Bubble.getRandomColor();
+        
+        console.log(`🎯 Strategic: zone=${zone.label} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)}`);
+        
+        return {
+            position: { x: targetX, y: targetY },
+            score: 10,
+            color: strategicColor,
+            reasoning: `Strategic ${zone.label}`
         };
     }
     
