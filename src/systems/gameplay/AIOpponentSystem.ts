@@ -421,21 +421,10 @@ export class AIOpponentSystem {
         // Y position with variation
         const targetY = centerY + 50 + (Math.random() * 150);
         
-        // Colors that definitely exist in the game
-        const colors = [
-            0xFF6B6B, // Red
-            0x4ECDC4, // Cyan  
-            0xFFD93D, // Yellow
-            0x95E77E, // Green
-            0xA8E6CF, // Light green
-            0xDDA0DD  // Purple
-        ];
+        // USE THE EXACT SAME METHOD AS BUBBLE CLASS
+        const randomColor = Bubble.getRandomColor();
         
-        // Cycle through colors
-        const colorIndex = this.shotCount % colors.length;
-        const randomColor = colors[colorIndex];
-        
-        console.log(`🎲 Shot #${this.shotCount}: pos=${posIndex} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=${colorIndex}`);
+        console.log(`🎲 Shot #${this.shotCount}: pos=${posIndex} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=0x${randomColor.toString(16)}`);
         
         return {
             position: { 
@@ -460,7 +449,7 @@ export class AIOpponentSystem {
         const colorGroups = new Map<BubbleColor, Bubble[]>();
         gridBubbles.forEach(bubble => {
             const color = bubble.getColor();
-            if (color) {
+            if (color !== null && color !== undefined) {
                 if (!colorGroups.has(color)) {
                     colorGroups.set(color, []);
                 }
@@ -541,7 +530,7 @@ export class AIOpponentSystem {
         const colorCounts = new Map<BubbleColor, number>();
         gridBubbles.forEach(bubble => {
             const color = bubble.getColor();
-            if (color) {
+            if (color !== null && color !== undefined) {
                 colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
             }
         });
@@ -601,15 +590,21 @@ export class AIOpponentSystem {
     }
     
     private getColorName(color: BubbleColor): string {
-        const colorNames: { [key: number]: string } = {
-            0xFF6B6B: 'red',
-            0x4ECDC4: 'cyan',
-            0xFFD93D: 'yellow',
-            0x95E77E: 'green',
-            0xA8E6CF: 'mint',
-            0xDDA0DD: 'purple'
-        };
-        return colorNames[color] || 'unknown';
+        // Use the actual enum values
+        switch (color) {
+            case BubbleColor.RED:
+                return 'red';
+            case BubbleColor.BLUE:
+                return 'blue';
+            case BubbleColor.GREEN:
+                return 'green';
+            case BubbleColor.YELLOW:
+                return 'yellow';
+            case BubbleColor.PURPLE:
+                return 'purple';
+            default:
+                return 'unknown';
+        }
     }
     
     private shoot(target: ITargetOption): void {
