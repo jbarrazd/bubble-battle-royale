@@ -42,6 +42,8 @@ export class AIOpponentSystem {
     private shotCount: number = 0; // Track shot count for variety
     private lastColor: BubbleColor | null = null; // Track last color to avoid repetition
     private lastShotPosition: { x: number; y: number } | null = null; // Track last shot position
+    private recentColors: BubbleColor[] = []; // Track recent colors to ensure variety
+    private recentPositions: { x: number; y: number }[] = []; // Track recent positions
     
     constructor(
         scene: Scene,
@@ -441,72 +443,134 @@ export class AIOpponentSystem {
     }
     
     private selectEasyTarget(): ITargetOption | null {
-        // Easy: 50% random, 50% try to match (but inaccurate)
+        // Easy: 40% random, 60% strategic (but inaccurate)
         const random = Math.random();
         console.log(`AI Easy: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.5) {
-            // 50% - Random shot with angle variety
+        // 20% chance to try clearing objective area (even easy mode should try to win)
+        if (random < 0.2) {
+            const objectiveShot = this.findObjectiveClearingShot();
+            if (objectiveShot) {
+                // Add significant error to make it less accurate
+                objectiveShot.position.x += (Math.random() - 0.5) * 50;
+                objectiveShot.position.y += (Math.random() - 0.5) * 30;
+                objectiveShot.color = this.getVariedColor(); // Sometimes wrong color
+                console.log(`AI Easy: Trying to clear objective (inaccurate)`);
+                this.updateRecentHistory(objectiveShot);
+                return objectiveShot;
+            }
+        }
+        
+        if (random < 0.4) {
+            // 40% - Random shot with variety
             console.log(`AI Easy: Random shot`);
             const target = this.getRandomTarget();
-            // Sometimes use wall bounces even in easy mode (10% chance)
-            if (Math.random() < 0.1) {
-                const bounceOptions = this.calculateBounceShots(target.position, target.color);
-                if (bounceOptions.length > 0) {
-                    console.log(`AI Easy: Lucky bounce shot!`);
-                    return bounceOptions[0];
-                }
-            }
+            this.updateRecentHistory(target);
             return target;
         }
         
-        // 50% - Try to match but with poor accuracy
+        // 60% - Try to match but with poor accuracy
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Pick from worse matches (not the best ones)
-            const lowerTierMatches = matches.slice(Math.floor(matches.length / 2));
+            // Filter for variety
+            const variedMatches = matches.filter(m => {
+                if (this.lastColor && m.color === this.lastColor) {
+                    return Math.random() < 0.3; // 30% chance to repeat color
+                }
+                return true;
+            });
+            
+            const availableMatches = variedMatches.length > 0 ? variedMatches : matches;
+            
+            // Pick from lower tier matches
+            const lowerTierMatches = availableMatches.slice(Math.floor(availableMatches.length / 2));
             const selected = lowerTierMatches.length > 0 ? 
                 lowerTierMatches[Math.floor(Math.random() * lowerTierMatches.length)] :
-                matches[matches.length - 1];
+                availableMatches[availableMatches.length - 1];
             
-            // Add significant inaccuracy to simulate poor aim
-            const inaccuracy = 30; // pixels (reduced from 40 for slightly better play)
+            // Add significant inaccuracy
+            const inaccuracy = 25;
             selected.position.x += (Math.random() - 0.5) * inaccuracy * 2;
             selected.position.y += (Math.random() - 0.5) * inaccuracy;
             
+            // 20% chance to use wrong color (mistake)
+            if (Math.random() < 0.2) {
+                selected.color = this.getVariedColor();
+                console.log(`AI Easy: Wrong color mistake!`);
+            }
+            
             console.log(`AI Easy: Inaccurate match attempt`);
+            this.updateRecentHistory(selected);
             return selected;
         }
         
-        return this.getRandomTarget();
+        const fallback = this.getRandomTarget();
+        this.updateRecentHistory(fallback);
+        return fallback;
     }
     
     private selectMediumTarget(): ITargetOption | null {
-        // Medium: 25% random, 75% strategic
+        // Medium: 20% random, 80% strategic
         const random = Math.random();
         console.log(`AI Medium: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.25) {
-            // 25% - Random for unpredictability
-            console.log(`AI Medium: Random shot`);
-            return this.getRandomTarget();
+        // 40% chance to prioritize objective clearing
+        if (random < 0.4) {
+            const objectiveShot = this.findObjectiveClearingShot();
+            if (objectiveShot) {
+                // Add moderate error
+                objectiveShot.position.x += (Math.random() - 0.5) * 15;
+                objectiveShot.position.y += (Math.random() - 0.5) * 10;
+                console.log(`AI Medium: Clearing objective area`);
+                this.updateRecentHistory(objectiveShot);
+                return objectiveShot;
+            }
         }
         
-        // 75% - Strategic play with occasional bounces
+        if (random < 0.2) {
+            // 20% - Random for unpredictability
+            console.log(`AI Medium: Random shot`);
+            const target = this.getRandomTarget();
+            this.updateRecentHistory(target);
+            return target;
+        }
+        
+        // 80% - Strategic play
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
+            // Filter for variety
+            const variedMatches = matches.filter(m => {
+                // Avoid repeating same color too much
+                if (this.recentColors.filter(c => c === m.color).length >= 2) {
+                    return Math.random() < 0.4; // 40% chance if color repeated
+                }
+                
+                // Avoid repeating positions
+                for (const recentPos of this.recentPositions) {
+                    const distance = Math.sqrt(
+                        Math.pow(m.position.x - recentPos.x, 2) +
+                        Math.pow(m.position.y - recentPos.y, 2)
+                    );
+                    if (distance < 70) return false;
+                }
+                
+                return true;
+            });
+            
+            const availableMatches = variedMatches.length > 0 ? variedMatches : matches;
+            
             // Pick from top 40% of matches
-            const cutoff = Math.max(1, Math.ceil(matches.length * 0.4));
-            const goodMatches = matches.slice(0, cutoff);
+            const cutoff = Math.max(1, Math.ceil(availableMatches.length * 0.4));
+            const goodMatches = availableMatches.slice(0, cutoff);
             
             // Select with bias toward better matches
             const selectedIndex = Math.floor(Math.random() * Math.random() * goodMatches.length);
             let selected = goodMatches[selectedIndex];
             
-            // 30% chance to try a bounce shot if available
-            if (Math.random() < 0.3) {
+            // 40% chance to try a bounce shot
+            if (Math.random() < 0.4) {
                 const bounceOptions = this.calculateBounceShots(selected.position, selected.color);
                 if (bounceOptions.length > 0) {
                     console.log(`AI Medium: Using bounce shot!`);
@@ -514,66 +578,106 @@ export class AIOpponentSystem {
                 }
             }
             
-            // Add small inaccuracy
-            const inaccuracy = 10; // pixels (reduced from 15)
+            // Add moderate inaccuracy
+            const inaccuracy = 8;
             selected.position.x += (Math.random() - 0.5) * inaccuracy;
             selected.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
             
             console.log(`AI Medium: Strategic shot - ${selected.reasoning}`);
+            this.updateRecentHistory(selected);
             return selected;
         }
         
-        // No matches - look for complex setups sometimes
-        if (Math.random() < 0.3) {
+        // No matches - look for setups
+        if (Math.random() < 0.5) {
             const complexSetup = this.findComplexSetup();
             if (complexSetup) {
+                complexSetup.color = this.getVariedColor();
                 console.log(`AI Medium: Complex setup`);
+                this.updateRecentHistory(complexSetup);
                 return complexSetup;
             }
         }
         
-        // Standard setup
-        console.log(`AI Medium: Setting up`);
-        return this.findSetupShot() || this.getRandomTarget();
+        // Standard setup with variety
+        const setup = this.findSetupShot();
+        if (setup) {
+            setup.color = this.getVariedColor();
+            this.updateRecentHistory(setup);
+            return setup;
+        }
+        
+        const fallback = this.getRandomTarget();
+        this.updateRecentHistory(fallback);
+        return fallback;
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 5% random, 95% perfect play
+        // Hard: 10% random, 90% perfect play (with objective focus)
         const random = Math.random();
         console.log(`AI Hard: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.05) {
-            // 5% - Minimal randomness just to avoid being 100% predictable
+        if (random < 0.1) {
+            // 10% - Tactical randomness for unpredictability
             console.log(`AI Hard: Tactical random`);
             return this.getRandomTarget();
         }
         
-        // 95% - Perfect optimal play
+        // First priority: Clear path to objective
+        const objectiveShot = this.findObjectiveClearingShot();
+        if (objectiveShot && objectiveShot.score >= 200) {
+            console.log(`AI Hard: OBJECTIVE CLEARING - ${objectiveShot.reasoning}`);
+            this.updateRecentHistory(objectiveShot);
+            return objectiveShot;
+        }
+        
+        // 90% - Perfect optimal play
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Find the BEST possible shot including wall bounces
-            let bestOption = matches[0];
+            // Filter out shots that would repeat recent patterns
+            const freshMatches = matches.filter(m => {
+                // Check color variety
+                if (this.recentColors.length >= 2 && 
+                    this.recentColors[this.recentColors.length - 1] === m.color &&
+                    this.recentColors[this.recentColors.length - 2] === m.color) {
+                    return false; // Skip if same color 3 times in a row
+                }
+                
+                // Check position variety
+                for (const recentPos of this.recentPositions) {
+                    const distance = Math.sqrt(
+                        Math.pow(m.position.x - recentPos.x, 2) +
+                        Math.pow(m.position.y - recentPos.y, 2)
+                    );
+                    if (distance < 60) return false; // Too close to recent shot
+                }
+                
+                return true;
+            });
             
-            // Check if we can reach better positions with wall bounces
-            for (const match of matches.slice(0, 5)) { // Check top 5 matches
+            const availableMatches = freshMatches.length > 0 ? freshMatches : matches;
+            
+            // Find the BEST possible shot including wall bounces
+            let bestOption = availableMatches[0];
+            
+            // Check bounce shots for top matches
+            for (const match of availableMatches.slice(0, 3)) {
                 const bounceOptions = this.calculateBounceShots(match.position, match.color);
                 for (const bounceOption of bounceOptions) {
-                    if (bounceOption.score > bestOption.score) {
+                    if (bounceOption.score > bestOption.score + 50) { // Only use bounce if significantly better
                         bestOption = bounceOption;
                     }
                 }
             }
             
-            // Perfect accuracy - minimal error (2-3 pixels max)
-            const inaccuracy = 2;
+            // Perfect accuracy - minimal error
+            const inaccuracy = 3;
             bestOption.position.x += (Math.random() - 0.5) * inaccuracy;
             bestOption.position.y += (Math.random() - 0.5) * inaccuracy;
             
-            // Store last shot position
-            this.lastShotPosition = { ...bestOption.position };
-            
-            console.log(`AI Hard: PERFECT shot - ${bestOption.reasoning} (score: ${bestOption.score})`);
+            this.updateRecentHistory(bestOption);
+            console.log(`AI Hard: OPTIMAL shot - ${bestOption.reasoning} (score: ${bestOption.score})`);
             return bestOption;
         }
         
@@ -581,56 +685,79 @@ export class AIOpponentSystem {
         const complexSetup = this.findComplexSetup();
         if (complexSetup) {
             console.log(`AI Hard: Complex strategic setup`);
-            this.lastShotPosition = { ...complexSetup.position };
+            this.updateRecentHistory(complexSetup);
             return complexSetup;
         }
         
-        // Last resort - optimal placement
+        // Try to clear objective area
+        if (objectiveShot) {
+            console.log(`AI Hard: Objective area shot`);
+            this.updateRecentHistory(objectiveShot);
+            return objectiveShot;
+        }
+        
+        // Strategic placement
         const setupShot = this.findSetupShot();
         if (setupShot) {
+            // Ensure variety in setup shots
+            setupShot.color = this.getVariedColor();
             console.log(`AI Hard: Strategic setup`);
-            this.lastShotPosition = { ...setupShot.position };
+            this.updateRecentHistory(setupShot);
             return setupShot;
         }
         
-        // Emergency fallback
+        // Emergency fallback with forced variety
         console.log(`AI Hard: Emergency fallback`);
         const randomTarget = this.getStrategicRandomTarget();
-        this.lastShotPosition = { ...randomTarget.position };
+        randomTarget.color = this.getVariedColor();
+        this.updateRecentHistory(randomTarget);
         return randomTarget;
     }
     
     private getRandomTarget(): ITargetOption {
-        // DON'T increment here - already done in selectTarget methods
         const screenWidth = this.scene.cameras.main.width;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Use current time for true randomness
-        const now = Date.now();
-        const seed = (now + this.shotCount) % 100;
+        // TARGET THE OBJECTIVE AREA - prioritize center top where chest is
+        const objectiveY = 100; // Near the chest
         
-        // Generate truly random X position
-        const minX = screenWidth * 0.15;
-        const maxX = screenWidth * 0.85;
-        const targetX = minX + (Math.random() * (maxX - minX));
+        // Generate position that aims toward objective
+        let targetX: number;
+        let targetY: number;
         
-        // Random Y position
-        const targetY = centerY + 30 + (Math.random() * 200);
+        // 70% chance to aim near objective area
+        if (Math.random() < 0.7) {
+            // Aim for center-top area where objective/chest would be
+            targetX = screenWidth * 0.5 + (Math.random() - 0.5) * 200;
+            targetY = objectiveY + Math.random() * 150;
+        } else {
+            // Random position for variety
+            const minX = screenWidth * 0.15;
+            const maxX = screenWidth * 0.85;
+            targetX = minX + (Math.random() * (maxX - minX));
+            targetY = centerY + (Math.random() * 250);
+        }
         
-        // Get truly random color
-        const colors = [
-            BubbleColor.RED,
-            BubbleColor.BLUE,
-            BubbleColor.GREEN,
-            BubbleColor.YELLOW,
-            BubbleColor.PURPLE
-        ];
+        // Ensure we don't repeat recent positions
+        for (const recentPos of this.recentPositions) {
+            const distance = Math.sqrt(
+                Math.pow(targetX - recentPos.x, 2) +
+                Math.pow(targetY - recentPos.y, 2)
+            );
+            if (distance < 80) {
+                // Too close to recent shot, offset it
+                targetX += (Math.random() - 0.5) * 150;
+                targetY += (Math.random() - 0.5) * 100;
+                // Keep in bounds
+                targetX = Math.max(60, Math.min(screenWidth - 60, targetX));
+                targetY = Math.max(50, Math.min(centerY + 300, targetY));
+            }
+        }
         
-        // Use multiple sources of randomness
-        const colorIndex = Math.floor((Math.random() * now) % colors.length);
-        const randomColor = colors[colorIndex];
+        // Get a varied color
+        const randomColor = this.getVariedColor();
         
-        console.log(`🎲 Random: x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=${this.getColorName(randomColor)} seed=${seed}`);
+        console.log(`🎲 Random: x=${targetX.toFixed(0)} y=${targetY.toFixed(0)} color=${this.getColorName(randomColor)}`);
         
         return {
             position: { 
@@ -639,7 +766,7 @@ export class AIOpponentSystem {
             },
             score: 0,
             color: randomColor,
-            reasoning: `Random shot`
+            reasoning: `Random shot toward objective`
         };
     }
     
@@ -684,8 +811,8 @@ export class AIOpponentSystem {
             }
         }
         
-        // Pick a random color each time
-        const strategicColor = Bubble.getRandomColor();
+        // Use varied color system
+        const strategicColor = this.getVariedColor();
         
         console.log(`🎯 Strategic: zone=${zone.label} x=${finalX.toFixed(0)} y=${finalY.toFixed(0)}`);
         
@@ -987,6 +1114,15 @@ export class AIOpponentSystem {
                 mostCommonColor = color;
             }
         });
+        
+        // If we keep using the same color, force variety
+        if (mostCommonColor && this.recentColors.filter(c => c === mostCommonColor).length >= 2) {
+            // Pick a different color
+            const otherColors = Array.from(colorCounts.keys()).filter(c => c !== mostCommonColor);
+            if (otherColors.length > 0) {
+                mostCommonColor = otherColors[Math.floor(Math.random() * otherColors.length)];
+            }
+        }
         
         if (mostCommonColor) {
             // Find a good position near existing bubbles of this color
@@ -1888,6 +2024,122 @@ export class AIOpponentSystem {
         }
         
         return score;
+    }
+    
+    private getVariedColor(): BubbleColor {
+        const colors = [
+            BubbleColor.RED,
+            BubbleColor.BLUE,
+            BubbleColor.GREEN,
+            BubbleColor.YELLOW,
+            BubbleColor.PURPLE
+        ];
+        
+        // Filter out recent colors if possible
+        let availableColors = colors;
+        if (this.recentColors.length > 0) {
+            const filteredColors = colors.filter(c => 
+                !this.recentColors.slice(-2).includes(c) // Avoid last 2 colors
+            );
+            if (filteredColors.length > 0) {
+                availableColors = filteredColors;
+            }
+        }
+        
+        // Pick random from available
+        return availableColors[Math.floor(Math.random() * availableColors.length)];
+    }
+    
+    private updateRecentHistory(option: ITargetOption): void {
+        // Update position history
+        this.recentPositions.push({ ...option.position });
+        if (this.recentPositions.length > 3) {
+            this.recentPositions.shift(); // Keep only last 3 positions
+        }
+        
+        // Update color history
+        this.recentColors.push(option.color);
+        if (this.recentColors.length > 3) {
+            this.recentColors.shift(); // Keep only last 3 colors
+        }
+        
+        // Update last shot info
+        this.lastShotPosition = { ...option.position };
+        this.lastColor = option.color;
+    }
+    
+    private findObjectiveClearingShot(): ITargetOption | null {
+        // Find shots that would clear bubbles near the objective/chest area
+        const screenWidth = this.scene.cameras.main.width;
+        const objectiveX = screenWidth / 2;
+        const objectiveY = 100; // Top center where chest is
+        
+        const gridBubbles = this.getGridBubbles();
+        const objectiveBubbles = gridBubbles.filter(b => {
+            const distance = Math.sqrt(
+                Math.pow(b.x - objectiveX, 2) +
+                Math.pow(b.y - objectiveY, 2)
+            );
+            return distance < 150; // Bubbles near objective
+        });
+        
+        if (objectiveBubbles.length === 0) {
+            return null; // Path already clear
+        }
+        
+        // Group objective bubbles by color
+        const colorGroups = new Map<BubbleColor, Bubble[]>();
+        objectiveBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color !== null && color !== undefined) {
+                if (!colorGroups.has(color)) {
+                    colorGroups.set(color, []);
+                }
+                colorGroups.get(color)!.push(bubble);
+            }
+        });
+        
+        // Find best shot to clear objective area
+        let bestShot: ITargetOption | null = null;
+        let bestScore = 0;
+        
+        colorGroups.forEach((bubbles, color) => {
+            if (bubbles.length >= 2) {
+                // Look for positions that would complete matches
+                bubbles.forEach(bubble => {
+                    const pos = bubble.getGridPosition();
+                    if (pos) {
+                        const neighbors = this.bubbleGrid.getNeighbors(pos);
+                        
+                        for (const neighbor of neighbors) {
+                            if (!this.isPositionOccupied(neighbor)) {
+                                const adjacentCount = this.countAdjacentSameColor(neighbor, color);
+                                
+                                if (adjacentCount >= 2) {
+                                    const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                                    const chainScore = this.predictChainReaction(neighbor, color);
+                                    const score = 250 + adjacentCount * 30 + chainScore; // High priority
+                                    
+                                    if (score > bestScore) {
+                                        bestScore = score;
+                                        bestShot = {
+                                            position: pixelPos,
+                                            hexPosition: neighbor,
+                                            score: score,
+                                            color: color,
+                                            reasoning: `Clear objective area - ${adjacentCount + 1} ${this.getColorName(color)}`,
+                                            matchCount: adjacentCount + 1
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        
+        return bestShot;
     }
     
     public destroy(): void {
