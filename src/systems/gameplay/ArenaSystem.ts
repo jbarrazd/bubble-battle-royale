@@ -8,6 +8,7 @@ import { Objective } from '@/gameObjects/Objective';
 import { InputManager } from '@/systems/input/InputManager';
 import { ShootingSystem } from './ShootingSystem';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
+import { MatchDetectionSystem } from './MatchDetectionSystem';
 
 export class ArenaSystem {
     private scene: Scene;
@@ -24,6 +25,7 @@ export class ArenaSystem {
     private inputManager: InputManager;
     private shootingSystem?: ShootingSystem;
     private gridAttachmentSystem: GridAttachmentSystem;
+    private matchDetectionSystem: MatchDetectionSystem;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -39,6 +41,16 @@ export class ArenaSystem {
         
         // Initialize grid attachment system
         this.gridAttachmentSystem = new GridAttachmentSystem(scene, this.bubbleGrid);
+        
+        // Initialize match detection system
+        this.matchDetectionSystem = new MatchDetectionSystem(
+            scene,
+            this.bubbleGrid,
+            this.gridAttachmentSystem
+        );
+        
+        // Connect systems
+        this.gridAttachmentSystem.setMatchDetectionSystem(this.matchDetectionSystem);
         
         this.initializeZones();
         this.createBubblePool();
@@ -416,6 +428,7 @@ export class ArenaSystem {
         this.inputManager?.destroy();
         this.shootingSystem?.destroy();
         this.gridAttachmentSystem?.clearGrid();
+        this.matchDetectionSystem?.reset();
         this.bubbles.forEach(bubble => bubble.destroy());
         this.bubblePool.forEach(bubble => bubble.destroy());
         this.objective?.destroy();

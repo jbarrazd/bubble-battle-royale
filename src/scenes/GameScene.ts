@@ -11,7 +11,9 @@ export class GameScene extends Scene {
     private arenaSystem!: ArenaSystem;
     private fpsText!: Phaser.GameObjects.Text;
     private debugText!: Phaser.GameObjects.Text;
+    private scoreText!: Phaser.GameObjects.Text;
     private isPaused: boolean = false;
+    private currentScore: number = 0;
 
     constructor() {
         super({ key: SceneKeys.GAME });
@@ -172,6 +174,56 @@ export class GameScene extends Scene {
         pauseButton.setInteractive({ useHandCursor: true });
         pauseButton.on('pointerdown', () => this.togglePause());
         pauseButton.setDepth(Z_LAYERS.UI);
+        
+        // Score display
+        this.scoreText = this.add.text(
+            this.cameras.main.width / 2,
+            60,
+            'Score: 0',
+            {
+                fontFamily: 'Arial',
+                fontSize: '24px',
+                fontStyle: 'bold',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        ).setOrigin(0.5);
+        this.scoreText.setDepth(Z_LAYERS.UI);
+        
+        // Listen for score events
+        this.game.events.on('match-completed', (data: any) => {
+            this.currentScore = data.totalScore;
+            this.scoreText.setText(`Score: ${this.currentScore}`);
+            
+            // Combo indicator
+            if (data.combo > 0) {
+                const comboText = this.add.text(
+                    this.cameras.main.width / 2,
+                    90,
+                    `COMBO x${data.combo + 1}!`,
+                    {
+                        fontFamily: 'Arial',
+                        fontSize: '20px',
+                        fontStyle: 'bold',
+                        color: '#FF6B6B',
+                        stroke: '#000000',
+                        strokeThickness: 2
+                    }
+                ).setOrigin(0.5);
+                comboText.setDepth(Z_LAYERS.UI);
+                
+                // Animate combo text
+                this.tweens.add({
+                    targets: comboText,
+                    scale: 1.5,
+                    alpha: 0,
+                    duration: 1000,
+                    ease: 'Power2',
+                    onComplete: () => comboText.destroy()
+                });
+            }
+        });
     }
 
     private setupInputHandlers(): void {

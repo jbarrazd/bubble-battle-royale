@@ -5,7 +5,7 @@ export class Bubble extends Phaser.GameObjects.Container {
     private bubbleSprite: Phaser.GameObjects.Arc;
     private highlightSprite: Phaser.GameObjects.Arc;
     private gridPosition: IHexPosition | null = null;
-    public readonly color: BubbleColor;
+    private color: BubbleColor;
     private isSpecial: boolean = false;
     private pooled: boolean = false;
 
@@ -35,12 +35,24 @@ export class Bubble extends Phaser.GameObjects.Container {
         scene.add.existing(this);
     }
 
-    public setGridPosition(hex: IHexPosition): void {
+    public setGridPosition(hex: IHexPosition | null): void {
         this.gridPosition = hex;
     }
 
     public getGridPosition(): IHexPosition | null {
         return this.gridPosition;
+    }
+
+    public getColor(): BubbleColor {
+        return this.color;
+    }
+
+    public setTint(tint: number): void {
+        this.bubbleSprite.setFillStyle(tint);
+    }
+
+    public clearTint(): void {
+        this.bubbleSprite.setFillStyle(this.color);
     }
 
     public setSpecial(special: boolean): void {
@@ -111,18 +123,32 @@ export class Bubble extends Phaser.GameObjects.Container {
     }
 
     private createPopParticles(): void {
-        const particles = this.scene.add.particles(this.x, this.y, 'particle', {
-            speed: { min: 50, max: 150 },
-            scale: { start: 0.5, end: 0 },
-            blendMode: 'ADD',
-            lifespan: 300,
-            quantity: 5,
-            tint: this.color
-        });
-        
-        this.scene.time.delayedCall(300, () => {
-            particles.destroy();
-        });
+        // Create simple circle particles since we don't have a particle texture
+        for (let i = 0; i < 5; i++) {
+            const particle = this.scene.add.circle(
+                this.x, 
+                this.y, 
+                4,
+                this.color,
+                1
+            );
+            
+            const angle = (Math.PI * 2 * i) / 5;
+            const speed = Phaser.Math.Between(50, 150);
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.x + Math.cos(angle) * speed,
+                y: this.y + Math.sin(angle) * speed,
+                scale: 0,
+                alpha: 0,
+                duration: 300,
+                ease: 'Power2',
+                onComplete: () => {
+                    particle.destroy();
+                }
+            });
+        }
     }
 
     public reset(x: number, y: number, color?: BubbleColor): void {
@@ -136,6 +162,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         // Update color if provided
         if (color !== undefined) {
+            this.color = color;
             this.bubbleSprite.setFillStyle(color);
             this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
         }

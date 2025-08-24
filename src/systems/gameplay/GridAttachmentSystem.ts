@@ -3,16 +3,22 @@ import { Bubble } from '@/gameObjects/Bubble';
 import { BubbleGrid } from './BubbleGrid';
 import { IHexPosition, ArenaZone } from '@/types/ArenaTypes';
 import { BUBBLE_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
+import { MatchDetectionSystem } from './MatchDetectionSystem';
 
 export class GridAttachmentSystem {
     private scene: Scene;
     private bubbleGrid: BubbleGrid;
     private gridBubbles: Bubble[] = [];
     private attachmentInProgress: boolean = false;
+    private matchDetectionSystem?: MatchDetectionSystem;
     
     constructor(scene: Scene, bubbleGrid: BubbleGrid) {
         this.scene = scene;
         this.bubbleGrid = bubbleGrid;
+    }
+    
+    public setMatchDetectionSystem(matchDetectionSystem: MatchDetectionSystem): void {
+        this.matchDetectionSystem = matchDetectionSystem;
     }
     
     /**
@@ -193,8 +199,18 @@ export class GridAttachmentSystem {
             duration: 50,
             ease: 'Back.easeOut',
             yoyo: true,
-            onComplete: () => {
-                // Check for disconnected bubbles
+            onComplete: async () => {
+                console.log('Attachment complete, checking for matches...');
+                
+                // Check for matches FIRST
+                if (this.matchDetectionSystem) {
+                    console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
+                    await this.matchDetectionSystem.checkForMatches(bubble);
+                } else {
+                    console.warn('MatchDetectionSystem not available!');
+                }
+                
+                // Then check for disconnected bubbles
                 this.checkDisconnectedBubbles();
                 
                 this.attachmentInProgress = false;
