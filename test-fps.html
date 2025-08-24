@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FPS Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+        }
+        #fps {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+    <div id="fps">FPS: 0</div>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const fpsDiv = document.getElementById('fps');
+        
+        let lastTime = performance.now();
+        let frames = 0;
+        let fps = 0;
+        
+        // Simple animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Clear canvas
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw some moving circles to test rendering
+            for (let i = 0; i < 50; i++) {
+                const x = Math.sin(Date.now() * 0.001 + i) * 200 + 400;
+                const y = Math.cos(Date.now() * 0.001 + i) * 200 + 300;
+                
+                ctx.fillStyle = `hsl(${i * 7}, 70%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Calculate FPS
+            frames++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                fps = frames;
+                frames = 0;
+                lastTime = currentTime;
+                fpsDiv.textContent = `FPS: ${fps}`;
+                
+                // Log to console
+                console.log(`Browser RequestAnimationFrame FPS: ${fps}`);
+            }
+        }
+        
+        animate();
+        
+        // Also test setTimeout/setInterval performance
+        let intervalFps = 0;
+        let intervalFrames = 0;
+        let intervalLastTime = performance.now();
+        
+        setInterval(() => {
+            intervalFrames++;
+            const currentTime = performance.now();
+            if (currentTime - intervalLastTime >= 1000) {
+                intervalFps = intervalFrames;
+                intervalFrames = 0;
+                intervalLastTime = currentTime;
+                console.log(`SetInterval (16ms) FPS: ${intervalFps}`);
+            }
+        }, 16);
+    </script>
+</body>
+</html>

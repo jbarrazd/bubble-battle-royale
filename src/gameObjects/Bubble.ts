@@ -1,0 +1,164 @@
+import { BubbleColor, IHexPosition } from '@/types/ArenaTypes';
+import { BUBBLE_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
+
+export class Bubble extends Phaser.GameObjects.Container {
+    private bubbleSprite: Phaser.GameObjects.Arc;
+    private highlightSprite: Phaser.GameObjects.Arc;
+    private gridPosition: IHexPosition | null = null;
+    public readonly color: BubbleColor;
+    private isSpecial: boolean = false;
+    private pooled: boolean = false;
+
+    constructor(scene: Phaser.Scene, x: number, y: number, color: BubbleColor) {
+        super(scene, x, y);
+        
+        this.color = color;
+        
+        // Create main bubble sprite with gradient effect
+        this.bubbleSprite = scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2, color);
+        this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+        
+        // Create highlight for 3D effect
+        this.highlightSprite = scene.add.circle(
+            -BUBBLE_CONFIG.SIZE / 6,
+            -BUBBLE_CONFIG.SIZE / 6,
+            BUBBLE_CONFIG.SIZE / 5,
+            0xffffff,
+            0.4
+        );
+        
+        this.add([this.bubbleSprite, this.highlightSprite]);
+        
+        this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
+        this.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        
+        scene.add.existing(this);
+    }
+
+    public setGridPosition(hex: IHexPosition): void {
+        this.gridPosition = hex;
+    }
+
+    public getGridPosition(): IHexPosition | null {
+        return this.gridPosition;
+    }
+
+    public setSpecial(special: boolean): void {
+        this.isSpecial = special;
+        if (special) {
+            this.addGlow();
+        } else {
+            this.removeGlow();
+        }
+    }
+
+    public getIsSpecial(): boolean {
+        return this.isSpecial;
+    }
+
+    private addGlow(): void {
+        this.scene.tweens.add({
+            targets: this.bubbleSprite,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Add pulsing glow effect
+        const glow = this.scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2 + 4, this.color, 0.3);
+        this.addAt(glow, 0);
+    }
+
+    private removeGlow(): void {
+        this.scene.tweens.killTweensOf(this.bubbleSprite);
+        this.bubbleSprite.setScale(1);
+        if (this.length > 2) {
+            this.removeAt(0);
+        }
+    }
+
+    private getDarkerColor(color: BubbleColor): number {
+        // Create darker shade for border
+        const r = (color >> 16) & 0xff;
+        const g = (color >> 8) & 0xff;
+        const b = color & 0xff;
+        
+        return (Math.floor(r * 0.7) << 16) | 
+               (Math.floor(g * 0.7) << 8) | 
+               Math.floor(b * 0.7);
+    }
+
+    public pop(): void {
+        // Pop animation
+        this.scene.tweens.add({
+            targets: this,
+            scaleX: 1.3,
+            scaleY: 1.3,
+            alpha: 0,
+            duration: BUBBLE_CONFIG.ANIMATION_DURATION,
+            ease: 'Power2',
+            onComplete: () => {
+                this.setVisible(false);
+                this.returnToPool();
+            }
+        });
+        
+        // Create particle effect
+        this.createPopParticles();
+    }
+
+    private createPopParticles(): void {
+        const particles = this.scene.add.particles(this.x, this.y, 'particle', {
+            speed: { min: 50, max: 150 },
+            scale: { start: 0.5, end: 0 },
+            blendMode: 'ADD',
+            lifespan: 300,
+            quantity: 5,
+            tint: this.color
+        });
+        
+        this.scene.time.delayedCall(300, () => {
+            particles.destroy();
+        });
+    }
+
+    public reset(x: number, y: number, color?: BubbleColor): void {
+        this.setPosition(x, y);
+        this.setAlpha(1);
+        this.setScale(1);
+        this.setVisible(true);
+        this.gridPosition = null;
+        this.isSpecial = false;
+        this.pooled = false;
+        
+        // Update color if provided
+        if (color !== undefined) {
+            this.bubbleSprite.setFillStyle(color);
+            this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+        }
+    }
+
+    public returnToPool(): void {
+        this.pooled = true;
+        this.setVisible(false);
+        this.gridPosition = null;
+    }
+
+    public isPooled(): boolean {
+        return this.pooled;
+    }
+
+    public static getRandomColor(): BubbleColor {
+        const colors = [
+            BubbleColor.RED,
+            BubbleColor.BLUE,
+            BubbleColor.GREEN,
+            BubbleColor.YELLOW,
+            BubbleColor.PURPLE
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+}
