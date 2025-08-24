@@ -435,13 +435,13 @@ export class AIOpponentSystem {
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 10% random (for unpredictability), 90% optimal play
+        // Hard: 25% random (for variety), 75% optimal play
         const random = Math.random();
         console.log(`AI Hard: Strategy roll = ${random.toFixed(2)}`);
         
-        if (random < 0.1) {
-            // 10% - Occasional random to be unpredictable
-            console.log(`AI Hard: Tactical random (10% chance)`);
+        if (random < 0.25) {
+            // 25% - More random for variety
+            console.log(`AI Hard: Tactical random (25% chance)`);
             return this.getRandomTarget();
         }
         
@@ -473,16 +473,26 @@ export class AIOpponentSystem {
             return bestMatch;
         }
         
-        // No immediate matches - set up for next turn
-        const setupShot = this.findSetupShot();
-        if (setupShot) {
-            console.log(`AI Hard: Setup shot for future match`);
-            return setupShot;
+        // No immediate matches - alternate strategies
+        const strategyRoll = Math.random();
+        
+        if (strategyRoll < 0.33) {
+            const setupShot = this.findSetupShot();
+            if (setupShot) {
+                console.log(`AI Hard: Setup shot for future match`);
+                return setupShot;
+            }
+        } else if (strategyRoll < 0.66) {
+            const defensiveShot = this.findDefensiveShot();
+            if (defensiveShot) {
+                console.log(`AI Hard: Defensive positioning`);
+                return defensiveShot;
+            }
         }
         
-        // Last resort - smart random
-        console.log(`AI Hard: Smart random fallback`);
-        return this.getSmartRandomTarget();
+        // Fallback to regular random for variety
+        console.log(`AI Hard: Random fallback for variety`);
+        return this.getRandomTarget();
     }
     
     private getRandomTarget(): ITargetOption {
