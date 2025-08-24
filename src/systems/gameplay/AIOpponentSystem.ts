@@ -902,18 +902,16 @@ export class AIOpponentSystem {
                                     if (!this.isPositionOccupied(targetHex)) {
                                         const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
                                         
-                                        // Only validate trajectory for Hard mode
-                                        if (this.config.difficulty === AIDifficulty.HARD) {
-                                            const testTarget: ITargetOption = {
-                                                position: pixelPos,
-                                                score: 0,
-                                                color: color,
-                                                reasoning: 'test'
-                                            };
-                                            
-                                            if (!this.isTrajectoryValid(testTarget)) {
-                                                return; // Skip if path is blocked
-                                            }
+                                        // Validate trajectory for all modes
+                                        const testTarget: ITargetOption = {
+                                            position: pixelPos,
+                                            score: 0,
+                                            color: color,
+                                            reasoning: 'test'
+                                        };
+                                        
+                                        if (!this.isTrajectoryValid(testTarget)) {
+                                            return; // Skip if path is blocked
                                         }
                                         
                                         // Calculate chain reaction potential
@@ -944,18 +942,16 @@ export class AIOpponentSystem {
                                 if (middlePos && !this.isPositionOccupied(middlePos)) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(middlePos);
                                     
-                                    // Only validate trajectory for Hard mode
-                                    if (this.config.difficulty === AIDifficulty.HARD) {
-                                        const testTarget: ITargetOption = {
-                                            position: pixelPos,
-                                            score: 0,
-                                            color: color,
-                                            reasoning: 'test'
-                                        };
-                                        
-                                        if (!this.isTrajectoryValid(testTarget)) {
-                                            continue; // Skip if path is blocked
-                                        }
+                                    // Validate trajectory for all modes
+                                    const testTarget: ITargetOption = {
+                                        position: pixelPos,
+                                        score: 0,
+                                        color: color,
+                                        reasoning: 'test'
+                                    };
+                                    
+                                    if (!this.isTrajectoryValid(testTarget)) {
+                                        continue; // Skip if path is blocked
                                     }
                                     
                                     // Calculate chain reaction potential
@@ -996,18 +992,16 @@ export class AIOpponentSystem {
                                 if (adjacentCount >= 2) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
                                     
-                                    // Only validate trajectory for Hard mode
-                                    if (this.config.difficulty === AIDifficulty.HARD) {
-                                        const testTarget: ITargetOption = {
-                                            position: pixelPos,
-                                            score: 0,
-                                            color: color,
-                                            reasoning: 'test'
-                                        };
-                                        
-                                        if (!this.isTrajectoryValid(testTarget)) {
-                                            return; // Skip if path is blocked
-                                        }
+                                    // Validate trajectory for all modes
+                                    const testTarget: ITargetOption = {
+                                        position: pixelPos,
+                                        score: 0,
+                                        color: color,
+                                        reasoning: 'test'
+                                    };
+                                    
+                                    if (!this.isTrajectoryValid(testTarget)) {
+                                        return; // Skip if path is blocked
                                     }
                                     
                                     // Predict chain reactions
@@ -1470,9 +1464,8 @@ export class AIOpponentSystem {
     private shoot(target: ITargetOption): void {
         if (!this.shootingSystem) return;
         
-        // Only validate trajectory for non-bounce shots and higher difficulties
-        const shouldValidate = this.config.difficulty === AIDifficulty.HARD && 
-                              (target as any).bounceAngle === undefined;
+        // Validate trajectory for all difficulties to ensure realistic play
+        const shouldValidate = (target as any).bounceAngle === undefined;
         
         if (shouldValidate && !this.isTrajectoryValid(target)) {
             console.log(`AI: Path might be blocked, checking alternatives...`);
@@ -2259,39 +2252,45 @@ export class AIOpponentSystem {
         // Get all bubbles in the grid
         const gridBubbles = this.getGridBubbles();
         
-        // Skip validation if grid is too sparse
-        if (gridBubbles.length < 10) {
-            return true; // Not enough bubbles to worry about collisions
+        // Always validate if there are bubbles
+        if (gridBubbles.length === 0) {
+            return true; // No obstacles
         }
         
-        // Check collision along the path
-        const steps = 15; // Reduced from 20 for performance
-        for (let i = 2; i < steps - 2; i++) { // Skip first and last few steps
-            const t = i / steps;
+        // PROPER collision detection along the path
+        const bubbleRadius = 18; // Actual bubble radius from BUBBLE_CONFIG.SIZE / 2
+        const safetyMargin = 5; // Small safety margin
+        const collisionRadius = bubbleRadius + safetyMargin; // Total: 23 pixels
+        
+        // Check more points for better accuracy
+        const steps = 20;
+        const stepSize = 1.0 / steps;
+        
+        // Start from step 1 to avoid checking launcher position
+        for (let i = 1; i <= steps; i++) {
+            const t = i * stepSize;
             const checkX = startX + (endX - startX) * t;
             const checkY = startY + (endY - startY) * t;
             
-            // Check if this point collides with any bubble
+            // Check collision with each bubble
             for (const bubble of gridBubbles) {
                 const distance = Math.sqrt(
                     Math.pow(bubble.x - checkX, 2) +
                     Math.pow(bubble.y - checkY, 2)
                 );
                 
-                // More lenient collision detection
-                if (distance < 25) { // Reduced from 28
-                    // Check if this is near the target (might be the bubble we're aiming for)
+                // Check if trajectory passes through this bubble
+                if (distance < collisionRadius * 2) { // Bubble diameter
+                    // Check if this bubble is at/near the target (intended hit)
                     const targetDistance = Math.sqrt(
                         Math.pow(endX - bubble.x, 2) +
                         Math.pow(endY - bubble.y, 2)
                     );
                     
-                    // If this bubble is not near our target, path is blocked
-                    if (targetDistance > 50) { // Increased from 40 for more leniency
-                        // Only block if it's a significant obstacle
-                        if (distance < 20) {
-                            return false;
-                        }
+                    // If bubble is not the target, path is BLOCKED
+                    if (targetDistance > bubbleRadius * 3) { // Not the target bubble
+                        console.log(`AI: Path blocked by bubble at (${bubble.x.toFixed(0)}, ${bubble.y.toFixed(0)})`);
+                        return false; // Path is blocked
                     }
                 }
             }
