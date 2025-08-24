@@ -613,14 +613,17 @@ export class AIOpponentSystem {
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 10% random, 90% perfect play (with objective focus)
+        // Hard: 15% random, 85% perfect play (increased randomness for variety)
         const random = Math.random();
         console.log(`AI Hard: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.1) {
-            // 10% - Tactical randomness for unpredictability
-            console.log(`AI Hard: Tactical random`);
-            return this.getRandomTarget();
+        // Force variety every few shots
+        if (this.shotCount % 5 === 0 || random < 0.15) {
+            // 15% - Tactical randomness for unpredictability
+            console.log(`AI Hard: Tactical random for variety`);
+            const randomTarget = this.getRandomTarget();
+            this.updateRecentHistory(randomTarget);
+            return randomTarget;
         }
         
         // First priority: Clear path to objective
@@ -725,29 +728,44 @@ export class AIOpponentSystem {
         let targetX: number;
         let targetY: number;
         
-        // 70% chance to aim near objective area
-        if (Math.random() < 0.7) {
-            // Aim for center-top area where objective/chest would be
-            targetX = screenWidth * 0.5 + (Math.random() - 0.5) * 200;
-            targetY = objectiveY + Math.random() * 150;
+        // Mix of strategies for variety
+        const strategy = Math.random();
+        
+        if (strategy < 0.4) {
+            // 40% - Aim for objective area
+            targetX = screenWidth * 0.5 + (Math.random() - 0.5) * 250;
+            targetY = objectiveY + Math.random() * 180;
+        } else if (strategy < 0.7) {
+            // 30% - Side attacks
+            if (Math.random() < 0.5) {
+                targetX = screenWidth * 0.2 + Math.random() * 100;
+            } else {
+                targetX = screenWidth * 0.8 - Math.random() * 100;
+            }
+            targetY = centerY + (Math.random() - 0.5) * 200;
         } else {
-            // Random position for variety
-            const minX = screenWidth * 0.15;
-            const maxX = screenWidth * 0.85;
+            // 30% - Random position for unpredictability
+            const minX = screenWidth * 0.1;
+            const maxX = screenWidth * 0.9;
             targetX = minX + (Math.random() * (maxX - minX));
-            targetY = centerY + (Math.random() * 250);
+            targetY = centerY - 50 + (Math.random() * 300);
         }
         
-        // Ensure we don't repeat recent positions
-        for (const recentPos of this.recentPositions) {
+        // Force position variety
+        if (this.recentPositions.length > 0) {
+            const lastPos = this.recentPositions[this.recentPositions.length - 1];
             const distance = Math.sqrt(
-                Math.pow(targetX - recentPos.x, 2) +
-                Math.pow(targetY - recentPos.y, 2)
+                Math.pow(targetX - lastPos.x, 2) +
+                Math.pow(targetY - lastPos.y, 2)
             );
-            if (distance < 80) {
-                // Too close to recent shot, offset it
-                targetX += (Math.random() - 0.5) * 150;
-                targetY += (Math.random() - 0.5) * 100;
+            
+            if (distance < 100) {
+                // Force a different position
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 100 + Math.random() * 100;
+                targetX = lastPos.x + Math.cos(angle) * radius;
+                targetY = lastPos.y + Math.sin(angle) * radius;
+                
                 // Keep in bounds
                 targetX = Math.max(60, Math.min(screenWidth - 60, targetX));
                 targetY = Math.max(50, Math.min(centerY + 300, targetY));
@@ -775,20 +793,35 @@ export class AIOpponentSystem {
         const screenWidth = this.scene.cameras.main.width;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Pick zone based on shot count for variety
+        // More zones for better variety
         const zones = [
-            { x: screenWidth * 0.25, label: 'left' },
-            { x: screenWidth * 0.5, label: 'center' },
-            { x: screenWidth * 0.75, label: 'right' }
+            { x: screenWidth * 0.2, y: centerY - 50, label: 'left-high' },
+            { x: screenWidth * 0.5, y: centerY - 30, label: 'center-high' },
+            { x: screenWidth * 0.8, y: centerY - 50, label: 'right-high' },
+            { x: screenWidth * 0.3, y: centerY + 50, label: 'left-mid' },
+            { x: screenWidth * 0.7, y: centerY + 50, label: 'right-mid' },
+            { x: screenWidth * 0.4, y: centerY + 120, label: 'left-low' },
+            { x: screenWidth * 0.6, y: centerY + 120, label: 'right-low' }
         ];
         
-        // Shuffle zones to avoid predictable patterns
-        const shuffledZones = [...zones].sort(() => Math.random() - 0.5);
-        const zone = shuffledZones[0];
+        // Pick a zone different from last position
+        let validZones = zones;
+        if (this.lastShotPosition) {
+            validZones = zones.filter(z => {
+                const dist = Math.sqrt(
+                    Math.pow(z.x - this.lastShotPosition!.x, 2) +
+                    Math.pow(z.y - this.lastShotPosition!.y, 2)
+                );
+                return dist > 100; // Must be far from last shot
+            });
+        }
         
-        // Position with MORE variation
-        const targetX = zone.x + (Math.random() - 0.5) * 120; // Increased from 80
-        const targetY = centerY + 20 + (Math.random() * 200); // Increased range
+        if (validZones.length === 0) validZones = zones;
+        const zone = validZones[Math.floor(Math.random() * validZones.length)];
+        
+        // Position with variation from zone center
+        const targetX = zone.x + (Math.random() - 0.5) * 80;
+        const targetY = zone.y + (Math.random() - 0.5) * 60;
         
         // Ensure we're not shooting at the same spot
         let finalX = targetX;
@@ -869,16 +902,18 @@ export class AIOpponentSystem {
                                     if (!this.isPositionOccupied(targetHex)) {
                                         const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
                                         
-                                        // Skip if we can't reach this position
-                                        const testTarget: ITargetOption = {
-                                            position: pixelPos,
-                                            score: 0,
-                                            color: color,
-                                            reasoning: 'test'
-                                        };
-                                        
-                                        if (!this.isTrajectoryValid(testTarget)) {
-                                            return; // Skip if path is blocked
+                                        // Only validate trajectory for Hard mode
+                                        if (this.config.difficulty === AIDifficulty.HARD) {
+                                            const testTarget: ITargetOption = {
+                                                position: pixelPos,
+                                                score: 0,
+                                                color: color,
+                                                reasoning: 'test'
+                                            };
+                                            
+                                            if (!this.isTrajectoryValid(testTarget)) {
+                                                return; // Skip if path is blocked
+                                            }
                                         }
                                         
                                         // Calculate chain reaction potential
@@ -909,16 +944,18 @@ export class AIOpponentSystem {
                                 if (middlePos && !this.isPositionOccupied(middlePos)) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(middlePos);
                                     
-                                    // Skip if we can't reach this position
-                                    const testTarget: ITargetOption = {
-                                        position: pixelPos,
-                                        score: 0,
-                                        color: color,
-                                        reasoning: 'test'
-                                    };
-                                    
-                                    if (!this.isTrajectoryValid(testTarget)) {
-                                        continue; // Skip if path is blocked
+                                    // Only validate trajectory for Hard mode
+                                    if (this.config.difficulty === AIDifficulty.HARD) {
+                                        const testTarget: ITargetOption = {
+                                            position: pixelPos,
+                                            score: 0,
+                                            color: color,
+                                            reasoning: 'test'
+                                        };
+                                        
+                                        if (!this.isTrajectoryValid(testTarget)) {
+                                            continue; // Skip if path is blocked
+                                        }
                                     }
                                     
                                     // Calculate chain reaction potential
@@ -959,16 +996,18 @@ export class AIOpponentSystem {
                                 if (adjacentCount >= 2) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
                                     
-                                    // Skip if we can't reach this position
-                                    const testTarget: ITargetOption = {
-                                        position: pixelPos,
-                                        score: 0,
-                                        color: color,
-                                        reasoning: 'test'
-                                    };
-                                    
-                                    if (!this.isTrajectoryValid(testTarget)) {
-                                        return; // Skip if path is blocked
+                                    // Only validate trajectory for Hard mode
+                                    if (this.config.difficulty === AIDifficulty.HARD) {
+                                        const testTarget: ITargetOption = {
+                                            position: pixelPos,
+                                            score: 0,
+                                            color: color,
+                                            reasoning: 'test'
+                                        };
+                                        
+                                        if (!this.isTrajectoryValid(testTarget)) {
+                                            return; // Skip if path is blocked
+                                        }
                                     }
                                     
                                     // Predict chain reactions
@@ -1431,16 +1470,20 @@ export class AIOpponentSystem {
     private shoot(target: ITargetOption): void {
         if (!this.shootingSystem) return;
         
-        // Validate trajectory is clear before shooting
-        if (!this.isTrajectoryValid(target)) {
-            console.log(`AI: Path blocked to target, finding alternative...`);
+        // Only validate trajectory for non-bounce shots and higher difficulties
+        const shouldValidate = this.config.difficulty === AIDifficulty.HARD && 
+                              (target as any).bounceAngle === undefined;
+        
+        if (shouldValidate && !this.isTrajectoryValid(target)) {
+            console.log(`AI: Path might be blocked, checking alternatives...`);
             // Try to find an alternative shot
             const alternative = this.findAlternativeShot(target.color);
             if (alternative) {
-                console.log(`AI: Using alternative shot`);
-                target = alternative;
-            } else {
-                console.log(`AI: No clear path, shooting anyway (may hit obstacle)`);
+                console.log(`AI: Found better alternative`);
+                // Only use alternative if it's significantly better
+                if (alternative.score > target.score - 50) {
+                    target = alternative;
+                }
             }
         }
         
@@ -2202,6 +2245,11 @@ export class AIOpponentSystem {
     }
     
     private isTrajectoryValid(target: ITargetOption): boolean {
+        // Skip validation for bounce shots - they're pre-calculated
+        if ((target as any).bounceAngle !== undefined) {
+            return true;
+        }
+        
         // Check if there's a clear path from launcher to target
         const startX = this.launcher.x;
         const startY = this.launcher.y;
@@ -2211,9 +2259,14 @@ export class AIOpponentSystem {
         // Get all bubbles in the grid
         const gridBubbles = this.getGridBubbles();
         
+        // Skip validation if grid is too sparse
+        if (gridBubbles.length < 10) {
+            return true; // Not enough bubbles to worry about collisions
+        }
+        
         // Check collision along the path
-        const steps = 20; // Check 20 points along the trajectory
-        for (let i = 1; i < steps; i++) {
+        const steps = 15; // Reduced from 20 for performance
+        for (let i = 2; i < steps - 2; i++) { // Skip first and last few steps
             const t = i / steps;
             const checkX = startX + (endX - startX) * t;
             const checkY = startY + (endY - startY) * t;
@@ -2225,8 +2278,8 @@ export class AIOpponentSystem {
                     Math.pow(bubble.y - checkY, 2)
                 );
                 
-                // If we're too close to a bubble (within radius + margin)
-                if (distance < 28) { // Bubble radius is ~18, add margin
+                // More lenient collision detection
+                if (distance < 25) { // Reduced from 28
                     // Check if this is near the target (might be the bubble we're aiming for)
                     const targetDistance = Math.sqrt(
                         Math.pow(endX - bubble.x, 2) +
@@ -2234,8 +2287,11 @@ export class AIOpponentSystem {
                     );
                     
                     // If this bubble is not near our target, path is blocked
-                    if (targetDistance > 40) {
-                        return false;
+                    if (targetDistance > 50) { // Increased from 40 for more leniency
+                        // Only block if it's a significant obstacle
+                        if (distance < 20) {
+                            return false;
+                        }
                     }
                 }
             }
@@ -2245,33 +2301,37 @@ export class AIOpponentSystem {
     }
     
     private findAlternativeShot(preferredColor: BubbleColor): ITargetOption | null {
-        // Find shots that have clear trajectories
-        const matches = this.analyzeGrid();
+        // Quick alternative without full grid analysis for performance
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
         
-        // Filter for matches with clear paths
-        const clearMatches = matches.filter(m => {
-            // Check if trajectory is valid
-            if (!this.isTrajectoryValid(m)) {
-                return false;
-            }
-            
-            // Prefer same color if possible
-            if (m.color === preferredColor) {
-                m.score += 50; // Bonus for matching color
-            }
-            
-            return true;
-        });
+        // Try a few quick alternatives
+        const alternatives = [
+            { x: screenWidth * 0.3, y: centerY - 50 },
+            { x: screenWidth * 0.7, y: centerY - 50 },
+            { x: screenWidth * 0.5, y: centerY },
+            { x: screenWidth * 0.4, y: centerY + 100 },
+            { x: screenWidth * 0.6, y: centerY + 100 }
+        ];
         
-        if (clearMatches.length > 0) {
-            // Return best clear match
-            clearMatches.sort((a, b) => b.score - a.score);
-            return clearMatches[0];
+        // Shuffle for variety
+        alternatives.sort(() => Math.random() - 0.5);
+        
+        for (const alt of alternatives) {
+            const target: ITargetOption = {
+                position: { x: alt.x + (Math.random() - 0.5) * 40, y: alt.y + (Math.random() - 0.5) * 40 },
+                score: 50,
+                color: preferredColor,
+                reasoning: 'Quick alternative'
+            };
+            
+            if (this.isTrajectoryValid(target)) {
+                return target;
+            }
         }
         
         // Try bounce shots as alternative
-        const screenWidth = this.scene.cameras.main.width;
-        const centerY = this.scene.cameras.main.centerY;
+        // (screenWidth and centerY already declared above)
         
         // Try left wall bounce
         const leftBounceTarget: ITargetOption = {
@@ -2315,13 +2375,15 @@ export class AIOpponentSystem {
         const centerY = this.scene.cameras.main.centerY;
         const gridBubbles = this.getGridBubbles();
         
-        // Divide screen into zones and count bubble density
+        // Divide screen into more varied zones
         const zones = [
-            { x: screenWidth * 0.2, y: centerY, density: 0 },
+            { x: screenWidth * 0.2, y: centerY - 50, density: 0 },
             { x: screenWidth * 0.5, y: centerY, density: 0 },
-            { x: screenWidth * 0.8, y: centerY, density: 0 },
+            { x: screenWidth * 0.8, y: centerY - 50, density: 0 },
             { x: screenWidth * 0.35, y: centerY + 100, density: 0 },
-            { x: screenWidth * 0.65, y: centerY + 100, density: 0 }
+            { x: screenWidth * 0.65, y: centerY + 100, density: 0 },
+            { x: screenWidth * 0.3, y: centerY + 50, density: 0 },
+            { x: screenWidth * 0.7, y: centerY + 50, density: 0 }
         ];
         
         // Count bubbles near each zone
