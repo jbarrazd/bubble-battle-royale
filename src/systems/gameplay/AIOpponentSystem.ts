@@ -367,118 +367,112 @@ export class AIOpponentSystem {
     }
     
     private selectEasyTarget(): ITargetOption | null {
-        // Easy: 80% random, 20% try to match (often misses)
-        // Shot counter already incremented in selectTarget()
+        // Easy: 50% random, 50% try to match (but inaccurate)
         const random = Math.random();
         console.log(`AI Easy: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.8) {
-            // 80% - Pure random shot
-            const target = this.getRandomTarget();
-            console.log(`AI Easy: Random shot (80% chance)`);
-            return target;
-        } else {
-            // 20% - Try to be smart but often fail
-            const matches = this.analyzeGrid();
-            
-            if (matches.length > 0) {
-                // Easy AI makes mistakes - pick a random match, not the best
-                const randomMatch = matches[Math.floor(Math.random() * matches.length)];
-                
-                // Easy AI has 50% chance to "miss" the match
-                if (Math.random() < 0.5) {
-                    console.log(`AI Easy: Attempting match but missing (simulated error)`);
-                    // Aim slightly off target
-                    randomMatch.position.x += (Math.random() - 0.5) * 100;
-                    randomMatch.position.y += (Math.random() - 0.5) * 50;
-                }
-                
-                return randomMatch;
-            }
-            
-            return this.getRandomTarget();
-        }
-    }
-    
-    private selectMediumTarget(): ITargetOption | null {
-        // Medium: 40% random, 60% strategic
-        // Shot counter already incremented in selectTarget()
-        const random = Math.random();
-        console.log(`AI Medium: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
-        
-        if (random < 0.4) {
-            // 40% - Random shot for variety
-            console.log(`AI Medium: Random shot (40% chance)`);
+        if (random < 0.5) {
+            // 50% - Random shot
+            console.log(`AI Easy: Random shot`);
             return this.getRandomTarget();
         }
         
-        // 60% - Strategic play
+        // 50% - Try to match but with poor accuracy
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Sort by score
-            matches.sort((a, b) => b.score - a.score);
+            // Pick from worse matches (not the best ones)
+            const lowerTierMatches = matches.slice(Math.floor(matches.length / 2));
+            const selected = lowerTierMatches.length > 0 ? 
+                lowerTierMatches[Math.floor(Math.random() * lowerTierMatches.length)] :
+                matches[matches.length - 1];
             
-            // Medium picks from top 50% of matches
-            const goodMatches = matches.slice(0, Math.max(1, Math.floor(matches.length / 2)));
+            // Add significant inaccuracy to simulate poor aim
+            const inaccuracy = 40; // pixels
+            selected.position.x += (Math.random() - 0.5) * inaccuracy * 2;
+            selected.position.y += (Math.random() - 0.5) * inaccuracy;
             
-            // Weighted selection - prefer better matches
-            const weights = goodMatches.map((_, i) => Math.pow(0.7, i));
-            const totalWeight = weights.reduce((a, b) => a + b, 0);
-            
-            let random = Math.random() * totalWeight;
-            for (let i = 0; i < goodMatches.length; i++) {
-                random -= weights[i];
-                if (random <= 0) {
-                    console.log(`AI Medium: Strategic shot - score ${goodMatches[i].score}`);
-                    return goodMatches[i];
-                }
-            }
-            
-            return goodMatches[0];
+            console.log(`AI Easy: Inaccurate match attempt`);
+            return selected;
         }
         
-        // No matches found, try to set up
-        console.log(`AI Medium: No matches, setting up`);
+        return this.getRandomTarget();
+    }
+    
+    private selectMediumTarget(): ITargetOption | null {
+        // Medium: 25% random, 75% strategic
+        const random = Math.random();
+        console.log(`AI Medium: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
+        
+        if (random < 0.25) {
+            // 25% - Random for unpredictability
+            console.log(`AI Medium: Random shot`);
+            return this.getRandomTarget();
+        }
+        
+        // 75% - Strategic play
+        const matches = this.analyzeGrid();
+        
+        if (matches.length > 0) {
+            // Pick from top 60% of matches
+            const cutoff = Math.max(1, Math.ceil(matches.length * 0.4));
+            const goodMatches = matches.slice(0, cutoff);
+            
+            // Select with slight bias toward better matches
+            const selectedIndex = Math.floor(Math.random() * Math.random() * goodMatches.length);
+            const selected = goodMatches[selectedIndex];
+            
+            // Add small inaccuracy
+            const inaccuracy = 15; // pixels
+            selected.position.x += (Math.random() - 0.5) * inaccuracy;
+            selected.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
+            
+            console.log(`AI Medium: Strategic shot - ${selected.reasoning}`);
+            return selected;
+        }
+        
+        // No matches - set up future plays
+        console.log(`AI Medium: Setting up`);
         return this.findSetupShot() || this.getRandomTarget();
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // SIMPLIFIED HARD MODE - Mix of smart and random for actual variety
-        // Shot counter already incremented in selectTarget()
+        // Hard: 10% random, 90% optimal play
+        const random = Math.random();
+        console.log(`AI Hard: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        const strategy = this.shotCount % 3; // Cycle through 3 strategies
-        console.log(`AI Hard: Using strategy ${strategy} for shot #${this.shotCount}`);
-        
-        switch (strategy) {
-            case 0:
-                // Strategy 1: Try to match
-                console.log(`AI Hard: Attempting match strategy`);
-                const matches = this.analyzeGrid();
-                if (matches.length > 0) {
-                    // Pick from top matches with some randomness
-                    const topCount = Math.min(3, matches.length);
-                    const selectedIndex = Math.floor(Math.random() * topCount);
-                    const selected = matches[selectedIndex];
-                    console.log(`AI Hard: Match found at index ${selectedIndex}`);
-                    return selected;
-                }
-                break;
-                
-            case 1:
-                // Strategy 2: Strategic random
-                console.log(`AI Hard: Strategic random`);
-                return this.getStrategicRandomTarget();
-                
-            case 2:
-                // Strategy 3: Pure random for unpredictability
-                console.log(`AI Hard: Pure random for variety`);
-                return this.getRandomTarget();
+        if (random < 0.1) {
+            // 10% - Tactical random to avoid predictability
+            console.log(`AI Hard: Tactical random`);
+            return this.getRandomTarget();
         }
         
-        // Fallback
-        console.log(`AI Hard: Fallback to random`);
-        return this.getRandomTarget();
+        // 90% - Optimal play
+        const matches = this.analyzeGrid();
+        
+        if (matches.length > 0) {
+            // Always pick the best match
+            const bestMatch = matches[0];
+            
+            // Very high accuracy - minimal error
+            const inaccuracy = 5; // pixels
+            bestMatch.position.x += (Math.random() - 0.5) * inaccuracy;
+            bestMatch.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
+            
+            console.log(`AI Hard: Optimal shot - ${bestMatch.reasoning} (score: ${bestMatch.score})`);
+            return bestMatch;
+        }
+        
+        // No matches - intelligent setup
+        const setupShot = this.findSetupShot();
+        if (setupShot) {
+            console.log(`AI Hard: Strategic setup`);
+            return setupShot;
+        }
+        
+        // Last resort - strategic random
+        console.log(`AI Hard: Strategic fallback`);
+        return this.getStrategicRandomTarget();
     }
     
     private getRandomTarget(): ITargetOption {
@@ -576,54 +570,169 @@ export class AIOpponentSystem {
             }
         });
         
-        // For each color group, find potential match positions
+        // For each color, find opportunities to create matches
         colorGroups.forEach((bubbles, color) => {
+            // Need at least 2 bubbles to make a match of 3
             if (bubbles.length >= 2) {
-                // Find pairs and potential third positions
+                // Check all pairs of same-colored bubbles
                 for (let i = 0; i < bubbles.length - 1; i++) {
                     for (let j = i + 1; j < bubbles.length; j++) {
                         const bubble1 = bubbles[i];
                         const bubble2 = bubbles[j];
-                        
-                        // Check if bubbles are neighbors
                         const pos1 = bubble1.getGridPosition();
                         const pos2 = bubble2.getGridPosition();
                         
                         if (pos1 && pos2) {
-                            const distance = Math.abs(pos1.q - pos2.q) + Math.abs(pos1.r - pos2.r);
+                            // Check if bubbles are close enough to form a match
+                            const hexDistance = this.getHexDistance(pos1, pos2);
                             
-                            if (distance <= 2) {
-                                // Find common neighbors for match completion
-                                const neighbors1 = this.bubbleGrid.getNeighbors(pos1);
-                                const neighbors2 = this.bubbleGrid.getNeighbors(pos2);
+                            // If bubbles are adjacent (distance 1)
+                            if (hexDistance === 1) {
+                                // Find the third position to complete the line
+                                const matchPositions = this.findMatchCompletionPositions(pos1, pos2);
                                 
-                                const commonNeighbors = neighbors1.filter(n1 => 
-                                    neighbors2.some(n2 => n1.q === n2.q && n1.r === n2.r)
-                                );
-                                
-                                commonNeighbors.forEach(targetHex => {
+                                matchPositions.forEach(targetHex => {
                                     if (!this.isPositionOccupied(targetHex)) {
                                         const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
-                                        const score = this.calculateShotScore(targetHex, color, bubbles.length);
+                                        
+                                        // High score for adjacent pairs (easy match)
+                                        const score = 100 + bubbles.length * 10;
                                         
                                         options.push({
                                             position: pixelPos,
                                             hexPosition: targetHex,
                                             score: score,
                                             color: color,
-                                            reasoning: `Match ${bubbles.length} ${this.getColorName(color)} bubbles`,
-                                            matchCount: bubbles.length
+                                            reasoning: `Complete line of ${this.getColorName(color)}`,
+                                            matchCount: 3
                                         });
                                     }
                                 });
                             }
+                            // If bubbles are separated by 1 space (distance 2)
+                            else if (hexDistance === 2) {
+                                // Find the middle position
+                                const middlePos = this.findMiddlePosition(pos1, pos2);
+                                if (middlePos && !this.isPositionOccupied(middlePos)) {
+                                    const pixelPos = this.bubbleGrid.hexToPixel(middlePos);
+                                    
+                                    // Good score for filling gaps
+                                    const score = 80 + bubbles.length * 10;
+                                    
+                                    options.push({
+                                        position: pixelPos,
+                                        hexPosition: middlePos,
+                                        score: score,
+                                        color: color,
+                                        reasoning: `Bridge ${this.getColorName(color)} bubbles`,
+                                        matchCount: 3
+                                    });
+                                }
+                            }
                         }
                     }
                 }
+                
+                // Also look for positions that would connect to single bubbles
+                bubbles.forEach(bubble => {
+                    const pos = bubble.getGridPosition();
+                    if (pos) {
+                        const neighbors = this.bubbleGrid.getNeighbors(pos);
+                        
+                        neighbors.forEach(neighbor => {
+                            if (!this.isPositionOccupied(neighbor)) {
+                                // Count how many same-color bubbles are adjacent to this position
+                                const adjacentCount = this.countAdjacentSameColor(neighbor, color);
+                                
+                                if (adjacentCount >= 2) {
+                                    const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                                    const score = 60 + adjacentCount * 20;
+                                    
+                                    options.push({
+                                        position: pixelPos,
+                                        hexPosition: neighbor,
+                                        score: score,
+                                        color: color,
+                                        reasoning: `Group ${adjacentCount + 1} ${this.getColorName(color)}`,
+                                        matchCount: adjacentCount + 1
+                                    });
+                                }
+                            }
+                        });
+                    }
+                });
             }
         });
         
+        // Sort by score
+        options.sort((a, b) => b.score - a.score);
+        
+        console.log(`AI: Found ${options.length} match opportunities`);
+        if (options.length > 0 && options[0]) {
+            console.log(`AI: Best option - ${options[0].reasoning} (score: ${options[0].score})`);
+        }
+        
         return options;
+    }
+    
+    private getHexDistance(pos1: IHexPosition, pos2: IHexPosition): number {
+        return Math.abs(pos1.q - pos2.q) + Math.abs(pos1.r - pos2.r) + Math.abs(pos1.s - pos2.s);
+    }
+    
+    private findMatchCompletionPositions(pos1: IHexPosition, pos2: IHexPosition): IHexPosition[] {
+        const positions: IHexPosition[] = [];
+        
+        // Calculate direction vector
+        const dq = pos2.q - pos1.q;
+        const dr = pos2.r - pos1.r;
+        const ds = pos2.s - pos1.s;
+        
+        // Extend the line in both directions
+        positions.push({
+            q: pos1.q - dq,
+            r: pos1.r - dr,
+            s: pos1.s - ds
+        });
+        
+        positions.push({
+            q: pos2.q + dq,
+            r: pos2.r + dr,
+            s: pos2.s + ds
+        });
+        
+        return positions;
+    }
+    
+    private findMiddlePosition(pos1: IHexPosition, pos2: IHexPosition): IHexPosition | null {
+        // Check if positions are aligned and have a middle
+        const dq = pos2.q - pos1.q;
+        const dr = pos2.r - pos1.r;
+        const ds = pos2.s - pos1.s;
+        
+        // Must be even differences to have a middle
+        if (dq % 2 === 0 && dr % 2 === 0 && ds % 2 === 0) {
+            return {
+                q: pos1.q + dq / 2,
+                r: pos1.r + dr / 2,
+                s: pos1.s + ds / 2
+            };
+        }
+        
+        return null;
+    }
+    
+    private countAdjacentSameColor(pos: IHexPosition, color: BubbleColor): number {
+        let count = 0;
+        const neighbors = this.bubbleGrid.getNeighbors(pos);
+        
+        neighbors.forEach(neighbor => {
+            const bubble = this.getBubbleAtPosition(neighbor);
+            if (bubble && bubble.getColor() === color) {
+                count++;
+            }
+        });
+        
+        return count;
     }
     
     private calculateShotScore(targetHex: IHexPosition, color: BubbleColor, groupSize: number): number {
