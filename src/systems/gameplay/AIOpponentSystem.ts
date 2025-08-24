@@ -869,6 +869,18 @@ export class AIOpponentSystem {
                                     if (!this.isPositionOccupied(targetHex)) {
                                         const pixelPos = this.bubbleGrid.hexToPixel(targetHex);
                                         
+                                        // Skip if we can't reach this position
+                                        const testTarget: ITargetOption = {
+                                            position: pixelPos,
+                                            score: 0,
+                                            color: color,
+                                            reasoning: 'test'
+                                        };
+                                        
+                                        if (!this.isTrajectoryValid(testTarget)) {
+                                            return; // Skip if path is blocked
+                                        }
+                                        
                                         // Calculate chain reaction potential
                                         const chainScore = this.predictChainReaction(targetHex, color);
                                         
@@ -896,6 +908,18 @@ export class AIOpponentSystem {
                                 const middlePos = this.findMiddlePosition(pos1, pos2);
                                 if (middlePos && !this.isPositionOccupied(middlePos)) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(middlePos);
+                                    
+                                    // Skip if we can't reach this position
+                                    const testTarget: ITargetOption = {
+                                        position: pixelPos,
+                                        score: 0,
+                                        color: color,
+                                        reasoning: 'test'
+                                    };
+                                    
+                                    if (!this.isTrajectoryValid(testTarget)) {
+                                        continue; // Skip if path is blocked
+                                    }
                                     
                                     // Calculate chain reaction potential
                                     const chainScore = this.predictChainReaction(middlePos, color);
@@ -934,6 +958,18 @@ export class AIOpponentSystem {
                                 
                                 if (adjacentCount >= 2) {
                                     const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                                    
+                                    // Skip if we can't reach this position
+                                    const testTarget: ITargetOption = {
+                                        position: pixelPos,
+                                        score: 0,
+                                        color: color,
+                                        reasoning: 'test'
+                                    };
+                                    
+                                    if (!this.isTrajectoryValid(testTarget)) {
+                                        return; // Skip if path is blocked
+                                    }
                                     
                                     // Predict chain reactions
                                     const chainScore = this.predictChainReaction(neighbor, color);
@@ -1394,6 +1430,19 @@ export class AIOpponentSystem {
     
     private shoot(target: ITargetOption): void {
         if (!this.shootingSystem) return;
+        
+        // Validate trajectory is clear before shooting
+        if (!this.isTrajectoryValid(target)) {
+            console.log(`AI: Path blocked to target, finding alternative...`);
+            // Try to find an alternative shot
+            const alternative = this.findAlternativeShot(target.color);
+            if (alternative) {
+                console.log(`AI: Using alternative shot`);
+                target = alternative;
+            } else {
+                console.log(`AI: No clear path, shooting anyway (may hit obstacle)`);
+            }
+        }
         
         // Show target marker for debugging
         this.showTargetMarker(target.position);
@@ -1886,7 +1935,17 @@ export class AIOpponentSystem {
             
             // Simple check: will it hit the wall?
             if ((wall === 'left' && vx < 0) || (wall === 'right' && vx > 0)) {
-                return degrees;
+                // Also check if the path to the wall is clear
+                const wallTarget: ITargetOption = {
+                    position: { x: wallX, y: launcherY + 100 },
+                    score: 0,
+                    color: BubbleColor.RED,
+                    reasoning: 'wall check'
+                };
+                
+                if (this.isTrajectoryValid(wallTarget)) {
+                    return degrees;
+                }
             }
         }
         
@@ -2140,6 +2199,162 @@ export class AIOpponentSystem {
         });
         
         return bestShot;
+    }
+    
+    private isTrajectoryValid(target: ITargetOption): boolean {
+        // Check if there's a clear path from launcher to target
+        const startX = this.launcher.x;
+        const startY = this.launcher.y;
+        const endX = target.position.x;
+        const endY = target.position.y;
+        
+        // Get all bubbles in the grid
+        const gridBubbles = this.getGridBubbles();
+        
+        // Check collision along the path
+        const steps = 20; // Check 20 points along the trajectory
+        for (let i = 1; i < steps; i++) {
+            const t = i / steps;
+            const checkX = startX + (endX - startX) * t;
+            const checkY = startY + (endY - startY) * t;
+            
+            // Check if this point collides with any bubble
+            for (const bubble of gridBubbles) {
+                const distance = Math.sqrt(
+                    Math.pow(bubble.x - checkX, 2) +
+                    Math.pow(bubble.y - checkY, 2)
+                );
+                
+                // If we're too close to a bubble (within radius + margin)
+                if (distance < 28) { // Bubble radius is ~18, add margin
+                    // Check if this is near the target (might be the bubble we're aiming for)
+                    const targetDistance = Math.sqrt(
+                        Math.pow(endX - bubble.x, 2) +
+                        Math.pow(endY - bubble.y, 2)
+                    );
+                    
+                    // If this bubble is not near our target, path is blocked
+                    if (targetDistance > 40) {
+                        return false;
+                    }
+                }
+            }
+        }
+        
+        return true; // Path is clear
+    }
+    
+    private findAlternativeShot(preferredColor: BubbleColor): ITargetOption | null {
+        // Find shots that have clear trajectories
+        const matches = this.analyzeGrid();
+        
+        // Filter for matches with clear paths
+        const clearMatches = matches.filter(m => {
+            // Check if trajectory is valid
+            if (!this.isTrajectoryValid(m)) {
+                return false;
+            }
+            
+            // Prefer same color if possible
+            if (m.color === preferredColor) {
+                m.score += 50; // Bonus for matching color
+            }
+            
+            return true;
+        });
+        
+        if (clearMatches.length > 0) {
+            // Return best clear match
+            clearMatches.sort((a, b) => b.score - a.score);
+            return clearMatches[0];
+        }
+        
+        // Try bounce shots as alternative
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Try left wall bounce
+        const leftBounceTarget: ITargetOption = {
+            position: { x: screenWidth * 0.7, y: centerY + 100 },
+            score: 30,
+            color: preferredColor,
+            reasoning: 'Alternative bounce shot (left)',
+            bounceAngle: 45 // Shoot toward left wall
+        } as any;
+        
+        if (this.isTrajectoryValid(leftBounceTarget)) {
+            return leftBounceTarget;
+        }
+        
+        // Try right wall bounce
+        const rightBounceTarget: ITargetOption = {
+            position: { x: screenWidth * 0.3, y: centerY + 100 },
+            score: 30,
+            color: preferredColor,
+            reasoning: 'Alternative bounce shot (right)',
+            bounceAngle: 135 // Shoot toward right wall
+        } as any;
+        
+        if (this.isTrajectoryValid(rightBounceTarget)) {
+            return rightBounceTarget;
+        }
+        
+        // Last resort: find any open area
+        const openAreaTarget = this.findOpenArea();
+        if (openAreaTarget) {
+            openAreaTarget.color = preferredColor;
+            return openAreaTarget;
+        }
+        
+        return null;
+    }
+    
+    private findOpenArea(): ITargetOption | null {
+        // Find areas with fewer bubbles
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        const gridBubbles = this.getGridBubbles();
+        
+        // Divide screen into zones and count bubble density
+        const zones = [
+            { x: screenWidth * 0.2, y: centerY, density: 0 },
+            { x: screenWidth * 0.5, y: centerY, density: 0 },
+            { x: screenWidth * 0.8, y: centerY, density: 0 },
+            { x: screenWidth * 0.35, y: centerY + 100, density: 0 },
+            { x: screenWidth * 0.65, y: centerY + 100, density: 0 }
+        ];
+        
+        // Count bubbles near each zone
+        for (const zone of zones) {
+            for (const bubble of gridBubbles) {
+                const distance = Math.sqrt(
+                    Math.pow(bubble.x - zone.x, 2) +
+                    Math.pow(bubble.y - zone.y, 2)
+                );
+                if (distance < 100) {
+                    zone.density++;
+                }
+            }
+        }
+        
+        // Sort by lowest density
+        zones.sort((a, b) => a.density - b.density);
+        
+        // Return least dense zone if path is clear
+        for (const zone of zones) {
+            const target: ITargetOption = {
+                position: { x: zone.x, y: zone.y },
+                score: 20,
+                color: this.getVariedColor(),
+                reasoning: 'Open area shot'
+            };
+            
+            if (this.isTrajectoryValid(target)) {
+                return target;
+            }
+        }
+        
+        return null;
     }
     
     public destroy(): void {
