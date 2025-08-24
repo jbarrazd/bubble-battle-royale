@@ -32,7 +32,11 @@ export class AIOpponentSystem {
     private launcher: Launcher;
     private config: IAIConfig;
     private isThinking: boolean = false;
-    private thinkingIndicator?: Phaser.GameObjects.Text;
+    private thinkingIndicator?: Phaser.GameObjects.Container;
+    private thinkingText?: Phaser.GameObjects.Text;
+    private thinkingDots?: Phaser.GameObjects.Text;
+    private difficultyBadge?: Phaser.GameObjects.Container;
+    private aimPreview?: Phaser.GameObjects.Graphics;
     private shootTimer?: Phaser.Time.TimerEvent;
     private isActive: boolean = false;
     
@@ -50,6 +54,7 @@ export class AIOpponentSystem {
         this.config = this.getDifficultyConfig(difficulty);
         
         this.createThinkingIndicator();
+        this.createDifficultyBadge();
     }
     
     private getDifficultyConfig(difficulty: AIDifficulty): IAIConfig {
@@ -78,8 +83,72 @@ export class AIOpponentSystem {
         this.isActive = true;
         console.log('AI: Starting autonomous shooting with', this.config.difficulty, 'difficulty');
         
+        // Show activation effect
+        this.showActivationEffect();
+        
         // Start shooting loop
         this.scheduleNextShot();
+    }
+    
+    private showActivationEffect(): void {
+        // Create activation announcement
+        const announcement = this.scene.add.container(
+            this.scene.cameras.main.centerX,
+            150
+        );
+        
+        // Background
+        const bg = this.scene.add.rectangle(0, 0, 250, 40, 0x000000, 0.9);
+        const borderColor = this.getDifficultyColor();
+        bg.setStrokeStyle(3, borderColor);
+        
+        // Text
+        const text = this.scene.add.text(0, 0, 
+            `AI ${this.config.difficulty} ACTIVATED`, 
+            {
+                fontSize: '20px',
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }
+        );
+        text.setOrigin(0.5);
+        
+        announcement.add([bg, text]);
+        announcement.setDepth(1002);
+        announcement.setScale(0);
+        
+        // Animate in
+        this.scene.tweens.add({
+            targets: announcement,
+            scale: 1,
+            duration: 300,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Hold for a moment
+                this.scene.time.delayedCall(1500, () => {
+                    // Animate out
+                    this.scene.tweens.add({
+                        targets: announcement,
+                        scale: 0,
+                        alpha: 0,
+                        duration: 300,
+                        ease: 'Back.easeIn',
+                        onComplete: () => announcement.destroy()
+                    });
+                });
+            }
+        });
+        
+        // Pulse the launcher
+        this.scene.tweens.add({
+            targets: this.launcher,
+            scaleX: 1.2,
+            scaleY: 1.2,
+            duration: 200,
+            yoyo: true,
+            repeat: 2,
+            ease: 'Power2'
+        });
     }
     
     public stop(): void {
@@ -105,20 +174,84 @@ export class AIOpponentSystem {
     }
     
     private createThinkingIndicator(): void {
-        this.thinkingIndicator = this.scene.add.text(
-            this.scene.cameras.main.centerX,
-            100,
-            'AI Thinking...',
-            {
-                fontSize: '16px',
-                color: '#FFD700',
-                backgroundColor: '#000000',
-                padding: { x: 10, y: 5 }
-            }
-        );
-        this.thinkingIndicator.setOrigin(0.5);
+        const centerX = this.scene.cameras.main.centerX;
+        
+        // Create container for thinking indicator
+        this.thinkingIndicator = this.scene.add.container(centerX, 100);
+        
+        // Background panel
+        const bg = this.scene.add.rectangle(0, 0, 150, 30, 0x000000, 0.8);
+        bg.setStrokeStyle(2, 0xFFD700);
+        
+        // Icon (brain emoji or thinking icon)
+        const icon = this.scene.add.text(-60, 0, '🤔', {
+            fontSize: '20px'
+        });
+        icon.setOrigin(0.5);
+        
+        // Text
+        this.thinkingText = this.scene.add.text(-20, 0, 'AI Thinking', {
+            fontSize: '14px',
+            color: '#FFD700'
+        });
+        this.thinkingText.setOrigin(0, 0.5);
+        
+        // Animated dots
+        this.thinkingDots = this.scene.add.text(50, 0, '', {
+            fontSize: '14px',
+            color: '#FFD700'
+        });
+        this.thinkingDots.setOrigin(0, 0.5);
+        
+        this.thinkingIndicator.add([bg, icon, this.thinkingText, this.thinkingDots]);
         this.thinkingIndicator.setVisible(false);
         this.thinkingIndicator.setDepth(1000);
+    }
+    
+    private createDifficultyBadge(): void {
+        // Create difficulty indicator badge
+        this.difficultyBadge = this.scene.add.container(
+            this.launcher.x,
+            this.launcher.y + 40
+        );
+        
+        // Badge background
+        const bgColor = this.getDifficultyColor();
+        const bg = this.scene.add.rectangle(0, 0, 80, 20, bgColor, 0.9);
+        bg.setStrokeStyle(1, 0xFFFFFF);
+        
+        // Difficulty text
+        const text = this.scene.add.text(0, 0, this.config.difficulty, {
+            fontSize: '12px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        });
+        text.setOrigin(0.5);
+        
+        this.difficultyBadge.add([bg, text]);
+        this.difficultyBadge.setDepth(999);
+        
+        // Pulse animation
+        this.scene.tweens.add({
+            targets: this.difficultyBadge,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    private getDifficultyColor(): number {
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                return 0x4CAF50; // Green
+            case AIDifficulty.MEDIUM:
+                return 0xFFC107; // Amber
+            case AIDifficulty.HARD:
+                return 0xF44336; // Red
+        }
     }
     
     public setShootingSystem(shootingSystem: ShootingSystem): void {
@@ -438,10 +571,8 @@ export class AIOpponentSystem {
         // Load bubble with selected color
         this.launcher.loadBubble(target.color);
         
-        // Visual feedback - show aim line briefly
-        if (this.config.difficulty === AIDifficulty.HARD) {
-            this.showAimLine(finalAngle);
-        }
+        // Visual feedback - show aim line based on difficulty
+        this.showAimLine(finalAngle, trajectory.bounces > 0);
         
         // Shoot using the shooting system
         this.scene.events.emit('ai-shoot', {
@@ -452,6 +583,9 @@ export class AIOpponentSystem {
         
         // Play launcher animation
         this.launcher.animateShoot();
+        
+        // Add visual effects based on difficulty
+        this.addShootEffects(target);
     }
     
     private calculateTrajectory(target: { x: number; y: number }): { angle: number; bounces: number } {
@@ -503,24 +637,109 @@ export class AIOpponentSystem {
         }
     }
     
-    private showAimLine(angle: number): void {
-        // Create temporary aim line for visual feedback
-        const graphics = this.scene.add.graphics();
-        graphics.lineStyle(2, 0xFF0000, 0.5);
+    private showAimLine(angle: number, hasBounce: boolean): void {
+        // Show aim preview based on difficulty
+        let showPreview = false;
+        let previewDuration = 0;
+        let lineColor = 0xFF0000;
+        let lineAlpha = 0.3;
+        
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                // No preview for easy
+                return;
+            case AIDifficulty.MEDIUM:
+                // Brief preview for medium
+                showPreview = Math.random() < 0.3; // 30% chance
+                previewDuration = 200;
+                lineColor = 0xFFC107;
+                lineAlpha = 0.4;
+                break;
+            case AIDifficulty.HARD:
+                // Always show preview for hard
+                showPreview = true;
+                previewDuration = 400;
+                lineColor = 0xFF0000;
+                lineAlpha = 0.6;
+                break;
+        }
+        
+        if (!showPreview) return;
+        
+        // Create aim preview
+        if (this.aimPreview) {
+            this.aimPreview.destroy();
+        }
+        
+        this.aimPreview = this.scene.add.graphics();
+        this.aimPreview.setDepth(998);
         
         const radians = Phaser.Math.DegToRad(angle - 90);
-        const distance = 200;
-        const endX = this.launcher.x + Math.cos(radians) * distance;
-        const endY = this.launcher.y + Math.sin(radians) * distance;
+        const screenWidth = this.scene.cameras.main.width;
+        const screenHeight = this.scene.cameras.main.height;
         
-        graphics.lineBetween(this.launcher.x, this.launcher.y, endX, endY);
+        // Draw trajectory
+        this.aimPreview.lineStyle(2, lineColor, lineAlpha);
+        
+        let currentX = this.launcher.x;
+        let currentY = this.launcher.y;
+        let currentAngle = radians;
+        let distance = 400;
+        
+        // Draw main trajectory
+        let endX = currentX + Math.cos(currentAngle) * distance;
+        let endY = currentY + Math.sin(currentAngle) * distance;
+        
+        // Check for wall bounce
+        if (hasBounce) {
+            // Calculate bounce point
+            if (endX < 0) {
+                const t = -currentX / Math.cos(currentAngle);
+                const bounceY = currentY + Math.sin(currentAngle) * t;
+                
+                // Draw to bounce point
+                this.aimPreview.lineBetween(currentX, currentY, 0, bounceY);
+                
+                // Draw bounced trajectory
+                this.aimPreview.lineStyle(2, lineColor, lineAlpha * 0.5);
+                this.aimPreview.lineBetween(0, bounceY, 100, bounceY + 50);
+            } else if (endX > screenWidth) {
+                const t = (screenWidth - currentX) / Math.cos(currentAngle);
+                const bounceY = currentY + Math.sin(currentAngle) * t;
+                
+                // Draw to bounce point
+                this.aimPreview.lineBetween(currentX, currentY, screenWidth, bounceY);
+                
+                // Draw bounced trajectory
+                this.aimPreview.lineStyle(2, lineColor, lineAlpha * 0.5);
+                this.aimPreview.lineBetween(screenWidth, bounceY, screenWidth - 100, bounceY + 50);
+            }
+        } else {
+            // Simple straight line
+            this.aimPreview.lineBetween(currentX, currentY, endX, endY);
+        }
+        
+        // Draw dots along the line
+        const dotCount = 5;
+        for (let i = 1; i <= dotCount; i++) {
+            const t = i / (dotCount + 1);
+            const dotX = currentX + (endX - currentX) * t;
+            const dotY = currentY + (endY - currentY) * t;
+            this.aimPreview.fillStyle(lineColor, lineAlpha * (1 - t * 0.5));
+            this.aimPreview.fillCircle(dotX, dotY, 2);
+        }
         
         // Fade out and destroy
         this.scene.tweens.add({
-            targets: graphics,
+            targets: this.aimPreview,
             alpha: 0,
-            duration: 500,
-            onComplete: () => graphics.destroy()
+            duration: previewDuration,
+            onComplete: () => {
+                if (this.aimPreview) {
+                    this.aimPreview.destroy();
+                    this.aimPreview = undefined;
+                }
+            }
         });
     }
     
@@ -533,22 +752,66 @@ export class AIOpponentSystem {
         if (this.thinkingIndicator) {
             this.thinkingIndicator.setVisible(true);
             
-            // Add pulsing animation
+            // Animate dots
+            let dotCount = 0;
+            const dotTimer = this.scene.time.addEvent({
+                delay: 300,
+                callback: () => {
+                    dotCount = (dotCount + 1) % 4;
+                    if (this.thinkingDots) {
+                        this.thinkingDots.setText('.'.repeat(dotCount));
+                    }
+                },
+                loop: true
+            });
+            
+            // Store timer reference for cleanup
+            (this.thinkingIndicator as any).dotTimer = dotTimer;
+            
+            // Slide in animation
+            this.thinkingIndicator.setScale(0, 1);
             this.scene.tweens.add({
                 targets: this.thinkingIndicator,
-                alpha: 0.5,
-                duration: 500,
+                scaleX: 1,
+                duration: 200,
+                ease: 'Back.easeOut'
+            });
+            
+            // Subtle pulse
+            this.scene.tweens.add({
+                targets: this.thinkingIndicator,
+                y: 105,
+                duration: 800,
                 yoyo: true,
-                repeat: -1
+                repeat: -1,
+                ease: 'Sine.easeInOut'
             });
         }
     }
     
     private hideThinking(): void {
         if (this.thinkingIndicator) {
+            // Clean up dot timer
+            const dotTimer = (this.thinkingIndicator as any).dotTimer;
+            if (dotTimer) {
+                dotTimer.destroy();
+            }
+            
+            // Slide out animation
+            this.scene.tweens.add({
+                targets: this.thinkingIndicator,
+                scaleX: 0,
+                duration: 150,
+                ease: 'Back.easeIn',
+                onComplete: () => {
+                    if (this.thinkingIndicator) {
+                        this.thinkingIndicator.setVisible(false);
+                        this.thinkingIndicator.y = 100; // Reset position
+                    }
+                }
+            });
+            
             this.scene.tweens.killTweensOf(this.thinkingIndicator);
-            this.thinkingIndicator.setVisible(false);
-            this.thinkingIndicator.setAlpha(1);
         }
     }
     
@@ -563,10 +826,100 @@ export class AIOpponentSystem {
         console.log(`AI: Difficulty set to ${difficulty}`);
     }
     
+    private addShootEffects(target: ITargetOption): void {
+        // Screen flash for hard difficulty perfect shots
+        if (this.config.difficulty === AIDifficulty.HARD && target.score >= 40) {
+            // Flash effect
+            const flash = this.scene.add.rectangle(
+                this.scene.cameras.main.centerX,
+                this.scene.cameras.main.centerY,
+                this.scene.cameras.main.width,
+                this.scene.cameras.main.height,
+                0xFF0000,
+                0.1
+            );
+            flash.setDepth(2000);
+            
+            this.scene.tweens.add({
+                targets: flash,
+                alpha: 0,
+                duration: 200,
+                onComplete: () => flash.destroy()
+            });
+            
+            // Camera shake for powerful shots
+            this.scene.cameras.main.shake(100, 0.003);
+        }
+        
+        // Particle effect at launcher
+        const particleColor = this.getDifficultyColor();
+        for (let i = 0; i < 5; i++) {
+            const particle = this.scene.add.circle(
+                this.launcher.x,
+                this.launcher.y,
+                3,
+                particleColor,
+                0.8
+            );
+            
+            const angle = (Math.PI * 2 / 5) * i;
+            const distance = 30;
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: this.launcher.x + Math.cos(angle) * distance,
+                y: this.launcher.y + Math.sin(angle) * distance,
+                alpha: 0,
+                scale: 0.5,
+                duration: 400,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // Score popup for good shots
+        if (target.score >= 25) {
+            const scoreText = this.scene.add.text(
+                this.launcher.x,
+                this.launcher.y - 50,
+                `+${target.score}`,
+                {
+                    fontSize: '18px',
+                    color: '#FFD700',
+                    fontStyle: 'bold',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            );
+            scoreText.setOrigin(0.5);
+            scoreText.setDepth(1001);
+            
+            this.scene.tweens.add({
+                targets: scoreText,
+                y: scoreText.y - 30,
+                alpha: 0,
+                scale: 1.5,
+                duration: 1000,
+                ease: 'Power2',
+                onComplete: () => scoreText.destroy()
+            });
+        }
+    }
+    
     public destroy(): void {
         this.stop();
         if (this.thinkingIndicator) {
+            const dotTimer = (this.thinkingIndicator as any).dotTimer;
+            if (dotTimer) {
+                dotTimer.destroy();
+            }
             this.thinkingIndicator.destroy();
+        }
+        if (this.difficultyBadge) {
+            this.difficultyBadge.destroy();
+        }
+        if (this.aimPreview) {
+            this.aimPreview.destroy();
         }
     }
 }
