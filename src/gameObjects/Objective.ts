@@ -15,20 +15,20 @@ export class Objective extends Phaser.GameObjects.Container {
         this.health = config.health;
         this.maxHealth = config.health;
         
-        // Create glow effect
-        this.glowEffect = scene.add.circle(0, 0, config.size + 10, 0xffd700, 0.3);
+        // Create subtle glow effect
+        this.glowEffect = scene.add.circle(0, 0, config.size / 2 + 4, 0xffd700, 0.3);
         
-        // Create shield visual
-        this.shield = scene.add.circle(0, 0, config.size + 5, 0x3498db, 0.5);
-        this.shield.setStrokeStyle(2, 0x2980b9, 0.8);
+        // Create shield visual - same size as bubble
+        this.shield = scene.add.circle(0, 0, config.size / 2 + 2, 0x00ffff, 0.3);
+        this.shield.setStrokeStyle(2, 0x00aaff, 0.8);
         
-        // Create main objective (star/treasure)
-        this.sprite = scene.add.star(0, 0, 8, config.size / 2, config.size, 0xffd700);
-        this.sprite.setStrokeStyle(3, 0xf39c12);
+        // Create main objective - a simple star the size of a bubble
+        this.sprite = scene.add.star(0, 0, 6, config.size / 4, config.size / 2, 0xffd700);
+        this.sprite.setStrokeStyle(2, 0xff8800, 1);
         
         this.add([this.glowEffect, this.shield, this.sprite]);
         
-        this.setSize(config.size * 2, config.size * 2);
+        this.setSize(config.size, config.size);
         this.setDepth(Z_LAYERS.OBJECTIVE);
         
         // Add pulsing animation

@@ -30,7 +30,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.add([this.bubbleSprite, this.highlightSprite]);
         
         this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
-        this.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        this.setDepth(Z_LAYERS.BUBBLES);  // Use regular bubble layer, not front
         
         scene.add.existing(this);
     }

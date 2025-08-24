@@ -7,7 +7,7 @@ export const ARENA_CONFIG: IArenaConfig = {
     opponentZoneHeight: 267,  // 40% of height
     objectiveZoneHeight: 133, // 20% of height
     bubbleSize: 32,
-    objectiveSize: 48, // 1.5x bubble size
+    objectiveSize: 32, // Same size as a bubble
     launcherOffset: 50
 };
 
@@ -43,9 +43,9 @@ export const Z_LAYERS = {
     ZONE_DEBUG: 1,
     GRID_DEBUG: 2,
     BUBBLES_BACK: 10,
-    OBJECTIVE: 20,
-    BUBBLES: 25,  // Main bubble layer for projectiles
-    BUBBLES_FRONT: 30,
+    BUBBLES: 15,  // Grid bubbles
+    BUBBLES_FRONT: 20,  // Projectile bubbles
+    OBJECTIVE: 25,  // Objective should be above bubbles
     LAUNCHERS: 40,
     UI: 50,
     DEBUG_OVERLAY: 100

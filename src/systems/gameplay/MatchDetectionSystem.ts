@@ -333,7 +333,7 @@ export class MatchDetectionSystem {
                 color,
                 1
             );
-            particle.setDepth(Z_LAYERS.BUBBLES_FRONT);
+            particle.setDepth(Z_LAYERS.BUBBLES);
             
             const angle = (i / particleCount) * Math.PI * 2;
             const speed = Phaser.Math.Between(50, 150);
