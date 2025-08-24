@@ -511,81 +511,52 @@ export class AIOpponentSystem {
     }
     
     private selectMediumTarget(): ITargetOption | null {
-        // Medium: 20% random, 80% strategic
+        // Medium: 15% random, 85% strategic (more aggressive)
         const random = Math.random();
         console.log(`AI Medium: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        // 40% chance to prioritize objective clearing
-        if (random < 0.4) {
-            const objectiveShot = this.findObjectiveClearingShot();
-            if (objectiveShot) {
-                // Add moderate error
-                objectiveShot.position.x += (Math.random() - 0.5) * 15;
-                objectiveShot.position.y += (Math.random() - 0.5) * 10;
-                console.log(`AI Medium: Clearing objective area`);
-                this.updateRecentHistory(objectiveShot);
-                return objectiveShot;
-            }
-        }
-        
-        if (random < 0.2) {
-            // 20% - Random for unpredictability
+        if (random < 0.15) {
+            // 15% - Random for unpredictability
             console.log(`AI Medium: Random shot`);
             const target = this.getRandomTarget();
             this.updateRecentHistory(target);
             return target;
         }
         
-        // 80% - Strategic play
+        // 85% - Strategic play focused on matches
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Filter for variety
-            const variedMatches = matches.filter(m => {
-                // Avoid repeating same color too much
-                if (this.recentColors.filter(c => c === m.color).length >= 2) {
-                    return Math.random() < 0.4; // 40% chance if color repeated
-                }
+            // Take good matches without too much filtering
+            const validMatches = matches.filter(m => this.isTrajectoryValid(m));
+            
+            if (validMatches.length > 0) {
+                // Pick from top 50% of matches
+                const cutoff = Math.max(1, Math.ceil(validMatches.length * 0.5));
+                const goodMatches = validMatches.slice(0, cutoff);
                 
-                // Avoid repeating positions
-                for (const recentPos of this.recentPositions) {
-                    const distance = Math.sqrt(
-                        Math.pow(m.position.x - recentPos.x, 2) +
-                        Math.pow(m.position.y - recentPos.y, 2)
-                    );
-                    if (distance < 70) return false;
-                }
+                // Select with bias toward better matches
+                const selected = goodMatches[Math.floor(Math.random() * Math.min(3, goodMatches.length))];
                 
-                return true;
-            });
-            
-            const availableMatches = variedMatches.length > 0 ? variedMatches : matches;
-            
-            // Pick from top 40% of matches
-            const cutoff = Math.max(1, Math.ceil(availableMatches.length * 0.4));
-            const goodMatches = availableMatches.slice(0, cutoff);
-            
-            // Select with bias toward better matches
-            const selectedIndex = Math.floor(Math.random() * Math.random() * goodMatches.length);
-            let selected = goodMatches[selectedIndex];
-            
-            // 40% chance to try a bounce shot
-            if (Math.random() < 0.4) {
-                const bounceOptions = this.calculateBounceShots(selected.position, selected.color);
-                if (bounceOptions.length > 0) {
-                    console.log(`AI Medium: Using bounce shot!`);
-                    selected = bounceOptions[0];
-                }
+                // Add moderate inaccuracy
+                const inaccuracy = 10;
+                selected.position.x += (Math.random() - 0.5) * inaccuracy;
+                selected.position.y += (Math.random() - 0.5) * inaccuracy;
+                
+                console.log(`AI Medium: Match shot - ${selected.reasoning}`);
+                this.updateRecentHistory(selected);
+                return selected;
             }
-            
-            // Add moderate inaccuracy
-            const inaccuracy = 8;
-            selected.position.x += (Math.random() - 0.5) * inaccuracy;
-            selected.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
-            
-            console.log(`AI Medium: Strategic shot - ${selected.reasoning}`);
-            this.updateRecentHistory(selected);
-            return selected;
+        }
+        
+        // Try to clear objective area
+        const objectiveShot = this.findObjectiveClearingShot();
+        if (objectiveShot) {
+            objectiveShot.position.x += (Math.random() - 0.5) * 12;
+            objectiveShot.position.y += (Math.random() - 0.5) * 8;
+            console.log(`AI Medium: Clearing objective`);
+            this.updateRecentHistory(objectiveShot);
+            return objectiveShot;
         }
         
         // No matches - look for setups
@@ -613,142 +584,97 @@ export class AIOpponentSystem {
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 15% random, 85% perfect play (increased randomness for variety)
+        // Hard: 5% random, 95% AGGRESSIVE match hunting
         const random = Math.random();
         console.log(`AI Hard: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        // Force variety every few shots
-        if (this.shotCount % 5 === 0 || random < 0.15) {
-            // 15% - Tactical randomness for unpredictability
-            console.log(`AI Hard: Tactical random for variety`);
+        // Only 5% random for minimal unpredictability
+        if (random < 0.05) {
+            console.log(`AI Hard: Rare random shot`);
             const randomTarget = this.getRandomTarget();
             this.updateRecentHistory(randomTarget);
             return randomTarget;
         }
         
-        // First priority: Clear path to objective
-        const objectiveShot = this.findObjectiveClearingShot();
-        if (objectiveShot && objectiveShot.score >= 200) {
-            console.log(`AI Hard: OBJECTIVE CLEARING - ${objectiveShot.reasoning}`);
-            this.updateRecentHistory(objectiveShot);
-            return objectiveShot;
-        }
-        
-        // 90% - Perfect optimal play
+        // PRIORITY 1: Make ANY match to clear bubbles
         const matches = this.analyzeGrid();
+        console.log(`AI Hard: Found ${matches.length} potential matches`);
         
         if (matches.length > 0) {
-            // Filter out shots that would repeat recent patterns
-            const freshMatches = matches.filter(m => {
-                // Check color variety
-                if (this.recentColors.length >= 2 && 
-                    this.recentColors[this.recentColors.length - 1] === m.color &&
-                    this.recentColors[this.recentColors.length - 2] === m.color) {
-                    return false; // Skip if same color 3 times in a row
+            // Don't filter too much - we need to make matches!
+            for (const match of matches) {
+                // Try direct shot first
+                if (this.isTrajectoryValid(match)) {
+                    console.log(`AI Hard: TAKING MATCH - ${match.reasoning} at (${match.position.x.toFixed(0)}, ${match.position.y.toFixed(0)})`);
+                    this.updateRecentHistory(match);
+                    return match;
                 }
                 
-                // Check position variety
-                for (const recentPos of this.recentPositions) {
-                    const distance = Math.sqrt(
-                        Math.pow(m.position.x - recentPos.x, 2) +
-                        Math.pow(m.position.y - recentPos.y, 2)
-                    );
-                    if (distance < 60) return false; // Too close to recent shot
-                }
-                
-                return true;
-            });
-            
-            const availableMatches = freshMatches.length > 0 ? freshMatches : matches;
-            
-            // Find the BEST possible shot including wall bounces
-            let bestOption = availableMatches[0];
-            
-            // Check bounce shots for top matches
-            for (const match of availableMatches.slice(0, 3)) {
+                // Try bounce if direct is blocked
                 const bounceOptions = this.calculateBounceShots(match.position, match.color);
-                for (const bounceOption of bounceOptions) {
-                    if (bounceOption.score > bestOption.score + 50) { // Only use bounce if significantly better
-                        bestOption = bounceOption;
-                    }
+                if (bounceOptions.length > 0) {
+                    console.log(`AI Hard: BOUNCE MATCH - ${match.reasoning}`);
+                    const bounceShot = bounceOptions[0];
+                    this.updateRecentHistory(bounceShot);
+                    return bounceShot;
                 }
             }
-            
-            // Perfect accuracy - minimal error
-            const inaccuracy = 3;
-            bestOption.position.x += (Math.random() - 0.5) * inaccuracy;
-            bestOption.position.y += (Math.random() - 0.5) * inaccuracy;
-            
-            this.updateRecentHistory(bestOption);
-            console.log(`AI Hard: OPTIMAL shot - ${bestOption.reasoning} (score: ${bestOption.score})`);
-            return bestOption;
         }
         
-        // No direct matches - look for complex setups
-        const complexSetup = this.findComplexSetup();
-        if (complexSetup) {
-            console.log(`AI Hard: Complex strategic setup`);
-            this.updateRecentHistory(complexSetup);
-            return complexSetup;
+        // PRIORITY 2: Make pairs (setup for future matches)
+        const pairShot = this.findBestPairShot();
+        if (pairShot) {
+            console.log(`AI Hard: MAKING PAIR - ${pairShot.reasoning}`);
+            this.updateRecentHistory(pairShot);
+            return pairShot;
         }
         
-        // Try to clear objective area
+        // PRIORITY 3: Clear objective area
+        const objectiveShot = this.findObjectiveClearingShot();
         if (objectiveShot) {
-            console.log(`AI Hard: Objective area shot`);
+            console.log(`AI Hard: OBJECTIVE SHOT - ${objectiveShot.reasoning}`);
             this.updateRecentHistory(objectiveShot);
             return objectiveShot;
         }
         
-        // Strategic placement
-        const setupShot = this.findSetupShot();
-        if (setupShot) {
-            // Ensure variety in setup shots
-            setupShot.color = this.getVariedColor();
-            console.log(`AI Hard: Strategic setup`);
-            this.updateRecentHistory(setupShot);
-            return setupShot;
+        // PRIORITY 4: Shoot at ANY reachable position with good color
+        const anyShot = this.findAnyGoodShot();
+        if (anyShot) {
+            console.log(`AI Hard: ANY GOOD SHOT - ${anyShot.reasoning}`);
+            this.updateRecentHistory(anyShot);
+            return anyShot;
         }
         
-        // Emergency fallback with forced variety
-        console.log(`AI Hard: Emergency fallback`);
-        const randomTarget = this.getStrategicRandomTarget();
-        randomTarget.color = this.getVariedColor();
-        this.updateRecentHistory(randomTarget);
-        return randomTarget;
+        // Last resort: Random but varied position
+        console.log(`AI Hard: Forced variety shot`);
+        const emergency = this.getForcedVarietyShot();
+        this.updateRecentHistory(emergency);
+        return emergency;
     }
     
     private getRandomTarget(): ITargetOption {
         const screenWidth = this.scene.cameras.main.width;
         const centerY = this.scene.cameras.main.centerY;
         
-        // TARGET THE OBJECTIVE AREA - prioritize center top where chest is
-        const objectiveY = 100; // Near the chest
-        
-        // Generate position that aims toward objective
+        // More varied targeting
         let targetX: number;
         let targetY: number;
         
-        // Mix of strategies for variety
-        const strategy = Math.random();
+        // Force alternating sides
+        const useSide = this.shotCount % 3;
         
-        if (strategy < 0.4) {
-            // 40% - Aim for objective area
-            targetX = screenWidth * 0.5 + (Math.random() - 0.5) * 250;
-            targetY = objectiveY + Math.random() * 180;
-        } else if (strategy < 0.7) {
-            // 30% - Side attacks
-            if (Math.random() < 0.5) {
-                targetX = screenWidth * 0.2 + Math.random() * 100;
-            } else {
-                targetX = screenWidth * 0.8 - Math.random() * 100;
-            }
-            targetY = centerY + (Math.random() - 0.5) * 200;
+        if (useSide === 0) {
+            // Left side
+            targetX = screenWidth * 0.2 + Math.random() * screenWidth * 0.2;
+            targetY = centerY - 100 + Math.random() * 200;
+        } else if (useSide === 1) {
+            // Center
+            targetX = screenWidth * 0.4 + Math.random() * screenWidth * 0.2;
+            targetY = centerY - 50 + Math.random() * 150;
         } else {
-            // 30% - Random position for unpredictability
-            const minX = screenWidth * 0.1;
-            const maxX = screenWidth * 0.9;
-            targetX = minX + (Math.random() * (maxX - minX));
-            targetY = centerY - 50 + (Math.random() * 300);
+            // Right side
+            targetX = screenWidth * 0.6 + Math.random() * screenWidth * 0.2;
+            targetY = centerY - 100 + Math.random() * 200;
         }
         
         // Force position variety
@@ -865,6 +791,8 @@ export class AIOpponentSystem {
             return options;
         }
         
+        console.log(`AI: Analyzing grid with ${gridBubbles.length} bubbles`);
+        
         // Group bubbles by color
         const colorGroups = new Map<BubbleColor, Bubble[]>();
         gridBubbles.forEach(bubble => {
@@ -876,6 +804,8 @@ export class AIOpponentSystem {
                 colorGroups.get(color)!.push(bubble);
             }
         });
+        
+        console.log(`AI: Found ${colorGroups.size} different colors`);
         
         // For each color, find opportunities to create matches
         colorGroups.forEach((bubbles, color) => {
@@ -917,10 +847,9 @@ export class AIOpponentSystem {
                                         // Calculate chain reaction potential
                                         const chainScore = this.predictChainReaction(targetHex, color);
                                         
-                                        // High score for adjacent pairs (easy match) + chain bonus
-                                        // Prioritize match-3 completions even more
-                                        const baseScore = 200; // Increased from 100
-                                        const score = baseScore + bubbles.length * 15 + chainScore;
+                                        // MASSIVE score for completing matches
+                                        const baseScore = 1000; // Absolute priority
+                                        const score = baseScore + bubbles.length * 50 + chainScore * 3;
                                         
                                         options.push({
                                             position: pixelPos,
@@ -957,10 +886,9 @@ export class AIOpponentSystem {
                                     // Calculate chain reaction potential
                                     const chainScore = this.predictChainReaction(middlePos, color);
                                     
-                                    // Good score for filling gaps + chain bonus
-                                    // Prioritize bridge completions
-                                    const baseScore = 150; // Increased from 80
-                                    const score = baseScore + bubbles.length * 12 + chainScore;
+                                    // HIGH score for bridge completions
+                                    const baseScore = 800; // Very high priority
+                                    const score = baseScore + bubbles.length * 40 + chainScore * 3;
                                     
                                     options.push({
                                         position: pixelPos,
@@ -2280,7 +2208,7 @@ export class AIOpponentSystem {
                 );
                 
                 // Check if trajectory passes through this bubble
-                if (distance < collisionRadius * 2) { // Bubble diameter
+                if (distance < collisionRadius) { // Only check actual collision
                     // Check if this bubble is at/near the target (intended hit)
                     const targetDistance = Math.sqrt(
                         Math.pow(endX - bubble.x, 2) +
@@ -2288,9 +2216,12 @@ export class AIOpponentSystem {
                     );
                     
                     // If bubble is not the target, path is BLOCKED
-                    if (targetDistance > bubbleRadius * 3) { // Not the target bubble
-                        console.log(`AI: Path blocked by bubble at (${bubble.x.toFixed(0)}, ${bubble.y.toFixed(0)})`);
-                        return false; // Path is blocked
+                    if (targetDistance > bubbleRadius * 4) { // More lenient
+                        // Only block if it's a direct hit, not a graze
+                        if (distance < bubbleRadius) {
+                            console.log(`AI: Path blocked by bubble at (${bubble.x.toFixed(0)}, ${bubble.y.toFixed(0)})`);
+                            return false;
+                        }
                     }
                 }
             }
@@ -2413,6 +2344,299 @@ export class AIOpponentSystem {
             if (this.isTrajectoryValid(target)) {
                 return target;
             }
+        }
+        
+        return null;
+    }
+    
+    private findBestPairShot(): ITargetOption | null {
+        // Find any position that creates a pair (2 bubbles together)
+        const gridBubbles = this.getGridBubbles();
+        const colorGroups = new Map<BubbleColor, Bubble[]>();
+        
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color) {
+                if (!colorGroups.has(color)) {
+                    colorGroups.set(color, []);
+                }
+                colorGroups.get(color)!.push(bubble);
+            }
+        });
+        
+        // Find singles that we can pair up
+        for (const [color, bubbles] of colorGroups) {
+            for (const bubble of bubbles) {
+                const pos = bubble.getGridPosition();
+                if (!pos) continue;
+                
+                const neighbors = this.bubbleGrid.getNeighbors(pos);
+                for (const neighbor of neighbors) {
+                    if (!this.isPositionOccupied(neighbor)) {
+                        const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                        
+                        const testTarget: ITargetOption = {
+                            position: pixelPos,
+                            score: 0,
+                            color: color,
+                            reasoning: 'test'
+                        };
+                        
+                        if (this.isTrajectoryValid(testTarget)) {
+                            return {
+                                position: pixelPos,
+                                hexPosition: neighbor,
+                                score: 200,
+                                color: color,
+                                reasoning: `Creating pair of ${this.getColorName(color)}`
+                            };
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private findAnyGoodShot(): ITargetOption | null {
+        // Find ANY position we can shoot to with a good color
+        const gridBubbles = this.getGridBubbles();
+        if (gridBubbles.length === 0) return null;
+        
+        // Get most common color
+        const colorCounts = new Map<BubbleColor, number>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color) {
+                colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+            }
+        });
+        
+        let bestColor: BubbleColor = BubbleColor.RED;
+        let maxCount = 0;
+        colorCounts.forEach((count, color) => {
+            if (count > maxCount) {
+                maxCount = count;
+                bestColor = color;
+            }
+        });
+        
+        // Try different areas
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        const targets = [
+            { x: screenWidth * 0.3, y: centerY },
+            { x: screenWidth * 0.5, y: centerY - 50 },
+            { x: screenWidth * 0.7, y: centerY },
+            { x: screenWidth * 0.4, y: centerY + 50 },
+            { x: screenWidth * 0.6, y: centerY + 50 }
+        ];
+        
+        // Shuffle targets
+        targets.sort(() => Math.random() - 0.5);
+        
+        for (const target of targets) {
+            const testTarget: ITargetOption = {
+                position: target,
+                score: 0,
+                color: bestColor,
+                reasoning: 'test'
+            };
+            
+            if (this.isTrajectoryValid(testTarget)) {
+                return {
+                    position: target,
+                    score: 50,
+                    color: bestColor,
+                    reasoning: `Shooting ${this.getColorName(bestColor)} to clear area`
+                };
+            }
+        }
+        
+        return null;
+    }
+    
+    private getForcedVarietyShot(): ITargetOption {
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Force shooting to opposite side of last shot
+        let targetX: number;
+        if (this.lastShotPosition) {
+            if (this.lastShotPosition.x < screenWidth / 2) {
+                // Last shot was left, shoot right
+                targetX = screenWidth * 0.7 + Math.random() * screenWidth * 0.2;
+            } else {
+                // Last shot was right, shoot left
+                targetX = screenWidth * 0.1 + Math.random() * screenWidth * 0.2;
+            }
+        } else {
+            targetX = screenWidth * (0.2 + Math.random() * 0.6);
+        }
+        
+        const targetY = centerY - 50 + Math.random() * 150;
+        
+        // Use varied color
+        const color = this.getVariedColor();
+        
+        return {
+            position: { x: targetX, y: targetY },
+            score: 10,
+            color: color,
+            reasoning: `Forced variety to (${targetX.toFixed(0)}, ${targetY.toFixed(0)})`
+        };
+    }
+    
+    private findAggressiveSetup(): ITargetOption | null {
+        // Find positions that would set up future matches aggressively
+        const gridBubbles = this.getGridBubbles();
+        if (gridBubbles.length < 3) return null;
+        
+        // Find the most common colors and create clusters
+        const colorCounts = new Map<BubbleColor, number>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color !== null && color !== undefined) {
+                colorCounts.set(color, (colorCounts.get(color) || 0) + 1);
+            }
+        });
+        
+        // Pick the most common color for clustering
+        let bestColor: BubbleColor | null = null;
+        let maxCount = 0;
+        colorCounts.forEach((count, color) => {
+            if (count > maxCount && count >= 2) { // Need at least 2 to make a match
+                maxCount = count;
+                bestColor = color;
+            }
+        });
+        
+        if (!bestColor) return null;
+        
+        // Find positions adjacent to same-color bubbles
+        const sameBubbles = gridBubbles.filter(b => b.getColor() === bestColor);
+        let bestSetup: ITargetOption | null = null;
+        let bestScore = 0;
+        
+        for (const bubble of sameBubbles) {
+            const pos = bubble.getGridPosition();
+            if (!pos) continue;
+            
+            const neighbors = this.bubbleGrid.getNeighbors(pos);
+            for (const neighbor of neighbors) {
+                if (!this.isPositionOccupied(neighbor)) {
+                    const pixelPos = this.bubbleGrid.hexToPixel(neighbor);
+                    
+                    // Check if we can reach this position
+                    const testTarget: ITargetOption = {
+                        position: pixelPos,
+                        score: 0,
+                        color: bestColor,
+                        reasoning: 'test'
+                    };
+                    
+                    if (!this.isTrajectoryValid(testTarget)) continue;
+                    
+                    // Count how many same-color bubbles this would connect
+                    const connections = this.countAdjacentSameColor(neighbor, bestColor);
+                    const score = 100 + connections * 50;
+                    
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestSetup = {
+                            position: pixelPos,
+                            hexPosition: neighbor,
+                            score: score,
+                            color: bestColor,
+                            reasoning: `Aggressive setup - ${connections + 1} ${this.getColorName(bestColor)}`
+                        };
+                    }
+                }
+            }
+        }
+        
+        return bestSetup;
+    }
+    
+    private targetDenseArea(): ITargetOption | null {
+        // Target areas with high bubble density to prevent accumulation
+        const gridBubbles = this.getGridBubbles();
+        if (gridBubbles.length === 0) return null;
+        
+        const screenWidth = this.scene.cameras.main.width;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Find the densest area
+        let densestX = screenWidth / 2;
+        let densestY = centerY;
+        let maxDensity = 0;
+        
+        // Check various points
+        const checkPoints = [
+            { x: screenWidth * 0.3, y: centerY - 100 },
+            { x: screenWidth * 0.5, y: centerY - 100 },
+            { x: screenWidth * 0.7, y: centerY - 100 },
+            { x: screenWidth * 0.3, y: centerY },
+            { x: screenWidth * 0.5, y: centerY },
+            { x: screenWidth * 0.7, y: centerY },
+            { x: screenWidth * 0.4, y: centerY + 100 },
+            { x: screenWidth * 0.6, y: centerY + 100 }
+        ];
+        
+        for (const point of checkPoints) {
+            let density = 0;
+            for (const bubble of gridBubbles) {
+                const distance = Math.sqrt(
+                    Math.pow(bubble.x - point.x, 2) +
+                    Math.pow(bubble.y - point.y, 2)
+                );
+                if (distance < 100) {
+                    density++;
+                }
+            }
+            
+            if (density > maxDensity) {
+                maxDensity = density;
+                densestX = point.x;
+                densestY = point.y;
+            }
+        }
+        
+        // If we found a dense area, target it
+        if (maxDensity >= 3) {
+            // Find the most common color in that area
+            const areaColors = new Map<BubbleColor, number>();
+            for (const bubble of gridBubbles) {
+                const distance = Math.sqrt(
+                    Math.pow(bubble.x - densestX, 2) +
+                    Math.pow(bubble.y - densestY, 2)
+                );
+                if (distance < 100) {
+                    const color = bubble.getColor();
+                    if (color) {
+                        areaColors.set(color, (areaColors.get(color) || 0) + 1);
+                    }
+                }
+            }
+            
+            // Pick the most common color in the dense area
+            let targetColor = this.getVariedColor();
+            let maxColorCount = 0;
+            areaColors.forEach((count, color) => {
+                if (count > maxColorCount) {
+                    maxColorCount = count;
+                    targetColor = color;
+                }
+            });
+            
+            return {
+                position: { x: densestX, y: densestY },
+                score: 50 + maxDensity * 10,
+                color: targetColor,
+                reasoning: `Clearing dense area (${maxDensity} bubbles)`
+            };
         }
         
         return null;
