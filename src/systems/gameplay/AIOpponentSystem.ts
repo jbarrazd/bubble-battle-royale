@@ -41,6 +41,7 @@ export class AIOpponentSystem {
     private isActive: boolean = false;
     private shotCount: number = 0; // Track shot count for variety
     private lastColor: BubbleColor | null = null; // Track last color to avoid repetition
+    private lastShotPosition: { x: number; y: number } | null = null; // Track last shot position
     
     constructor(
         scene: Scene,
@@ -69,12 +70,12 @@ export class AIOpponentSystem {
             case AIDifficulty.MEDIUM:
                 return {
                     difficulty: AIDifficulty.MEDIUM,
-                    decisionDelay: 2000 // 2 seconds
+                    decisionDelay: 1500 // 1.5 seconds
                 };
             case AIDifficulty.HARD:
                 return {
                     difficulty: AIDifficulty.HARD,
-                    decisionDelay: 1000 // 1 second
+                    decisionDelay: 500 // 0.5 seconds - VERY FAST
                 };
         }
     }
@@ -171,9 +172,24 @@ export class AIOpponentSystem {
     private scheduleNextShot(): void {
         if (!this.isActive) return;
         
-        // Schedule next shot based on difficulty with more variation
+        // Schedule next shot based on difficulty with appropriate variation
         const baseDelay = this.config.decisionDelay;
-        const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms
+        let randomDelay: number;
+        
+        switch (this.config.difficulty) {
+            case AIDifficulty.EASY:
+                randomDelay = Math.floor(Math.random() * 1500) + 500; // 500-2000ms extra
+                break;
+            case AIDifficulty.MEDIUM:
+                randomDelay = Math.floor(Math.random() * 800) + 300; // 300-1100ms extra
+                break;
+            case AIDifficulty.HARD:
+                randomDelay = Math.floor(Math.random() * 300) + 100; // 100-400ms extra - VERY FAST
+                break;
+            default:
+                randomDelay = 1000;
+        }
+        
         const delay = baseDelay + randomDelay;
         
         console.log(`AI: Next shot scheduled in ${delay}ms`);
@@ -338,18 +354,18 @@ export class AIOpponentSystem {
         switch (this.config.difficulty) {
             case AIDifficulty.EASY:
                 return {
-                    description: '80% Random • Slow',
-                    accuracy: '20% Smart'
+                    description: '50% Random • Slow',
+                    accuracy: '50% Smart'
                 };
             case AIDifficulty.MEDIUM:
                 return {
-                    description: '60% Smart • Normal',
-                    accuracy: '40% Random'
+                    description: '75% Smart • Normal',
+                    accuracy: '25% Random'
                 };
             case AIDifficulty.HARD:
                 return {
-                    description: '90% Optimal • Fast',
-                    accuracy: '10% Random'
+                    description: '95% PERFECT • FAST',
+                    accuracy: '5% Random'
                 };
         }
     }
@@ -430,9 +446,18 @@ export class AIOpponentSystem {
         console.log(`AI Easy: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
         if (random < 0.5) {
-            // 50% - Random shot
+            // 50% - Random shot with angle variety
             console.log(`AI Easy: Random shot`);
-            return this.getRandomTarget();
+            const target = this.getRandomTarget();
+            // Sometimes use wall bounces even in easy mode (10% chance)
+            if (Math.random() < 0.1) {
+                const bounceOptions = this.calculateBounceShots(target.position, target.color);
+                if (bounceOptions.length > 0) {
+                    console.log(`AI Easy: Lucky bounce shot!`);
+                    return bounceOptions[0];
+                }
+            }
+            return target;
         }
         
         // 50% - Try to match but with poor accuracy
@@ -446,7 +471,7 @@ export class AIOpponentSystem {
                 matches[matches.length - 1];
             
             // Add significant inaccuracy to simulate poor aim
-            const inaccuracy = 40; // pixels
+            const inaccuracy = 30; // pixels (reduced from 40 for slightly better play)
             selected.position.x += (Math.random() - 0.5) * inaccuracy * 2;
             selected.position.y += (Math.random() - 0.5) * inaccuracy;
             
@@ -468,20 +493,29 @@ export class AIOpponentSystem {
             return this.getRandomTarget();
         }
         
-        // 75% - Strategic play
+        // 75% - Strategic play with occasional bounces
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Pick from top 60% of matches
+            // Pick from top 40% of matches
             const cutoff = Math.max(1, Math.ceil(matches.length * 0.4));
             const goodMatches = matches.slice(0, cutoff);
             
-            // Select with slight bias toward better matches
+            // Select with bias toward better matches
             const selectedIndex = Math.floor(Math.random() * Math.random() * goodMatches.length);
-            const selected = goodMatches[selectedIndex];
+            let selected = goodMatches[selectedIndex];
+            
+            // 30% chance to try a bounce shot if available
+            if (Math.random() < 0.3) {
+                const bounceOptions = this.calculateBounceShots(selected.position, selected.color);
+                if (bounceOptions.length > 0) {
+                    console.log(`AI Medium: Using bounce shot!`);
+                    selected = bounceOptions[0];
+                }
+            }
             
             // Add small inaccuracy
-            const inaccuracy = 15; // pixels
+            const inaccuracy = 10; // pixels (reduced from 15)
             selected.position.x += (Math.random() - 0.5) * inaccuracy;
             selected.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
             
@@ -489,48 +523,81 @@ export class AIOpponentSystem {
             return selected;
         }
         
-        // No matches - set up future plays
+        // No matches - look for complex setups sometimes
+        if (Math.random() < 0.3) {
+            const complexSetup = this.findComplexSetup();
+            if (complexSetup) {
+                console.log(`AI Medium: Complex setup`);
+                return complexSetup;
+            }
+        }
+        
+        // Standard setup
         console.log(`AI Medium: Setting up`);
         return this.findSetupShot() || this.getRandomTarget();
     }
     
     private selectHardTarget(): ITargetOption | null {
-        // Hard: 10% random, 90% optimal play
+        // Hard: 5% random, 95% perfect play
         const random = Math.random();
         console.log(`AI Hard: Strategy roll = ${random.toFixed(2)} for shot #${this.shotCount}`);
         
-        if (random < 0.1) {
-            // 10% - Tactical random to avoid predictability
+        if (random < 0.05) {
+            // 5% - Minimal randomness just to avoid being 100% predictable
             console.log(`AI Hard: Tactical random`);
             return this.getRandomTarget();
         }
         
-        // 90% - Optimal play
+        // 95% - Perfect optimal play
         const matches = this.analyzeGrid();
         
         if (matches.length > 0) {
-            // Always pick the best match
-            const bestMatch = matches[0];
+            // Find the BEST possible shot including wall bounces
+            let bestOption = matches[0];
             
-            // Very high accuracy - minimal error
-            const inaccuracy = 5; // pixels
-            bestMatch.position.x += (Math.random() - 0.5) * inaccuracy;
-            bestMatch.position.y += (Math.random() - 0.5) * inaccuracy * 0.5;
+            // Check if we can reach better positions with wall bounces
+            for (const match of matches.slice(0, 5)) { // Check top 5 matches
+                const bounceOptions = this.calculateBounceShots(match.position, match.color);
+                for (const bounceOption of bounceOptions) {
+                    if (bounceOption.score > bestOption.score) {
+                        bestOption = bounceOption;
+                    }
+                }
+            }
             
-            console.log(`AI Hard: Optimal shot - ${bestMatch.reasoning} (score: ${bestMatch.score})`);
-            return bestMatch;
+            // Perfect accuracy - minimal error (2-3 pixels max)
+            const inaccuracy = 2;
+            bestOption.position.x += (Math.random() - 0.5) * inaccuracy;
+            bestOption.position.y += (Math.random() - 0.5) * inaccuracy;
+            
+            // Store last shot position
+            this.lastShotPosition = { ...bestOption.position };
+            
+            console.log(`AI Hard: PERFECT shot - ${bestOption.reasoning} (score: ${bestOption.score})`);
+            return bestOption;
         }
         
-        // No matches - intelligent setup
+        // No direct matches - look for complex setups
+        const complexSetup = this.findComplexSetup();
+        if (complexSetup) {
+            console.log(`AI Hard: Complex strategic setup`);
+            this.lastShotPosition = { ...complexSetup.position };
+            return complexSetup;
+        }
+        
+        // Last resort - optimal placement
         const setupShot = this.findSetupShot();
         if (setupShot) {
             console.log(`AI Hard: Strategic setup`);
+            this.lastShotPosition = { ...setupShot.position };
             return setupShot;
         }
         
-        // Last resort - strategic random
-        console.log(`AI Hard: Strategic fallback`);
-        return this.getStrategicRandomTarget();
+        // Emergency fallback
+        console.log(`AI Hard: Emergency fallback`);
+        const randomTarget = this.getStrategicRandomTarget();
+        this.lastShotPosition = { ...randomTarget.position };
+        return randomTarget;
     }
     
     private getRandomTarget(): ITargetOption {
@@ -588,20 +655,42 @@ export class AIOpponentSystem {
             { x: screenWidth * 0.75, label: 'right' }
         ];
         
-        const zoneIndex = this.shotCount % zones.length;
-        const zone = zones[zoneIndex];
+        // Shuffle zones to avoid predictable patterns
+        const shuffledZones = [...zones].sort(() => Math.random() - 0.5);
+        const zone = shuffledZones[0];
         
-        // Position with variation
-        const targetX = zone.x + (Math.random() - 0.5) * 80;
-        const targetY = centerY + 40 + (Math.random() * 160);
+        // Position with MORE variation
+        const targetX = zone.x + (Math.random() - 0.5) * 120; // Increased from 80
+        const targetY = centerY + 20 + (Math.random() * 200); // Increased range
+        
+        // Ensure we're not shooting at the same spot
+        let finalX = targetX;
+        let finalY = targetY;
+        
+        if (this.lastShotPosition) {
+            const distance = Math.sqrt(
+                Math.pow(targetX - this.lastShotPosition.x, 2) +
+                Math.pow(targetY - this.lastShotPosition.y, 2)
+            );
+            
+            // If too close to last shot, offset it
+            if (distance < 60) {
+                finalX += (Math.random() < 0.5 ? -1 : 1) * 80;
+                finalY += (Math.random() - 0.5) * 60;
+                
+                // Keep within bounds
+                finalX = Math.max(60, Math.min(screenWidth - 60, finalX));
+                finalY = Math.max(centerY, Math.min(centerY + 250, finalY));
+            }
+        }
         
         // Pick a random color each time
         const strategicColor = Bubble.getRandomColor();
         
-        console.log(`🎯 Strategic: zone=${zone.label} x=${targetX.toFixed(0)} y=${targetY.toFixed(0)}`);
+        console.log(`🎯 Strategic: zone=${zone.label} x=${finalX.toFixed(0)} y=${finalY.toFixed(0)}`);
         
         return {
-            position: { x: targetX, y: targetY },
+            position: { x: finalX, y: finalY },
             score: 10,
             color: strategicColor,
             reasoning: `Strategic ${zone.label}`
@@ -657,7 +746,9 @@ export class AIOpponentSystem {
                                         const chainScore = this.predictChainReaction(targetHex, color);
                                         
                                         // High score for adjacent pairs (easy match) + chain bonus
-                                        const score = 100 + bubbles.length * 10 + chainScore;
+                                        // Prioritize match-3 completions even more
+                                        const baseScore = 200; // Increased from 100
+                                        const score = baseScore + bubbles.length * 15 + chainScore;
                                         
                                         options.push({
                                             position: pixelPos,
@@ -683,7 +774,9 @@ export class AIOpponentSystem {
                                     const chainScore = this.predictChainReaction(middlePos, color);
                                     
                                     // Good score for filling gaps + chain bonus
-                                    const score = 80 + bubbles.length * 10 + chainScore;
+                                    // Prioritize bridge completions
+                                    const baseScore = 150; // Increased from 80
+                                    const score = baseScore + bubbles.length * 12 + chainScore;
                                     
                                     options.push({
                                         position: pixelPos,
@@ -717,7 +810,20 @@ export class AIOpponentSystem {
                                     
                                     // Predict chain reactions
                                     const chainScore = this.predictChainReaction(neighbor, color);
-                                    const score = 60 + adjacentCount * 20 + chainScore;
+                                    const baseScore = 60 + adjacentCount * 20 + chainScore;
+                                    
+                                    // Add position variety bonus to avoid clustering
+                                    let varietyBonus = 0;
+                                    if (this.lastShotPosition) {
+                                        const distance = Math.sqrt(
+                                            Math.pow(pixelPos.x - this.lastShotPosition.x, 2) +
+                                            Math.pow(pixelPos.y - this.lastShotPosition.y, 2)
+                                        );
+                                        // Bonus for shots further from last position
+                                        varietyBonus = Math.min(30, distance / 5);
+                                    }
+                                    
+                                    const score = baseScore + varietyBonus;
                                     
                                     options.push({
                                         position: pixelPos,
@@ -1156,37 +1262,46 @@ export class AIOpponentSystem {
         // Show target marker for debugging
         this.showTargetMarker(target.position);
         
-        // SIMPLIFIED: Just calculate direct angle to target
-        const angleRad = Math.atan2(
-            target.position.y - this.launcher.y,
-            target.position.x - this.launcher.x
-        );
+        // Check if we need to use a bounce shot
+        let finalAngle: number;
         
-        // Convert to degrees (0° = right, 90° = down)
-        let degrees = angleRad * (180 / Math.PI);
-        
-        // Add 90 because launcher expects 90° = down
-        degrees = degrees + 90;
-        
-        // Normalize to 0-360
-        while (degrees < 0) degrees += 360;
-        while (degrees >= 360) degrees -= 360;
-        
-        // Add variation based on difficulty
-        let angleVariation = 0;
-        switch (this.config.difficulty) {
-            case AIDifficulty.EASY:
-                angleVariation = (Math.random() - 0.5) * 20; // ±10 degrees
-                break;
-            case AIDifficulty.MEDIUM:
-                angleVariation = (Math.random() - 0.5) * 10; // ±5 degrees
-                break;
-            case AIDifficulty.HARD:
-                angleVariation = (Math.random() - 0.5) * 4; // ±2 degrees
-                break;
+        if ((target as any).bounceAngle !== undefined) {
+            // Use pre-calculated bounce angle
+            finalAngle = (target as any).bounceAngle;
+            console.log(`🎯 AI Using BOUNCE shot: angle=${finalAngle.toFixed(1)}°`);
+        } else {
+            // Calculate direct angle to target
+            const angleRad = Math.atan2(
+                target.position.y - this.launcher.y,
+                target.position.x - this.launcher.x
+            );
+            
+            // Convert to degrees (0° = right, 90° = down)
+            let degrees = angleRad * (180 / Math.PI);
+            
+            // Add 90 because launcher expects 90° = down
+            degrees = degrees + 90;
+            
+            // Normalize to 0-360
+            while (degrees < 0) degrees += 360;
+            while (degrees >= 360) degrees -= 360;
+            
+            // Add variation based on difficulty
+            let angleVariation = 0;
+            switch (this.config.difficulty) {
+                case AIDifficulty.EASY:
+                    angleVariation = (Math.random() - 0.5) * 15; // ±7.5 degrees
+                    break;
+                case AIDifficulty.MEDIUM:
+                    angleVariation = (Math.random() - 0.5) * 6; // ±3 degrees
+                    break;
+                case AIDifficulty.HARD:
+                    angleVariation = (Math.random() - 0.5) * 2; // ±1 degree - VERY PRECISE
+                    break;
+            }
+            
+            finalAngle = degrees + angleVariation;
         }
-        
-        const finalAngle = degrees + angleVariation;
         
         console.log(`🎯 AI Shooting: target=(${target.position.x.toFixed(0)},${target.position.y.toFixed(0)}) angle=${finalAngle.toFixed(1)}° color=0x${target.color.toString(16)}`);
         
@@ -1469,136 +1584,29 @@ export class AIOpponentSystem {
     private addShootEffects(target: ITargetOption): void {
         const difficultyColor = this.getDifficultyColor();
         
-        // Different effects based on difficulty and shot quality
-        if (this.config.difficulty === AIDifficulty.HARD && target.score >= 100) {
-            // Epic shot effect for hard mode chain reactions
-            const flash = this.scene.add.rectangle(
-                this.scene.cameras.main.centerX,
-                this.scene.cameras.main.centerY,
-                this.scene.cameras.main.width,
-                this.scene.cameras.main.height,
-                0xFF0000,
-                0.15
-            );
-            flash.setDepth(2000);
-            
-            this.scene.tweens.add({
-                targets: flash,
-                alpha: 0,
-                duration: 300,
-                onComplete: () => flash.destroy()
-            });
-            
-            // Camera shake for powerful shots
-            this.scene.cameras.main.shake(150, 0.005);
-            
-            // Show "PERFECT SHOT!" text
-            const perfectText = this.scene.add.text(
-                this.scene.cameras.main.centerX,
-                150,
-                'PERFECT SHOT!',
-                {
-                    fontSize: '32px',
-                    color: '#FFD700',
-                    fontStyle: 'bold',
-                    stroke: '#FF0000',
-                    strokeThickness: 4
-                }
-            );
-            perfectText.setOrigin(0.5);
-            perfectText.setDepth(2001);
-            perfectText.setScale(0);
-            
-            this.scene.tweens.add({
-                targets: perfectText,
-                scale: 1.2,
-                duration: 300,
-                ease: 'Back.easeOut',
-                onComplete: () => {
-                    this.scene.time.delayedCall(500, () => {
-                        this.scene.tweens.add({
-                            targets: perfectText,
-                            scale: 0,
-                            alpha: 0,
-                            duration: 200,
-                            onComplete: () => perfectText.destroy()
-                        });
-                    });
-                }
-            });
-        } else if (this.config.difficulty === AIDifficulty.MEDIUM && target.score >= 80) {
-            // Good shot effect for medium mode
-            const flash = this.scene.add.rectangle(
-                this.launcher.x,
-                this.launcher.y,
-                100,
-                100,
-                difficultyColor,
-                0.3
-            );
-            flash.setDepth(1000);
-            
-            this.scene.tweens.add({
-                targets: flash,
-                scale: 3,
-                alpha: 0,
-                duration: 400,
-                ease: 'Power2',
-                onComplete: () => flash.destroy()
-            });
-        }
-        
-        // Particle effect at launcher
+        // Simple particle effect at launcher
         const particleColor = this.getDifficultyColor();
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 3; i++) {
             const particle = this.scene.add.circle(
                 this.launcher.x,
                 this.launcher.y,
-                3,
+                2,
                 particleColor,
-                0.8
+                0.5
             );
             
-            const angle = (Math.PI * 2 / 5) * i;
-            const distance = 30;
+            const angle = (Math.PI * 2 / 3) * i;
+            const distance = 20;
             
             this.scene.tweens.add({
                 targets: particle,
                 x: this.launcher.x + Math.cos(angle) * distance,
                 y: this.launcher.y + Math.sin(angle) * distance,
                 alpha: 0,
-                scale: 0.5,
-                duration: 400,
+                scale: 0.3,
+                duration: 300,
                 ease: 'Power2',
                 onComplete: () => particle.destroy()
-            });
-        }
-        
-        // Score popup for good shots
-        if (target.score >= 25) {
-            const scoreText = this.scene.add.text(
-                this.launcher.x,
-                this.launcher.y - 50,
-                `+${target.score}`,
-                {
-                    fontSize: '18px',
-                    color: '#FFD700',
-                    fontStyle: 'bold',
-                    stroke: '#000000',
-                    strokeThickness: 3
-                }
-            );
-            scoreText.setOrigin(0.5);
-            scoreText.setDepth(1001);
-            
-            this.scene.tweens.add({
-                targets: scoreText,
-                y: scoreText.y - 30,
-                alpha: 0,
-                scale: 1.5,
-                duration: 1000,
-                ease: 'Power2',
-                onComplete: () => scoreText.destroy()
             });
         }
     }
@@ -1678,6 +1686,208 @@ export class AIOpponentSystem {
         
         // Also log for debugging
         console.log(`🎯 AI Target Marker at (${position.x.toFixed(0)}, ${position.y.toFixed(0)})`);
+    }
+    
+    private calculateBounceShots(targetPos: { x: number; y: number }, color: BubbleColor): ITargetOption[] {
+        const bounceOptions: ITargetOption[] = [];
+        const screenWidth = this.scene.cameras.main.width;
+        
+        // Check left wall bounce
+        const leftBounceAngle = this.calculateBounceAngle(targetPos, 'left');
+        if (leftBounceAngle !== null) {
+            bounceOptions.push({
+                position: targetPos,
+                score: 150, // High score for bounce shots
+                color: color,
+                reasoning: 'Perfect bounce shot (left wall)',
+                bounceAngle: leftBounceAngle
+            } as any);
+        }
+        
+        // Check right wall bounce
+        const rightBounceAngle = this.calculateBounceAngle(targetPos, 'right');
+        if (rightBounceAngle !== null) {
+            bounceOptions.push({
+                position: targetPos,
+                score: 150, // High score for bounce shots
+                color: color,
+                reasoning: 'Perfect bounce shot (right wall)',
+                bounceAngle: rightBounceAngle
+            } as any);
+        }
+        
+        return bounceOptions;
+    }
+    
+    private calculateBounceAngle(targetPos: { x: number; y: number }, wall: 'left' | 'right'): number | null {
+        const screenWidth = this.scene.cameras.main.width;
+        const launcherX = this.launcher.x;
+        const launcherY = this.launcher.y;
+        
+        // Calculate the wall position
+        const wallX = wall === 'left' ? 0 : screenWidth;
+        
+        // Calculate the mirror position of the target relative to the wall
+        const mirrorX = wall === 'left' ? -targetPos.x : 2 * screenWidth - targetPos.x;
+        const mirrorY = targetPos.y;
+        
+        // Calculate angle to mirror position
+        const angleRad = Math.atan2(mirrorY - launcherY, mirrorX - launcherX);
+        let degrees = angleRad * (180 / Math.PI) + 90;
+        
+        // Normalize angle
+        while (degrees < 0) degrees += 360;
+        while (degrees >= 360) degrees -= 360;
+        
+        // Check if angle is valid for opponent (shooting downward)
+        // Valid range is approximately 30-150 degrees
+        if (degrees >= 30 && degrees <= 150) {
+            // Verify the bounce actually hits the target
+            const velocity = 600; // shoot speed
+            const rad = (degrees - 90) * Math.PI / 180;
+            const vx = Math.cos(rad) * velocity;
+            const vy = Math.sin(rad) * velocity;
+            
+            // Simple check: will it hit the wall?
+            if ((wall === 'left' && vx < 0) || (wall === 'right' && vx > 0)) {
+                return degrees;
+            }
+        }
+        
+        return null;
+    }
+    
+    private findComplexSetup(): ITargetOption | null {
+        // Look for positions that would set up future chain reactions
+        const gridBubbles = this.getGridBubbles();
+        if (gridBubbles.length < 5) return null;
+        
+        // Analyze potential chain setups
+        const colorGroups = new Map<BubbleColor, Bubble[]>();
+        gridBubbles.forEach(bubble => {
+            const color = bubble.getColor();
+            if (color !== null && color !== undefined) {
+                if (!colorGroups.has(color)) {
+                    colorGroups.set(color, []);
+                }
+                colorGroups.get(color)!.push(bubble);
+            }
+        });
+        
+        // Find colors that could create multiple matches with one shot
+        let bestSetup: ITargetOption | null = null;
+        let bestScore = 0;
+        
+        colorGroups.forEach((bubbles, color) => {
+            if (bubbles.length >= 4) { // Need at least 4 for complex setup
+                // Find positions that would connect multiple groups
+                const positions = this.findBridgePositions(bubbles);
+                
+                for (const pos of positions) {
+                    const score = this.evaluateComplexPosition(pos, color, bubbles);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestSetup = {
+                            position: this.bubbleGrid.hexToPixel(pos),
+                            hexPosition: pos,
+                            score: score,
+                            color: color,
+                            reasoning: `Complex setup for ${this.getColorName(color)} chain`
+                        };
+                    }
+                }
+            }
+        });
+        
+        return bestSetup;
+    }
+    
+    private findBridgePositions(bubbles: Bubble[]): IHexPosition[] {
+        const positions: IHexPosition[] = [];
+        const visited = new Set<string>();
+        
+        // Find positions that connect multiple bubble groups
+        for (let i = 0; i < bubbles.length - 1; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const pos1 = bubbles[i].getGridPosition();
+                const pos2 = bubbles[j].getGridPosition();
+                
+                if (pos1 && pos2) {
+                    const distance = this.getHexDistance(pos1, pos2);
+                    
+                    // Look for positions that bridge distant bubbles
+                    if (distance >= 3 && distance <= 4) {
+                        const bridgePositions = this.findPathBetween(pos1, pos2);
+                        for (const bridge of bridgePositions) {
+                            const key = `${bridge.q},${bridge.r}`;
+                            if (!visited.has(key) && !this.isPositionOccupied(bridge)) {
+                                visited.add(key);
+                                positions.push(bridge);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return positions;
+    }
+    
+    private findPathBetween(pos1: IHexPosition, pos2: IHexPosition): IHexPosition[] {
+        const path: IHexPosition[] = [];
+        
+        // Linear interpolation between two hex positions
+        const steps = 3; // Check 3 intermediate positions
+        for (let i = 1; i < steps; i++) {
+            const t = i / steps;
+            const q = Math.round(pos1.q + (pos2.q - pos1.q) * t);
+            const r = Math.round(pos1.r + (pos2.r - pos1.r) * t);
+            const s = -q - r;
+            
+            path.push({ q, r, s });
+        }
+        
+        return path;
+    }
+    
+    private evaluateComplexPosition(pos: IHexPosition, color: BubbleColor, sameBubbles: Bubble[]): number {
+        let score = 0;
+        
+        // Check how many bubbles this position would connect
+        const neighbors = this.bubbleGrid.getNeighbors(pos);
+        let connections = 0;
+        
+        for (const neighbor of neighbors) {
+            const bubble = this.getBubbleAtPosition(neighbor);
+            if (bubble && bubble.getColor() === color) {
+                connections++;
+                
+                // Check if this would complete a match
+                const neighborNeighbors = this.bubbleGrid.getNeighbors(neighbor);
+                let matchSize = 1; // The placed bubble
+                
+                for (const nn of neighborNeighbors) {
+                    const nnBubble = this.getBubbleAtPosition(nn);
+                    if (nnBubble && nnBubble.getColor() === color) {
+                        matchSize++;
+                    }
+                }
+                
+                if (matchSize >= 2) {
+                    score += 50 * matchSize; // Big bonus for creating matches
+                }
+            }
+        }
+        
+        // Bonus for connecting multiple groups
+        score += connections * 30;
+        
+        // Extra bonus if this creates a large cluster
+        if (connections >= 3) {
+            score += 100;
+        }
+        
+        return score;
     }
     
     public destroy(): void {
