@@ -10,6 +10,7 @@ export class GridAttachmentSystem {
     private bubbleGrid: BubbleGrid;
     private gridBubbles: Bubble[] = [];
     private attachmentInProgress: boolean = false;
+    private attachmentQueue: Array<{ bubble: Bubble; hexPos: IHexPosition; onComplete?: () => void }> = [];
     private matchDetectionSystem?: MatchDetectionSystem;
     
     constructor(scene: Scene, bubbleGrid: BubbleGrid) {
@@ -48,6 +49,28 @@ export class GridAttachmentSystem {
         // Use bubble diameter for collision detection
         const collisionRadius = BUBBLE_CONFIG.SIZE - 2; // Slightly less than diameter for proper touching
         
+        // Check objective collision first (if near center)
+        const centerPixel = this.bubbleGrid.hexToPixel({ q: 0, r: 0, s: 0 });
+        const centerDistance = Phaser.Math.Distance.Between(
+            projectilePos.x, projectilePos.y,
+            centerPixel.x, centerPixel.y
+        );
+        
+        // If very close to center and no bubble there, attach to center
+        if (centerDistance < BUBBLE_CONFIG.SIZE && !this.isPositionOccupied({ q: 0, r: 0, s: 0 })) {
+            // Create a virtual bubble at center for attachment reference
+            const virtualBubble = new Bubble(
+                this.scene,
+                centerPixel.x,
+                centerPixel.y,
+                0x000000
+            );
+            virtualBubble.setGridPosition({ q: 0, r: 0, s: 0 });
+            virtualBubble.setVisible(false);
+            return virtualBubble;
+        }
+        
+        // Check collision with existing bubbles
         for (const gridBubble of this.gridBubbles) {
             if (!gridBubble.visible) continue;
             
@@ -158,14 +181,84 @@ export class GridAttachmentSystem {
     }
     
     /**
+     * Find best available position near target
+     */
+    private findBestAvailablePosition(targetHex: IHexPosition, bubble: Bubble): IHexPosition | null {
+        // First check if target is available
+        if (!this.isPositionOccupied(targetHex) && this.isValidPosition(targetHex)) {
+            return targetHex;
+        }
+        
+        console.log('Target position occupied or invalid, searching alternatives');
+        
+        // Search in expanding rings for available position
+        for (let ring = 1; ring <= 3; ring++) {
+            const ringPositions = this.bubbleGrid.getRing(targetHex, ring);
+            
+            // Find closest available position in this ring
+            let bestPos: IHexPosition | null = null;
+            let minDistance = Infinity;
+            
+            for (const pos of ringPositions) {
+                if (!this.isPositionOccupied(pos) && this.isValidPosition(pos)) {
+                    const pixelPos = this.bubbleGrid.hexToPixel(pos);
+                    const distance = Phaser.Math.Distance.Between(
+                        bubble.x, bubble.y,
+                        pixelPos.x, pixelPos.y
+                    );
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestPos = pos;
+                    }
+                }
+            }
+            
+            if (bestPos) {
+                console.log(`Found available position at ring ${ring}:`, bestPos);
+                return bestPos;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Check if position is valid (has at least one neighbor)
+     */
+    private isValidPosition(hexPos: IHexPosition): boolean {
+        // Center position is always valid
+        if (hexPos.q === 0 && hexPos.r === 0) return true;
+        
+        // Check if position has at least one neighbor bubble
+        const neighbors = this.bubbleGrid.getNeighbors(hexPos);
+        return neighbors.some(neighbor => this.isPositionOccupied(neighbor));
+    }
+    
+    /**
      * Check if a hex position is occupied
      */
     private isPositionOccupied(hexPos: IHexPosition): boolean {
-        // Simply check if any bubble has this grid position
+        // Check both by grid position and by pixel proximity
+        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
+        const threshold = BUBBLE_CONFIG.SIZE * 0.8; // 80% of bubble size
+        
         return this.gridBubbles.some(bubble => {
             if (!bubble.visible) return false;
+            
+            // Check by grid position
             const pos = bubble.getGridPosition();
-            return pos && pos.q === hexPos.q && pos.r === hexPos.r;
+            if (pos && pos.q === hexPos.q && pos.r === hexPos.r) {
+                return true;
+            }
+            
+            // Also check by pixel distance to catch misaligned bubbles
+            const distance = Phaser.Math.Distance.Between(
+                bubble.x, bubble.y,
+                pixelPos.x, pixelPos.y
+            );
+            
+            return distance < threshold;
         });
     }
     
@@ -173,7 +266,23 @@ export class GridAttachmentSystem {
      * Attach bubble to grid at specified position
      */
     public attachToGrid(bubble: Bubble, hexPos: IHexPosition, onComplete?: () => void): void {
-        if (this.attachmentInProgress) return;
+        if (this.attachmentInProgress) {
+            console.warn('Attachment already in progress, queueing bubble');
+            // Queue this attachment for later
+            this.attachmentQueue.push({ bubble, hexPos, onComplete });
+            return;
+        }
+        
+        // Validate and find best position
+        hexPos = this.findBestAvailablePosition(hexPos, bubble);
+        
+        if (!hexPos) {
+            console.warn('No valid position found, destroying bubble');
+            bubble.destroy();
+            if (onComplete) onComplete();
+            return;
+        }
+        
         this.attachmentInProgress = true;
         
         // Get exact pixel position for this hex coordinate
@@ -181,44 +290,119 @@ export class GridAttachmentSystem {
         
         console.log('Attaching bubble to hex:', hexPos, 'pixel:', pixelPos);
         
+        // Clean up any existing bubbles that might be misaligned at this position
+        this.cleanupMisalignedBubbles(hexPos, bubble);
+        
         // Set grid position BEFORE moving
         bubble.setGridPosition(hexPos);
         
-        // Immediately snap to correct position (no animation for now to debug)
-        bubble.x = pixelPos.x;
-        bubble.y = pixelPos.y;
-        
-        // Add to grid bubbles
+        // Add to grid bubbles immediately to prevent double-occupation
         this.addGridBubble(bubble);
         
-        // Small visual feedback
+        // Animate to position
+        const distance = Phaser.Math.Distance.Between(
+            bubble.x, bubble.y,
+            pixelPos.x, pixelPos.y
+        );
+        
+        // Use shorter duration for closer distances
+        const duration = Math.min(200, Math.max(50, distance * 0.5));
+        
         this.scene.tweens.add({
             targets: bubble,
-            scaleX: 1.1,
-            scaleY: 1.1,
-            duration: 50,
-            ease: 'Back.easeOut',
-            yoyo: true,
-            onComplete: async () => {
-                console.log('Attachment complete, checking for matches...');
-                
-                // Check for matches FIRST
-                if (this.matchDetectionSystem) {
-                    console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
-                    await this.matchDetectionSystem.checkForMatches(bubble);
-                } else {
-                    console.warn('MatchDetectionSystem not available!');
-                }
-                
-                // Then check for disconnected bubbles
-                this.checkDisconnectedBubbles();
-                
-                this.attachmentInProgress = false;
-                
-                if (onComplete) {
-                    onComplete();
+            x: pixelPos.x,
+            y: pixelPos.y,
+            duration: duration,
+            ease: 'Power2',
+            onComplete: () => {
+                // Small visual feedback
+                this.scene.tweens.add({
+                    targets: bubble,
+                    scaleX: 1.1,
+                    scaleY: 1.1,
+                    duration: 50,
+                    ease: 'Back.easeOut',
+                    yoyo: true
+                });
+            }
+        });
+        
+        // Delay slightly before checking matches to ensure position is settled
+        this.scene.time.delayedCall(duration + 100, async () => {
+            console.log('Attachment complete, checking for matches...');
+            
+            // Verify bubble is properly positioned
+            const finalPixelPos = this.bubbleGrid.hexToPixel(hexPos);
+            if (Phaser.Math.Distance.Between(bubble.x, bubble.y, finalPixelPos.x, finalPixelPos.y) > 5) {
+                console.warn('Bubble not properly positioned, correcting...');
+                bubble.setPosition(finalPixelPos.x, finalPixelPos.y);
+            }
+            
+            // Check for matches FIRST
+            if (this.matchDetectionSystem) {
+                console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
+                await this.matchDetectionSystem.checkForMatches(bubble);
+            } else {
+                console.warn('MatchDetectionSystem not available!');
+            }
+            
+            // Then check for disconnected bubbles
+            this.checkDisconnectedBubbles();
+            
+            this.attachmentInProgress = false;
+            
+            // Emit bubble attached event
+            this.scene.events.emit('bubble-attached');
+            
+            // If no matches, emit matches-resolved
+            this.scene.time.delayedCall(100, () => {
+                this.scene.events.emit('matches-resolved');
+            });
+            
+            if (onComplete) {
+                onComplete();
+            }
+            
+            // Process queued attachments
+            if (this.attachmentQueue.length > 0) {
+                const next = this.attachmentQueue.shift();
+                if (next) {
+                    this.scene.time.delayedCall(50, () => {
+                        this.attachToGrid(next.bubble, next.hexPos, next.onComplete);
+                    });
                 }
             }
+        });
+    }
+    
+    /**
+     * Clean up any misaligned bubbles at position
+     */
+    private cleanupMisalignedBubbles(hexPos: IHexPosition, newBubble: Bubble): void {
+        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
+        const threshold = BUBBLE_CONFIG.SIZE * 0.9;
+        
+        // Find and remove any bubbles too close to this position
+        const toRemove: Bubble[] = [];
+        
+        this.gridBubbles.forEach(bubble => {
+            if (bubble === newBubble || !bubble.visible) return;
+            
+            const distance = Phaser.Math.Distance.Between(
+                bubble.x, bubble.y,
+                pixelPos.x, pixelPos.y
+            );
+            
+            if (distance < threshold) {
+                console.warn('Found overlapping bubble, removing it:', bubble.getGridPosition());
+                toRemove.push(bubble);
+            }
+        });
+        
+        // Remove overlapping bubbles
+        toRemove.forEach(bubble => {
+            this.removeGridBubble(bubble);
+            bubble.destroy();
         });
     }
     

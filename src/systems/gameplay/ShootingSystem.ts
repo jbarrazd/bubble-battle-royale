@@ -19,6 +19,7 @@ export class ShootingSystem {
     private scene: Phaser.Scene;
     private inputManager: InputManager;
     private playerLauncher: Launcher;
+    private opponentLauncher?: Launcher;
     
     // Shooting mechanics
     private projectiles: IProjectile[] = [];
@@ -77,11 +78,18 @@ export class ShootingSystem {
         this.scene.input.on('pointerdown', this.onPointerDown, this);
         this.scene.input.on('pointerup', this.onShoot, this);
         
+        // Listen for AI shoot events
+        this.scene.events.on('ai-shoot', this.onAIShoot, this);
+        
         // Create cooldown indicator
         this.createCooldownIndicator();
         
         // Initialize bubble queue
         this.loadNextBubble();
+    }
+    
+    public setOpponentLauncher(launcher: Launcher): void {
+        this.opponentLauncher = launcher;
     }
     
     private onPointerDown(): void {
@@ -166,6 +174,8 @@ export class ShootingSystem {
         
         if (!this.canShoot || !this.currentBubble) return;
         
+        // No turn checking - allow simultaneous shooting
+        
         // Get launcher angle and direction
         const angle = this.playerLauncher.getAimAngle();
         const direction = this.playerLauncher.getAimDirection();
@@ -185,6 +195,9 @@ export class ShootingSystem {
             velocity: velocity,
             isActive: true
         });
+        
+        // Emit shooting started event
+        this.scene.events.emit('shooting-started');
         
         // Play launcher animation
         this.playerLauncher.animateShoot();
@@ -209,12 +222,54 @@ export class ShootingSystem {
         });
     }
     
+    private onAIShoot = (data: any): void => {
+        if (!this.opponentLauncher) return;
+        
+        console.log('ShootingSystem: AI shooting', data);
+        
+        // Create bubble for AI
+        const aiBubble = new Bubble(
+            this.scene,
+            this.opponentLauncher.x,
+            this.opponentLauncher.y + 30,
+            data.color
+        );
+        
+        // Calculate velocity based on angle
+        const radians = Phaser.Math.DegToRad(data.angle - 90);
+        const velocity = new Phaser.Math.Vector2(
+            Math.cos(radians) * this.shootSpeed,
+            Math.sin(radians) * this.shootSpeed
+        );
+        
+        // Create projectile
+        const projectile: IProjectile = {
+            bubble: aiBubble,
+            velocity: velocity,
+            isActive: true
+        };
+        
+        this.projectiles.push(projectile);
+        
+        // Emit shooting started event
+        this.scene.events.emit('shooting-started', { isAI: true });
+        
+        // Visual feedback on opponent launcher
+        this.opponentLauncher.setHighlight(true);
+        this.scene.time.delayedCall(200, () => {
+            this.opponentLauncher.setHighlight(false);
+        });
+    }
+    
     public update(delta: number): void {
         // Update trajectory preview if aiming
         if (this.canShoot && this.inputManager.isPointerActive()) {
             const angle = this.playerLauncher.getAimAngle();
             this.trajectoryPreview.update(angle, delta);
         }
+        
+        // Check for projectile-to-projectile collisions
+        this.checkProjectileCollisions();
         
         // Update all active projectiles
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -252,7 +307,17 @@ export class ShootingSystem {
                             // Only attach if distance is reasonable (within 2 bubble diameters)
                             if (distance < BUBBLE_CONFIG.SIZE * 2) {
                                 projectile.isActive = false;
-                                this.gridAttachmentSystem.attachToGrid(projectile.bubble, attachPos);
+                                
+                                // Stop the bubble's movement immediately
+                                projectile.velocity.x = 0;
+                                projectile.velocity.y = 0;
+                                
+                                // Attach to grid with callback
+                                this.gridAttachmentSystem.attachToGrid(projectile.bubble, attachPos, () => {
+                                    // Emit shooting complete event after attachment
+                                    this.scene.events.emit('shooting-complete');
+                                });
+                                
                                 continue;
                             }
                         }
@@ -271,9 +336,73 @@ export class ShootingSystem {
         }
     }
     
+    private checkProjectileCollisions(): void {
+        const radius = BUBBLE_CONFIG.SIZE / 2;
+        
+        // Check each projectile against all others
+        for (let i = 0; i < this.projectiles.length; i++) {
+            const proj1 = this.projectiles[i];
+            if (!proj1.isActive) continue;
+            
+            for (let j = i + 1; j < this.projectiles.length; j++) {
+                const proj2 = this.projectiles[j];
+                if (!proj2.isActive) continue;
+                
+                // Calculate distance between projectiles
+                const distance = Phaser.Math.Distance.Between(
+                    proj1.bubble.x, proj1.bubble.y,
+                    proj2.bubble.x, proj2.bubble.y
+                );
+                
+                // Check if collision occurred
+                if (distance < radius * 2) {
+                    // Calculate collision normal
+                    const dx = proj2.bubble.x - proj1.bubble.x;
+                    const dy = proj2.bubble.y - proj1.bubble.y;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (len > 0) {
+                        // Normalize
+                        const nx = dx / len;
+                        const ny = dy / len;
+                        
+                        // Separate bubbles
+                        const overlap = (radius * 2) - distance;
+                        proj1.bubble.x -= nx * overlap * 0.5;
+                        proj1.bubble.y -= ny * overlap * 0.5;
+                        proj2.bubble.x += nx * overlap * 0.5;
+                        proj2.bubble.y += ny * overlap * 0.5;
+                        
+                        // Calculate relative velocity
+                        const relVelX = proj2.velocity.x - proj1.velocity.x;
+                        const relVelY = proj2.velocity.y - proj1.velocity.y;
+                        const speed = relVelX * nx + relVelY * ny;
+                        
+                        // Don't resolve if velocities are separating
+                        if (speed < 0) continue;
+                        
+                        // Apply elastic collision with some damping
+                        const impulse = speed * 0.8; // 0.8 = restitution coefficient
+                        
+                        proj1.velocity.x += impulse * nx;
+                        proj1.velocity.y += impulse * ny;
+                        proj2.velocity.x -= impulse * nx;
+                        proj2.velocity.y -= impulse * ny;
+                        
+                        // Add small random deviation to prevent stuck bubbles
+                        proj1.velocity.x += (Math.random() - 0.5) * 20;
+                        proj1.velocity.y += (Math.random() - 0.5) * 20;
+                        proj2.velocity.x += (Math.random() - 0.5) * 20;
+                        proj2.velocity.y += (Math.random() - 0.5) * 20;
+                    }
+                }
+            }
+        }
+    }
+    
     private checkWallCollision(projectile: IProjectile): void {
         const bubble = projectile.bubble;
-        const radius = 16; // Bubble radius
+        const radius = BUBBLE_CONFIG.SIZE / 2;
         
         // Left wall
         if (bubble.x - radius <= this.bounds.left) {

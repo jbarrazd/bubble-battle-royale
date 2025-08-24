@@ -1,5 +1,6 @@
-import { ArenaZone } from '@/types/ArenaTypes';
+import { ArenaZone, BubbleColor } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { Bubble } from './Bubble';
 
 export class Launcher extends Phaser.GameObjects.Container {
     private base: Phaser.GameObjects.Rectangle;
@@ -7,6 +8,7 @@ export class Launcher extends Phaser.GameObjects.Container {
     private arrow: Phaser.GameObjects.Triangle;
     private zone: ArenaZone;
     private currentAngle: number = 0;
+    private loadedBubble?: Bubble;
 
     constructor(scene: Phaser.Scene, x: number, y: number, zone: ArenaZone) {
         super(scene, x, y);
@@ -131,5 +133,29 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.base.setFillStyle(0x2c3e50);
             this.cannon.setFillStyle(0x7f8c8d);
         }
+    }
+    
+    public loadBubble(color: BubbleColor): void {
+        // Create a bubble at the launcher position
+        if (this.loadedBubble) {
+            this.loadedBubble.destroy();
+        }
+        
+        const yOffset = this.zone === ArenaZone.PLAYER ? -30 : 30;
+        this.loadedBubble = new Bubble(
+            this.scene,
+            this.x,
+            this.y + yOffset,
+            color
+        );
+        this.loadedBubble.setScale(0.8);
+    }
+    
+    public getLoadedBubble(): Bubble | undefined {
+        return this.loadedBubble;
+    }
+    
+    public clearLoadedBubble(): void {
+        this.loadedBubble = undefined;
     }
 }

@@ -9,6 +9,9 @@ import { InputManager } from '@/systems/input/InputManager';
 import { ShootingSystem } from './ShootingSystem';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { MatchDetectionSystem } from './MatchDetectionSystem';
+import { AIOpponentSystem, AIDifficulty } from './AIOpponentSystem';
+
+export { AIDifficulty };
 
 export class ArenaSystem {
     private scene: Scene;
@@ -26,6 +29,8 @@ export class ArenaSystem {
     private shootingSystem?: ShootingSystem;
     private gridAttachmentSystem: GridAttachmentSystem;
     private matchDetectionSystem: MatchDetectionSystem;
+    private aiOpponent?: AIOpponentSystem;
+    private isSinglePlayer: boolean = true;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -101,7 +106,9 @@ export class ArenaSystem {
         }
     }
 
-    public setupArena(): void {
+    public setupArena(singlePlayer: boolean = true, difficulty: AIDifficulty = AIDifficulty.EASY): void {
+        this.isSinglePlayer = singlePlayer;
+        
         this.createLaunchers();
         this.createObjective();
         this.createInitialBubbles();
@@ -115,6 +122,28 @@ export class ArenaSystem {
             this.gridAttachmentSystem,
             this.bubbleGrid
         );
+        
+        // Set opponent launcher for shooting system
+        this.shootingSystem.setOpponentLauncher(this.opponentLauncher);
+        
+        // Initialize AI opponent if single player
+        if (this.isSinglePlayer) {
+            this.aiOpponent = new AIOpponentSystem(
+                this.scene,
+                this.bubbleGrid,
+                this.opponentLauncher,
+                difficulty
+            );
+            this.aiOpponent.setShootingSystem(this.shootingSystem);
+            
+            console.log(`ArenaSystem: AI opponent initialized with ${difficulty} difficulty`);
+            
+            // Start AI after a short delay
+            this.scene.time.delayedCall(2000, () => {
+                this.aiOpponent?.start();
+                console.log('ArenaSystem: AI opponent started');
+            });
+        }
         
         // Enable debug with 'D' key
         this.scene.input.keyboard?.on('keydown-D', () => {
@@ -429,6 +458,7 @@ export class ArenaSystem {
         this.shootingSystem?.destroy();
         this.gridAttachmentSystem?.clearGrid();
         this.matchDetectionSystem?.reset();
+        this.aiOpponent?.destroy();
         this.bubbles.forEach(bubble => bubble.destroy());
         this.bubblePool.forEach(bubble => bubble.destroy());
         this.objective?.destroy();
