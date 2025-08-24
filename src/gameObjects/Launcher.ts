@@ -60,11 +60,18 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));
             this.arrow.setRotation(Phaser.Math.DegToRad(launcherAngle));
         } else {
-            // For opponent launcher (not used yet in STORY-003)
-            angle = Phaser.Math.Clamp(angle, 120, 240);
+            // For opponent launcher - allow wider range for AI
+            // Map angle for opponent (shooting downward)
+            let launcherAngle = angle - 90; // Convert to launcher-relative
+            
+            // Clamp to reasonable range for downward shooting
+            // -60 to 60 degrees from vertical (30 to 150 in world space)
+            launcherAngle = Phaser.Math.Clamp(launcherAngle, -60, 60);
             this.currentAngle = angle;
-            this.cannon.setRotation(Phaser.Math.DegToRad(angle));
-            this.arrow.setRotation(Phaser.Math.DegToRad(angle));
+            
+            // Apply rotation
+            this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));
+            this.arrow.setRotation(Phaser.Math.DegToRad(launcherAngle));
         }
     }
 

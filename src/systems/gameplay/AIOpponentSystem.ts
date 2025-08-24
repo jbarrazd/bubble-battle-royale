@@ -399,24 +399,35 @@ export class AIOpponentSystem {
         const screenHeight = this.scene.cameras.main.height;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Generate different random values each time
-        const randomSeed = Date.now();
+        // Use more randomness sources
+        const randomValue1 = Math.random();
+        const randomValue2 = Math.random();
+        const randomValue3 = Math.random();
         
-        // More varied random positions - use full width range
-        const minX = screenWidth * 0.15;
-        const maxX = screenWidth * 0.85;
-        const targetX = minX + (Math.random() * (maxX - minX));
+        // More varied random positions - use FULL width range
+        // Make sure to cover left, center, and right areas
+        const zones = [
+            { min: screenWidth * 0.1, max: screenWidth * 0.35 },  // Left zone
+            { min: screenWidth * 0.35, max: screenWidth * 0.65 }, // Center zone
+            { min: screenWidth * 0.65, max: screenWidth * 0.9 }   // Right zone
+        ];
+        
+        // Pick a random zone
+        const zoneIndex = Math.floor(randomValue1 * zones.length);
+        const zone = zones[zoneIndex];
+        const targetX = zone.min + (randomValue2 * (zone.max - zone.min));
         
         // Target lower half of screen (AI shoots down)
         const minY = centerY + 20;
         const maxY = centerY + 250;
-        const targetY = minY + (Math.random() * (maxY - minY));
+        const targetY = minY + (randomValue3 * (maxY - minY));
         
-        // Random color from available colors
+        // Random color from available colors - ensure variety
         const colors = [0xFF6B6B, 0x4ECDC4, 0xFFD93D, 0x95E77E, 0xA8E6CF, 0xDDA0DD];
-        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const colorIndex = Math.floor(Math.random() * colors.length);
+        const randomColor = colors[colorIndex];
         
-        console.log(`AI: Random target generated at (${targetX.toFixed(0)}, ${targetY.toFixed(0)}) - seed: ${randomSeed}`);
+        console.log(`AI: Random target zone=${zoneIndex} pos=(${targetX.toFixed(0)}, ${targetY.toFixed(0)}) color=${colorIndex}`);
         
         return {
             position: { 
@@ -596,6 +607,9 @@ export class AIOpponentSystem {
     private shoot(target: ITargetOption): void {
         if (!this.shootingSystem) return;
         
+        // Show target marker for debugging
+        this.showTargetMarker(target.position);
+        
         // Calculate trajectory considering wall bounces if needed
         const trajectory = this.calculateTrajectory(target.position);
         
@@ -642,7 +656,7 @@ export class AIOpponentSystem {
     }
     
     private calculateTrajectory(target: { x: number; y: number }): { angle: number; bounces: number } {
-        // Direct shot angle
+        // Direct shot angle - AI shoots from top, so needs to aim downward
         const directAngle = Phaser.Math.Angle.Between(
             this.launcher.x,
             this.launcher.y,
@@ -650,44 +664,49 @@ export class AIOpponentSystem {
             target.y
         );
         
-        const directDegrees = Phaser.Math.RadToDeg(directAngle) + 90;
+        // Convert to degrees (0 = right, 90 = down, 180 = left, 270 = up)
+        let directDegrees = Phaser.Math.RadToDeg(directAngle) + 90;
         
-        // Check if direct shot is within launcher constraints (shooting downward)
-        // AI shoots down, so angle should be between 60 and 120 degrees approximately
-        if (directDegrees >= 45 && directDegrees <= 135) {
-            return { angle: directDegrees, bounces: 0 };
-        }
+        // Normalize angle to 0-360 range
+        while (directDegrees < 0) directDegrees += 360;
+        while (directDegrees >= 360) directDegrees -= 360;
         
-        // Calculate wall bounce shot if direct shot is not possible
+        // For opponent shooting downward, valid angles are roughly 30-150 degrees
+        // This allows shooting diagonally left and right
+        const minAngle = 30;
+        const maxAngle = 150;
+        
+        // Check if we need to use wall bounce
+        let needsBounce = false;
+        let finalAngle = directDegrees;
+        
+        // If target is too far to the sides, calculate bounce
         const screenWidth = this.scene.cameras.main.width;
+        const xDiff = Math.abs(target.x - this.launcher.x);
+        const yDiff = target.y - this.launcher.y;
         
-        // Try left wall bounce
-        const leftBounceX = 0;
-        const leftBounceAngle = Phaser.Math.Angle.Between(
-            this.launcher.x,
-            this.launcher.y,
-            leftBounceX,
-            target.y - 100 // Aim higher for bounce
-        );
-        
-        // Try right wall bounce
-        const rightBounceX = screenWidth;
-        const rightBounceAngle = Phaser.Math.Angle.Between(
-            this.launcher.x,
-            this.launcher.y,
-            rightBounceX,
-            target.y - 100
-        );
-        
-        // Choose the better bounce angle
-        const leftDegrees = Phaser.Math.RadToDeg(leftBounceAngle) + 90;
-        const rightDegrees = Phaser.Math.RadToDeg(rightBounceAngle) + 90;
-        
-        if (Math.abs(leftDegrees - 90) < Math.abs(rightDegrees - 90)) {
-            return { angle: leftDegrees, bounces: 1 };
+        // Only bounce if target is significantly to the side and we can't reach it directly
+        if (xDiff > screenWidth * 0.4 && yDiff < 100) {
+            needsBounce = true;
+            
+            // Determine which wall to bounce off
+            if (target.x < this.launcher.x) {
+                // Bounce off left wall
+                finalAngle = 180 - directDegrees; // Aim left
+                finalAngle = Math.max(minAngle, Math.min(maxAngle, finalAngle));
+            } else {
+                // Bounce off right wall
+                finalAngle = directDegrees; // Aim right
+                finalAngle = Math.max(minAngle, Math.min(maxAngle, finalAngle));
+            }
         } else {
-            return { angle: rightDegrees, bounces: 1 };
+            // Direct shot - just clamp to valid range
+            finalAngle = Math.max(minAngle, Math.min(maxAngle, directDegrees));
         }
+        
+        console.log(`AI Trajectory: target=(${target.x.toFixed(0)},${target.y.toFixed(0)}) angle=${finalAngle.toFixed(1)}° bounce=${needsBounce}`);
+        
+        return { angle: finalAngle, bounces: needsBounce ? 1 : 0 };
     }
     
     private showAimLine(angle: number, hasBounce: boolean): void {
@@ -967,6 +986,36 @@ export class AIOpponentSystem {
                 onComplete: () => scoreText.destroy()
             });
         }
+    }
+    
+    private showTargetMarker(position: { x: number; y: number }): void {
+        // Create a visual marker where the AI is aiming
+        const marker = this.scene.add.graphics();
+        marker.setDepth(999);
+        
+        // Draw crosshair
+        const color = this.getDifficultyColor();
+        marker.lineStyle(2, color, 0.8);
+        
+        // Circle
+        marker.strokeCircle(position.x, position.y, 15);
+        
+        // Cross
+        marker.lineBetween(position.x - 10, position.y, position.x + 10, position.y);
+        marker.lineBetween(position.x, position.y - 10, position.x, position.y + 10);
+        
+        // Pulse animation
+        this.scene.tweens.add({
+            targets: marker,
+            alpha: 0,
+            scale: 1.5,
+            duration: 1000,
+            ease: 'Power2',
+            onComplete: () => marker.destroy()
+        });
+        
+        // Also log for debugging
+        console.log(`🎯 AI Target Marker at (${position.x.toFixed(0)}, ${position.y.toFixed(0)})`);
     }
     
     public destroy(): void {
