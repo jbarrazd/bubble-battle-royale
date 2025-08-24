@@ -2,7 +2,9 @@ import { IObjectiveConfig } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 export class Objective extends Phaser.GameObjects.Container {
-    private sprite: Phaser.GameObjects.Star;
+    private chestBody: Phaser.GameObjects.Rectangle;
+    private chestLid: Phaser.GameObjects.Rectangle;
+    private chestLock: Phaser.GameObjects.Arc;
     private shield: Phaser.GameObjects.Arc;
     private glowEffect: Phaser.GameObjects.Arc;
     private health: number;
@@ -22,11 +24,27 @@ export class Objective extends Phaser.GameObjects.Container {
         this.shield = scene.add.circle(0, 0, config.size / 2 + 2, 0x00ffff, 0.3);
         this.shield.setStrokeStyle(2, 0x00aaff, 0.8);
         
-        // Create main objective - a simple star the size of a bubble
-        this.sprite = scene.add.star(0, 0, 6, config.size / 4, config.size / 2, 0xffd700);
-        this.sprite.setStrokeStyle(2, 0xff8800, 1);
+        // Create treasure chest
+        const chestSize = config.size * 0.7;
         
-        this.add([this.glowEffect, this.shield, this.sprite]);
+        // Chest body (main box)
+        this.chestBody = scene.add.rectangle(0, 3, chestSize, chestSize * 0.8, 0x8B4513);
+        this.chestBody.setStrokeStyle(2, 0x654321, 1);
+        
+        // Chest lid (top part)
+        this.chestLid = scene.add.rectangle(0, -5, chestSize * 1.1, chestSize * 0.4, 0xA0522D);
+        this.chestLid.setStrokeStyle(2, 0x654321, 1);
+        
+        // Chest lock (golden circle)
+        this.chestLock = scene.add.circle(0, 3, chestSize * 0.15, 0xFFD700);
+        this.chestLock.setStrokeStyle(1, 0xFFA500, 1);
+        
+        // Add golden details
+        const detail1 = scene.add.rectangle(-chestSize * 0.3, 3, 2, chestSize * 0.6, 0xFFD700);
+        const detail2 = scene.add.rectangle(chestSize * 0.3, 3, 2, chestSize * 0.6, 0xFFD700);
+        const detail3 = scene.add.rectangle(0, 3, chestSize * 0.8, 2, 0xFFD700);
+        
+        this.add([this.glowEffect, this.shield, this.chestBody, detail1, detail2, detail3, this.chestLid, this.chestLock]);
         
         this.setSize(config.size, config.size);
         this.setDepth(Z_LAYERS.OBJECTIVE);
@@ -34,13 +52,14 @@ export class Objective extends Phaser.GameObjects.Container {
         // Add pulsing animation
         this.createPulseAnimation();
         
-        // Add rotation animation
+        // Add subtle floating animation for the chest
         scene.tweens.add({
-            targets: this.sprite,
-            rotation: Math.PI * 2,
-            duration: 10000,
+            targets: this,
+            y: config.y - 2,
+            duration: 2000,
+            yoyo: true,
             repeat: -1,
-            ease: 'Linear'
+            ease: 'Sine.easeInOut'
         });
         
         scene.add.existing(this);
@@ -98,8 +117,9 @@ export class Objective extends Phaser.GameObjects.Container {
             ease: 'Sine.easeInOut'
         });
         
-        // Change star color to indicate vulnerability
-        this.sprite.setFillStyle(0xff6b6b);
+        // Change chest color to indicate vulnerability
+        this.chestBody.setFillStyle(0xff6b6b);
+        this.chestLid.setFillStyle(0xff8888);
     }
 
     public hit(damage: number = 1): void {
@@ -131,13 +151,22 @@ export class Objective extends Phaser.GameObjects.Container {
     }
 
     public override destroy(): void {
-        // Victory animation
+        // Victory animation - chest opens
         this.scene.tweens.add({
-            targets: this.sprite,
-            scale: 2,
+            targets: this.chestLid,
+            y: -15,
+            rotation: -0.3,
+            duration: 500,
+            ease: 'Back.easeOut'
+        });
+        
+        // Chest disappears
+        this.scene.tweens.add({
+            targets: this,
+            scale: 1.5,
             alpha: 0,
-            rotation: Math.PI * 4,
             duration: 1000,
+            delay: 200,
             ease: 'Power2',
             onComplete: () => {
                 this.createVictoryParticles();

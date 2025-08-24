@@ -242,40 +242,64 @@ export class GridAttachmentSystem {
         const disconnected = new Map<ArenaZone, Bubble[]>();
         disconnected.set(ArenaZone.PLAYER, []);
         disconnected.set(ArenaZone.OPPONENT, []);
+        disconnected.set(ArenaZone.OBJECTIVE, []);
         
         // Mark all bubbles as unvisited
         const visited = new Set<Bubble>();
         const connected = new Set<Bubble>();
         
-        // Find all bubbles in OBJECTIVE zone (anchors)
-        const anchors = this.gridBubbles.filter(bubble => {
-            const zone = this.getZoneForBubble(bubble);
-            return zone === ArenaZone.OBJECTIVE;
+        // Find bubbles adjacent to the objective (center position)
+        const centerHex: IHexPosition = { q: 0, r: 0, s: 0 };
+        const anchors: Bubble[] = [];
+        
+        // Get bubbles at center and immediate neighbors as anchors
+        const centerBubble = this.getBubbleAtPosition(centerHex);
+        if (centerBubble) {
+            anchors.push(centerBubble);
+        }
+        
+        // Get neighbors of center as additional anchors
+        const centerNeighbors = this.bubbleGrid.getNeighbors(centerHex);
+        centerNeighbors.forEach(neighborHex => {
+            const bubble = this.getBubbleAtPosition(neighborHex);
+            if (bubble) {
+                anchors.push(bubble);
+            }
         });
         
-        // If no anchors, all bubbles are disconnected
+        // If no anchors (no bubbles near objective), all bubbles are disconnected
         if (anchors.length === 0) {
+            console.log('No anchors found - all bubbles are floating!');
             this.gridBubbles.forEach(bubble => {
-                const zone = this.getZoneForBubble(bubble);
-                if (zone !== ArenaZone.OBJECTIVE) {
+                if (bubble.visible) {
+                    const zone = this.getZoneForBubble(bubble);
                     disconnected.get(zone)?.push(bubble);
                 }
             });
             return disconnected;
         }
         
-        // Flood fill from each anchor
+        console.log(`Found ${anchors.length} anchor bubbles near objective`);
+        
+        // Flood fill from each anchor to find connected bubbles
         anchors.forEach(anchor => {
             this.floodFill(anchor, visited, connected);
         });
         
-        // Any unvisited bubbles are disconnected
+        console.log(`${connected.size} bubbles are connected to objective`);
+        
+        // Any unvisited bubbles are disconnected and should fall
         this.gridBubbles.forEach(bubble => {
-            if (!connected.has(bubble)) {
+            if (!connected.has(bubble) && bubble.visible) {
                 const zone = this.getZoneForBubble(bubble);
-                if (zone !== ArenaZone.OBJECTIVE) {
-                    disconnected.get(zone)?.push(bubble);
-                }
+                disconnected.get(zone)?.push(bubble);
+            }
+        });
+        
+        // Log disconnected counts
+        disconnected.forEach((bubbles, zone) => {
+            if (bubbles.length > 0) {
+                console.log(`${bubbles.length} disconnected bubbles in ${zone} zone`);
             }
         });
         
@@ -336,51 +360,89 @@ export class GridAttachmentSystem {
      * Apply gravity to disconnected bubbles based on zone
      */
     public applyZoneGravity(bubbles: Bubble[], zone: ArenaZone): void {
-        const direction = zone === ArenaZone.PLAYER ? 'down' : 'up';
-        this.animateFallingBubbles(bubbles, direction);
+        // Determine fall direction based on zone
+        let direction: 'up' | 'down';
+        
+        if (zone === ArenaZone.PLAYER) {
+            direction = 'down';  // Player zone bubbles fall down
+        } else if (zone === ArenaZone.OPPONENT) {
+            direction = 'up';    // Opponent zone bubbles fall up
+        } else {
+            // Objective zone bubbles fall based on their position
+            direction = 'down';  // Default to down
+        }
+        
+        console.log(`Applying ${direction} gravity to ${bubbles.length} bubbles in ${zone} zone`);
+        this.animateFallingBubbles(bubbles, direction, zone);
     }
     
     /**
      * Animate bubbles falling in specified direction
      */
-    private animateFallingBubbles(bubbles: Bubble[], direction: 'up' | 'down'): void {
-        const gravity = direction === 'down' ? 500 : -500;
+    private animateFallingBubbles(bubbles: Bubble[], direction: 'up' | 'down', zone: ArenaZone): void {
         const outOfBounds = direction === 'down' 
             ? this.scene.cameras.main.height + 100
             : -100;
+        
+        // Sort bubbles by distance from center for cascade effect
+        const centerX = this.scene.cameras.main.centerX;
+        bubbles.sort((a, b) => {
+            const distA = Math.abs(a.x - centerX);
+            const distB = Math.abs(b.x - centerX);
+            return distA - distB;
+        });
         
         bubbles.forEach((bubble, index) => {
             // Remove from grid immediately
             this.removeGridBubble(bubble);
             bubble.setGridPosition(null);
             
-            // Add slight random horizontal movement
-            const horizontalDrift = Phaser.Math.Between(-50, 50);
+            // Add slight random horizontal movement for natural falling
+            const horizontalDrift = Phaser.Math.Between(-30, 30);
+            const rotationSpeed = Phaser.Math.Between(-Math.PI * 2, Math.PI * 2);
+            
+            // Flash before falling
+            bubble.setTint(0xFFFFFF);
+            this.scene.time.delayedCall(100, () => {
+                bubble.clearTint();
+            });
             
             // Animate falling with physics-like acceleration
             this.scene.tweens.add({
                 targets: bubble,
                 y: outOfBounds,
                 x: bubble.x + horizontalDrift,
-                rotation: Phaser.Math.Between(-Math.PI, Math.PI),
-                alpha: 0.5,
-                duration: 1000,
+                rotation: rotationSpeed,
+                scale: 0.8,
+                alpha: 0.3,
+                duration: 800 + index * 20, // Vary duration for natural effect
                 ease: 'Quad.easeIn',
-                delay: index * 50, // Stagger the falls
+                delay: index * 30, // Stagger the falls for cascade effect
                 onComplete: () => {
-                    // Award points if opponent bubble
+                    // Award points based on zone
+                    let points = 5;
                     if (zone === ArenaZone.OPPONENT) {
-                        this.scene.events.emit('bubble-dropped', { 
-                            zone: ArenaZone.OPPONENT, 
-                            points: 10 
-                        });
+                        points = 15; // More points for opponent bubbles
+                    } else if (zone === ArenaZone.OBJECTIVE) {
+                        points = 10;
                     }
                     
-                    // Return to pool or destroy
+                    this.scene.events.emit('bubble-dropped', { 
+                        zone: zone, 
+                        points: points,
+                        color: bubble.getColor()
+                    });
+                    
+                    // Return to pool
                     bubble.returnToPool();
                 }
             });
         });
+        
+        // Add screen shake for large groups
+        if (bubbles.length >= 5) {
+            this.scene.cameras.main.shake(150, 0.002);
+        }
     }
     
     /**

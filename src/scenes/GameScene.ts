@@ -191,6 +191,13 @@ export class GameScene extends Scene {
         ).setOrigin(0.5);
         this.scoreText.setDepth(Z_LAYERS.UI);
         
+        // Listen for bubble drop events
+        this.game.events.on('bubble-dropped', (data: any) => {
+            // Add points from dropped bubbles
+            this.currentScore += data.points;
+            this.scoreText.setText(`Score: ${this.currentScore}`);
+        });
+        
         // Listen for score events
         this.game.events.on('match-completed', (data: any) => {
             this.currentScore = data.totalScore;
