@@ -158,13 +158,23 @@ export class AIOpponentSystem {
             this.shootTimer = undefined;
         }
         this.hideThinking();
+        
+        // Clear any pending animations
+        if (this.thinkingIndicator) {
+            this.scene.tweens.killTweensOf(this.thinkingIndicator);
+            this.thinkingIndicator.setVisible(false);
+        }
     }
     
     private scheduleNextShot(): void {
         if (!this.isActive) return;
         
-        // Schedule next shot based on difficulty
-        const delay = this.config.decisionDelay + Phaser.Math.Between(500, 1500);
+        // Schedule next shot based on difficulty with more variation
+        const baseDelay = this.config.decisionDelay;
+        const randomDelay = Math.floor(Math.random() * 1000) + 500; // 500-1500ms
+        const delay = baseDelay + randomDelay;
+        
+        console.log(`AI: Next shot scheduled in ${delay}ms`);
         
         this.shootTimer = this.scene.time.delayedCall(delay, () => {
             if (this.isActive) {
@@ -269,15 +279,17 @@ export class AIOpponentSystem {
         // Brief thinking animation
         await this.delay(500);
         
-        // Select target based on difficulty
+        // Select target based on difficulty - ensure fresh selection each time
         const target = this.selectTarget();
         
         if (target) {
-            console.log(`AI: Selected target at (${target.position.x}, ${target.position.y}) - ${target.reasoning}`);
+            console.log(`AI: Selected target at (${target.position.x.toFixed(0)}, ${target.position.y.toFixed(0)}) - ${target.reasoning}`);
             this.shoot(target);
         } else {
             console.log('AI: No valid target found, shooting randomly');
-            this.shootRandom();
+            // Force a completely new random shot
+            const randomTarget = this.getRandomTarget();
+            this.shoot(randomTarget);
         }
         
         this.hideThinking();
@@ -288,34 +300,56 @@ export class AIOpponentSystem {
     }
     
     private selectTarget(): ITargetOption | null {
-        const options: ITargetOption[] = [];
+        // Force fresh selection each time
+        let result: ITargetOption | null = null;
         
         switch (this.config.difficulty) {
             case AIDifficulty.EASY:
-                return this.selectEasyTarget();
+                result = this.selectEasyTarget();
+                break;
             case AIDifficulty.MEDIUM:
-                return this.selectMediumTarget();
+                result = this.selectMediumTarget();
+                break;
             case AIDifficulty.HARD:
-                return this.selectHardTarget();
+                result = this.selectHardTarget();
+                break;
             default:
-                return this.selectEasyTarget();
+                result = this.selectEasyTarget();
+                break;
         }
+        
+        // Ensure we always return a target
+        if (!result) {
+            console.log('AI: No target selected, forcing random');
+            result = this.getRandomTarget();
+        }
+        
+        return result;
     }
     
     private selectEasyTarget(): ITargetOption | null {
         // Easy: 70% random, 30% try to match
         const random = Math.random();
+        console.log(`AI Easy: Random roll = ${random.toFixed(2)} (< 0.7 = random shot)`);
         
         if (random < 0.7) {
-            // Random shot
-            return this.getRandomTarget();
+            // Random shot - ensure we get a fresh random target
+            const target = this.getRandomTarget();
+            console.log(`AI Easy: Using random shot`);
+            return target;
         } else {
             // Try to find a simple match
             const matches = this.analyzeGrid();
+            console.log(`AI Easy: Found ${matches.length} match opportunities`);
+            
             if (matches.length > 0) {
                 // Pick a random match opportunity
-                return matches[Math.floor(Math.random() * matches.length)];
+                const matchIndex = Math.floor(Math.random() * matches.length);
+                console.log(`AI Easy: Picking match option ${matchIndex}`);
+                return matches[matchIndex];
             }
+            
+            console.log(`AI Easy: No matches found, falling back to random`);
             return this.getRandomTarget();
         }
     }
@@ -360,18 +394,37 @@ export class AIOpponentSystem {
     }
     
     private getRandomTarget(): ITargetOption {
-        // Get a random position in the lower half of the screen (opponent shoots down)
-        const centerX = this.scene.cameras.main.centerX;
-        const targetY = this.scene.cameras.main.centerY + Phaser.Math.Between(50, 150);
-        const offsetX = Phaser.Math.Between(-100, 100);
+        // Get a truly random position each time
+        const screenWidth = this.scene.cameras.main.width;
+        const screenHeight = this.scene.cameras.main.height;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Generate different random values each time
+        const randomSeed = Date.now();
+        
+        // More varied random positions - use full width range
+        const minX = screenWidth * 0.15;
+        const maxX = screenWidth * 0.85;
+        const targetX = minX + (Math.random() * (maxX - minX));
+        
+        // Target lower half of screen (AI shoots down)
+        const minY = centerY + 20;
+        const maxY = centerY + 250;
+        const targetY = minY + (Math.random() * (maxY - minY));
+        
+        // Random color from available colors
+        const colors = [0xFF6B6B, 0x4ECDC4, 0xFFD93D, 0x95E77E, 0xA8E6CF, 0xDDA0DD];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        console.log(`AI: Random target generated at (${targetX.toFixed(0)}, ${targetY.toFixed(0)}) - seed: ${randomSeed}`);
         
         return {
             position: { 
-                x: centerX + offsetX, 
+                x: targetX, 
                 y: targetY 
             },
             score: 0,
-            color: Bubble.getRandomColor(),
+            color: randomColor,
             reasoning: 'Random shot'
         };
     }
@@ -553,13 +606,13 @@ export class AIOpponentSystem {
         let angleVariation = 0;
         switch (this.config.difficulty) {
             case AIDifficulty.EASY:
-                angleVariation = Phaser.Math.Between(-10, 10); // ±10 degrees
+                angleVariation = (Math.random() - 0.5) * 20; // ±10 degrees
                 break;
             case AIDifficulty.MEDIUM:
-                angleVariation = Phaser.Math.Between(-5, 5); // ±5 degrees
+                angleVariation = (Math.random() - 0.5) * 10; // ±5 degrees
                 break;
             case AIDifficulty.HARD:
-                angleVariation = Phaser.Math.Between(-2, 2); // ±2 degrees
+                angleVariation = (Math.random() - 0.5) * 4; // ±2 degrees
                 break;
         }
         
@@ -646,21 +699,25 @@ export class AIOpponentSystem {
         
         switch (this.config.difficulty) {
             case AIDifficulty.EASY:
-                // No preview for easy
-                return;
+                // Always show preview for easy (helping the player understand AI's intent)
+                showPreview = true;
+                previewDuration = 600;
+                lineColor = 0x4CAF50;
+                lineAlpha = 0.5;
+                break;
             case AIDifficulty.MEDIUM:
-                // Brief preview for medium
-                showPreview = Math.random() < 0.3; // 30% chance
-                previewDuration = 200;
+                // Sometimes show preview for medium
+                showPreview = Math.random() < 0.5; // 50% chance
+                previewDuration = 300;
                 lineColor = 0xFFC107;
-                lineAlpha = 0.4;
+                lineAlpha = 0.3;
                 break;
             case AIDifficulty.HARD:
-                // Always show preview for hard
-                showPreview = true;
-                previewDuration = 400;
+                // No preview for hard (more challenging)
+                showPreview = Math.random() < 0.1; // 10% chance only
+                previewDuration = 150;
                 lineColor = 0xFF0000;
-                lineAlpha = 0.6;
+                lineAlpha = 0.2;
                 break;
         }
         
@@ -824,6 +881,12 @@ export class AIOpponentSystem {
     public setDifficulty(difficulty: AIDifficulty): void {
         this.config = this.getDifficultyConfig(difficulty);
         console.log(`AI: Difficulty set to ${difficulty}`);
+        
+        // Update difficulty badge
+        if (this.difficultyBadge) {
+            this.difficultyBadge.destroy();
+            this.createDifficultyBadge();
+        }
     }
     
     private addShootEffects(target: ITargetOption): void {

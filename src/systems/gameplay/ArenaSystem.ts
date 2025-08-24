@@ -149,6 +149,24 @@ export class ArenaSystem {
         this.scene.input.keyboard?.on('keydown-D', () => {
             this.toggleDebug();
         });
+        
+        // Change AI difficulty with number keys
+        if (this.isSinglePlayer && this.aiOpponent) {
+            this.scene.input.keyboard?.on('keydown-ONE', () => {
+                this.changeAIDifficulty(AIDifficulty.EASY);
+            });
+            
+            this.scene.input.keyboard?.on('keydown-TWO', () => {
+                this.changeAIDifficulty(AIDifficulty.MEDIUM);
+            });
+            
+            this.scene.input.keyboard?.on('keydown-THREE', () => {
+                this.changeAIDifficulty(AIDifficulty.HARD);
+            });
+            
+            // Show current controls
+            this.showControlsHint();
+        }
     }
 
     private createLaunchers(): void {
@@ -453,6 +471,104 @@ export class ArenaSystem {
         }
     }
 
+    private changeAIDifficulty(difficulty: AIDifficulty): void {
+        if (!this.aiOpponent) return;
+        
+        // Stop current AI
+        this.aiOpponent.stop();
+        
+        // Change difficulty
+        this.aiOpponent.setDifficulty(difficulty);
+        
+        // Restart AI
+        this.scene.time.delayedCall(500, () => {
+            this.aiOpponent?.start();
+        });
+        
+        // Show notification
+        this.showDifficultyChangeNotification(difficulty);
+    }
+    
+    private showDifficultyChangeNotification(difficulty: AIDifficulty): void {
+        const notification = this.scene.add.container(
+            this.scene.cameras.main.centerX,
+            200
+        );
+        
+        const colors = {
+            [AIDifficulty.EASY]: 0x4CAF50,
+            [AIDifficulty.MEDIUM]: 0xFFC107,
+            [AIDifficulty.HARD]: 0xF44336
+        };
+        
+        const bg = this.scene.add.rectangle(0, 0, 200, 40, colors[difficulty], 0.9);
+        bg.setStrokeStyle(2, 0xFFFFFF);
+        
+        const text = this.scene.add.text(0, 0, `AI: ${difficulty}`, {
+            fontSize: '18px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        });
+        text.setOrigin(0.5);
+        
+        notification.add([bg, text]);
+        notification.setDepth(1500);
+        notification.setScale(0);
+        
+        // Animate
+        this.scene.tweens.add({
+            targets: notification,
+            scale: 1,
+            duration: 200,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                this.scene.time.delayedCall(1000, () => {
+                    this.scene.tweens.add({
+                        targets: notification,
+                        scale: 0,
+                        alpha: 0,
+                        duration: 200,
+                        onComplete: () => notification.destroy()
+                    });
+                });
+            }
+        });
+    }
+    
+    private showControlsHint(): void {
+        // Create controls hint at bottom-left
+        const hintContainer = this.scene.add.container(10, this.scene.cameras.main.height - 60);
+        
+        const bg = this.scene.add.rectangle(0, 0, 250, 50, 0x000000, 0.7);
+        bg.setOrigin(0);
+        bg.setStrokeStyle(1, 0x555555);
+        
+        const title = this.scene.add.text(5, 5, 'Controls:', {
+            fontSize: '12px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        });
+        
+        const controls = this.scene.add.text(5, 20, 
+            'D: Debug | 1: Easy | 2: Medium | 3: Hard', {
+            fontSize: '11px',
+            color: '#CCCCCC'
+        });
+        
+        hintContainer.add([bg, title, controls]);
+        hintContainer.setDepth(900);
+        hintContainer.setAlpha(0.8);
+        
+        // Fade in
+        hintContainer.setAlpha(0);
+        this.scene.tweens.add({
+            targets: hintContainer,
+            alpha: 0.8,
+            duration: 1000,
+            delay: 2000
+        });
+    }
+    
     public destroy(): void {
         this.inputManager?.destroy();
         this.shootingSystem?.destroy();
