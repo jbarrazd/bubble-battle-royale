@@ -1,6 +1,6 @@
 import { Scene } from 'phaser';
 import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition } from '@/types/ArenaTypes';
-import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS } from '@/config/ArenaConfig';
+import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER_ZONE_CONFIG } from '@/config/ArenaConfig';
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
 import { Launcher } from '@/gameObjects/Launcher';
@@ -43,6 +43,9 @@ export class ArenaSystem {
     private victoryScreen?: VictoryScreen;
     private defeatScreen?: DefeatScreen;
     private isRestarting: boolean = false;
+    private playerDangerLine?: Phaser.GameObjects.Graphics;
+    private opponentDangerLine?: Phaser.GameObjects.Graphics;
+    private dangerWarningActive: boolean = false;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -293,15 +296,67 @@ export class ArenaSystem {
         graphics.lineTo(this.scene.cameras.main.width, opponentZone.y + opponentZone.height);
         graphics.strokePath();
         
-        // Add DANGER LINE for player - this is where they lose if bubbles cross
-        const dangerLineY = playerZone.y + 30; // 30 pixels into player zone
-        graphics.lineStyle(3, 0xFF0000, 0.5); // Red line
-        graphics.beginPath();
-        graphics.moveTo(0, dangerLineY);
-        graphics.lineTo(this.scene.cameras.main.width, dangerLineY);
-        graphics.strokePath();
+        // Add DANGER LINE for player - fixed position from bottom
+        const screenHeight = this.scene.cameras.main.height;
+        const screenWidth = this.scene.cameras.main.width;
+        const playerDangerY = screenHeight - DANGER_ZONE_CONFIG.PLAYER_OFFSET;
         
-        // Remove warning text for cleaner UI
+        // Create player danger line with its own graphics object for animations
+        if (!this.playerDangerLine) {
+            this.playerDangerLine = this.scene.add.graphics();
+            this.playerDangerLine.setDepth(Z_LAYERS.ZONE_DEBUG);
+        }
+        this.playerDangerLine.clear();
+        this.playerDangerLine.lineStyle(DANGER_ZONE_CONFIG.LINE_WIDTH, DANGER_ZONE_CONFIG.LINE_COLOR, DANGER_ZONE_CONFIG.LINE_ALPHA);
+        this.playerDangerLine.beginPath();
+        this.playerDangerLine.moveTo(0, playerDangerY);
+        this.playerDangerLine.lineTo(screenWidth, playerDangerY);
+        this.playerDangerLine.strokePath();
+        
+        // Add "DANGER" text for player
+        const playerDangerText = this.scene.add.text(
+            this.scene.cameras.main.width / 2,
+            playerDangerY - 10,
+            'DANGER',
+            {
+                fontSize: '10px',
+                color: '#FF0000',
+                fontFamily: 'Arial Black',
+                alpha: 0.6
+            }
+        );
+        playerDangerText.setOrigin(0.5);
+        playerDangerText.setDepth(Z_LAYERS.ZONE_DEBUG);
+        
+        // Add DANGER LINE for opponent - fixed position from top
+        const opponentDangerY = DANGER_ZONE_CONFIG.OPPONENT_OFFSET;
+        
+        // Create opponent danger line with its own graphics object for animations
+        if (!this.opponentDangerLine) {
+            this.opponentDangerLine = this.scene.add.graphics();
+            this.opponentDangerLine.setDepth(Z_LAYERS.ZONE_DEBUG);
+        }
+        this.opponentDangerLine.clear();
+        this.opponentDangerLine.lineStyle(DANGER_ZONE_CONFIG.LINE_WIDTH, DANGER_ZONE_CONFIG.LINE_COLOR, DANGER_ZONE_CONFIG.LINE_ALPHA);
+        this.opponentDangerLine.beginPath();
+        this.opponentDangerLine.moveTo(0, opponentDangerY);
+        this.opponentDangerLine.lineTo(screenWidth, opponentDangerY);
+        this.opponentDangerLine.strokePath();
+        
+        // Add "DANGER" text for opponent
+        const opponentDangerText = this.scene.add.text(
+            this.scene.cameras.main.width / 2,
+            opponentDangerY + 15,
+            'DANGER',
+            {
+                fontSize: '10px',
+                color: '#FF0000',
+                fontFamily: 'Arial Black',
+                alpha: 0.6
+            }
+        );
+        opponentDangerText.setOrigin(0.5);
+        opponentDangerText.setDepth(Z_LAYERS.ZONE_DEBUG);
     }
 
     private toggleDebug(): void {
@@ -458,6 +513,9 @@ export class ArenaSystem {
         
         // Update objective shield
         this.updateObjectiveShield();
+        
+        // Check danger zone proximity
+        this.checkDangerZoneProximity();
     }
     
     private updateLauncherAiming(): void {
@@ -642,13 +700,42 @@ export class ArenaSystem {
         
         const bubble = data.bubble;
         
-        // Check for defeat conditions (bubbles reaching danger zone)
-        const playerZone = this.zones.get(ArenaZone.PLAYER)!;
-        const dangerLineY = playerZone.y + 30; // 30 pixels into player zone
+        // Only check bubbles that are actually attached and visible
+        if (!bubble.visible || !bubble.getGridPosition()) {
+            return;
+        }
         
-        if (bubble.y > dangerLineY) {
-            console.log('💀 Bubble crossed danger line! Player loses!');
+        // Check for defeat conditions (bubbles reaching danger zones)
+        const screenHeight = this.scene.cameras.main.height;
+        const playerDangerY = screenHeight - DANGER_ZONE_CONFIG.PLAYER_OFFSET;
+        const opponentDangerY = DANGER_ZONE_CONFIG.OPPONENT_OFFSET;
+        
+        // Check if any bubble crossed player's danger line (player loses)
+        if (bubble.y > playerDangerY) {
+            console.log('💀 Bubble crossed PLAYER danger line! Player loses!');
+            console.log(`Bubble Y: ${bubble.y}, Danger Line: ${playerDangerY}`);
             this.triggerGameOver(false); // Player loses
+            return;
+        }
+        
+        // Check if any bubble crossed opponent's danger line (opponent loses, player wins)
+        // Only check for real grid positions, not falling bubbles
+        if (bubble.y < opponentDangerY) {
+            // Verify this bubble is actually in the grid at this position
+            const hexPos = bubble.getGridPosition();
+            if (hexPos) {
+                const expectedPos = this.bubbleGrid.hexToPixel(hexPos);
+                // Check if bubble is actually at its grid position (not falling)
+                const distance = Phaser.Math.Distance.Between(bubble.x, bubble.y, expectedPos.x, expectedPos.y);
+                
+                if (distance < 5) {
+                    // Bubble is truly at grid position and in danger zone
+                    console.log('💀 Bubble crossed OPPONENT danger line! Opponent loses!');
+                    console.log(`Bubble Y: ${bubble.y}, Danger Line: ${opponentDangerY}`);
+                    this.triggerGameOver(true); // Player wins
+                    return;
+                }
+            }
         }
     }
     
@@ -861,6 +948,79 @@ export class ArenaSystem {
             console.error('❌ Error in returnToMenu:', error);
             // Force restart as last resort
             window.location.reload();
+        }
+    }
+    
+    private checkDangerZoneProximity(): void {
+        if (this.gameOver) return;
+        
+        const screenHeight = this.scene.cameras.main.height;
+        const playerDangerY = screenHeight - DANGER_ZONE_CONFIG.PLAYER_OFFSET;
+        const opponentDangerY = DANGER_ZONE_CONFIG.OPPONENT_OFFSET;
+        
+        let nearDanger = false;
+        const warningDistance = 40; // Start warning when bubbles are within 40 pixels
+        
+        // Check all grid bubbles
+        const gridBubbles = this.gridAttachmentSystem.getGridBubbles();
+        
+        for (const bubble of gridBubbles) {
+            if (!bubble.visible) continue;
+            
+            // Check proximity to player danger zone
+            const playerDistance = playerDangerY - bubble.y;
+            if (playerDistance < warningDistance && playerDistance > 0) {
+                nearDanger = true;
+                this.activateDangerWarning(this.playerDangerLine, true);
+            }
+            
+            // Check proximity to opponent danger zone
+            const opponentDistance = bubble.y - opponentDangerY;
+            if (opponentDistance < warningDistance && opponentDistance > 0) {
+                nearDanger = true;
+                this.activateDangerWarning(this.opponentDangerLine, false);
+            }
+        }
+        
+        // Deactivate warning if no bubbles are near danger
+        if (!nearDanger && this.dangerWarningActive) {
+            this.deactivateDangerWarning();
+        }
+    }
+    
+    private activateDangerWarning(dangerLine: Phaser.GameObjects.Graphics | undefined, isPlayer: boolean): void {
+        if (!dangerLine || this.dangerWarningActive) return;
+        
+        this.dangerWarningActive = true;
+        
+        // Pulse animation for danger line
+        this.scene.tweens.add({
+            targets: dangerLine,
+            alpha: { from: 0.6, to: 1 },
+            duration: DANGER_ZONE_CONFIG.PULSE_DURATION / 2,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Flash effect for player only
+        if (isPlayer) {
+            this.scene.cameras.main.flash(200, 255, 0, 0, false);
+        }
+    }
+    
+    private deactivateDangerWarning(): void {
+        this.dangerWarningActive = false;
+        
+        // Stop animations
+        if (this.playerDangerLine) {
+            this.scene.tweens.killTweensOf(this.playerDangerLine);
+            this.playerDangerLine.setAlpha(1);
+        }
+        
+        if (this.opponentDangerLine) {
+            this.scene.tweens.killTweensOf(this.opponentDangerLine);
+            this.opponentDangerLine.setAlpha(1);
         }
     }
     

@@ -352,7 +352,10 @@ export class GridAttachmentSystem {
             this.attachmentInProgress = false;
             
             // Emit bubble attached event with data
-            this.scene.events.emit('bubble-attached', { bubble, position: hexPos });
+            // Only emit if bubble is visible and has a valid position
+            if (bubble.visible && bubble.getGridPosition()) {
+                this.scene.events.emit('bubble-attached', { bubble, position: hexPos });
+            }
             
             // If no matches, emit matches-resolved
             this.scene.time.delayedCall(100, () => {
