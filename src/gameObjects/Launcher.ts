@@ -60,7 +60,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));
             this.arrow.setRotation(Phaser.Math.DegToRad(launcherAngle));
         } else {
-            // For opponent launcher - same range as player but inverted
+            // For opponent launcher - mirror the rotation since launcher is flipped
             // Opponent shoots downward (15° to 165° in world coordinates)
             console.log(`Opponent Launcher: Input angle=${angle}°`);
             
@@ -77,9 +77,10 @@ export class Launcher extends Phaser.GameObjects.Container {
             
             console.log(`Opponent Launcher: Clamped to ${angle}° (launcher angle: ${launcherAngle}°)`);
             
-            // Apply rotation
-            this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));
-            this.arrow.setRotation(Phaser.Math.DegToRad(launcherAngle));
+            // Apply INVERTED rotation because launcher is flipped with setScale(1, -1)
+            // When flipped, positive rotation becomes negative visually
+            this.cannon.setRotation(Phaser.Math.DegToRad(-launcherAngle));
+            this.arrow.setRotation(Phaser.Math.DegToRad(-launcherAngle));
         }
     }
 

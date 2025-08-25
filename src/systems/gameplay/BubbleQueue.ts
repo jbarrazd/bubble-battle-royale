@@ -8,6 +8,7 @@ export class BubbleQueue {
     private queue: Bubble[] = [];
     private container: Phaser.GameObjects.Container;
     private background: Phaser.GameObjects.Rectangle;
+    private isOpponent: boolean = false;
     
     // Queue settings
     private readonly QUEUE_SIZE = 3; // Current + next 2
@@ -24,11 +25,15 @@ export class BubbleQueue {
         BubbleColor.PURPLE
     ];
     
-    constructor(scene: Phaser.Scene, x: number, y: number) {
+    constructor(scene: Phaser.Scene, x: number, y: number, isOpponent: boolean = false) {
         this.scene = scene;
+        this.isOpponent = isOpponent;
         
         // Create container for queue UI
-        this.container = scene.add.container(x + this.QUEUE_X_OFFSET, y + this.QUEUE_Y_OFFSET);
+        // For opponent, mirror the X offset to show on the right side
+        const xOffset = isOpponent ? Math.abs(this.QUEUE_X_OFFSET) : this.QUEUE_X_OFFSET;
+        const yOffset = isOpponent ? -this.QUEUE_Y_OFFSET : this.QUEUE_Y_OFFSET;
+        this.container = scene.add.container(x + xOffset, y + yOffset);
         this.container.setDepth(Z_LAYERS.UI);
         
         // Create background panel
@@ -72,7 +77,10 @@ export class BubbleQueue {
                 bubble.setVisible(false);
             } else {
                 // Next bubbles
-                const yPos = -20 + (index - 1) * this.BUBBLE_SPACING;
+                // For opponent, invert the Y direction
+                const spacing = this.isOpponent ? -this.BUBBLE_SPACING : this.BUBBLE_SPACING;
+                const baseY = this.isOpponent ? 20 : -20;
+                const yPos = baseY + (index - 1) * spacing;
                 bubble.setPosition(0, yPos);
                 bubble.setVisible(true);
                 this.container.add(bubble);
@@ -113,7 +121,10 @@ export class BubbleQueue {
         // Update display with animation
         this.queue.forEach((bubble, index) => {
             if (index > 0) {
-                const targetY = -20 + (index - 1) * this.BUBBLE_SPACING;
+                // For opponent, invert the Y direction
+                const spacing = this.isOpponent ? -this.BUBBLE_SPACING : this.BUBBLE_SPACING;
+                const baseY = this.isOpponent ? 20 : -20;
+                const targetY = baseY + (index - 1) * spacing;
                 
                 this.scene.tweens.add({
                     targets: bubble,
@@ -128,8 +139,10 @@ export class BubbleQueue {
         // Fade in the new bubble at the end
         const lastBubble = this.queue[this.queue.length - 1];
         if (lastBubble && this.queue.length > 1) {
+            const spacing = this.isOpponent ? -this.BUBBLE_SPACING : this.BUBBLE_SPACING;
+            const baseY = this.isOpponent ? 20 : -20;
             lastBubble.setAlpha(0);
-            lastBubble.setPosition(0, -20 + (this.queue.length - 2) * this.BUBBLE_SPACING);
+            lastBubble.setPosition(0, baseY + (this.queue.length - 2) * spacing);
             lastBubble.setVisible(true);
             this.container.add(lastBubble);
             

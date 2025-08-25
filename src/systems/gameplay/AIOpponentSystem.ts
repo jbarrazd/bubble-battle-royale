@@ -36,8 +36,8 @@ export class AIOpponentSystem {
         this.scene = scene;
         this.launcher = launcher;
         
-        // Create bubble queue at opponent position
-        this.bubbleQueue = new BubbleQueue(scene, launcher.x, launcher.y + 30);
+        // Create bubble queue at opponent position (with isOpponent flag)
+        this.bubbleQueue = new BubbleQueue(scene, launcher.x, launcher.y + 30, true);
         
         // Listen for shooting complete to know when we can shoot again
         this.scene.events.on('shooting-complete', this.onShootingComplete, this);
