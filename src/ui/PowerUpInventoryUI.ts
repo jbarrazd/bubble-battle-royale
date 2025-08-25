@@ -17,9 +17,10 @@ export class PowerUpInventoryUI {
     private container: Phaser.GameObjects.Container;
     private slots: InventorySlot[] = [];
     private maxSlots: number = 3;
-    private slotSize: number = 40;
-    private padding: number = 8;
+    private slotSize: number = 45;
+    private padding: number = 10;
     private isOpponent: boolean;
+    private backgroundPanel?: Phaser.GameObjects.Graphics;
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
@@ -46,48 +47,60 @@ export class PowerUpInventoryUI {
         const screenWidth = this.scene.cameras.main.width;
         const screenHeight = this.scene.cameras.main.height;
         
-        // Position on right side, vertically centered
-        const x = screenWidth - 60;
-        const startY = this.isOpponent ? 100 : screenHeight / 2 + 50;
+        // Position horizontally at bottom for player, top for opponent
+        // In the "fort" area (first 40 pixels from edge)
+        const y = this.isOpponent ? 30 : screenHeight - 30;
         
-        this.container = this.scene.add.container(x, 0);
-        this.container.setDepth(Z_LAYERS.UI + 10);
+        this.container = this.scene.add.container(0, y);
+        this.container.setDepth(Z_LAYERS.UI - 10); // Behind gameplay elements
         
-        // Add label
+        // Create background panel for fort integration
+        this.createBackgroundPanel(screenWidth);
+        
+        // Add stylized label
         const label = this.scene.add.text(
-            0,
-            startY - 30,
-            this.isOpponent ? 'OPPONENT' : 'POWER-UPS',
+            screenWidth / 2,
+            this.isOpponent ? -15 : 15,
+            this.isOpponent ? '⚔️ ENEMY ARSENAL ⚔️' : '🛡️ YOUR ARSENAL 🛡️',
             {
-                fontSize: '12px',
+                fontSize: '11px',
                 fontFamily: 'Arial Black',
-                color: this.isOpponent ? '#FF6B6B' : '#4ECDC4',
-                stroke: '#000000',
-                strokeThickness: 2
+                color: '#FFFFFF',
+                stroke: this.isOpponent ? '#8B0000' : '#00008B',
+                strokeThickness: 3,
+                shadow: {
+                    offsetX: 2,
+                    offsetY: 2,
+                    color: '#000000',
+                    blur: 2,
+                    fill: true
+                }
             }
         );
-        label.setOrigin(0.5);
+        label.setOrigin(0.5, 0.5);
         this.container.add(label);
         
-        // Create slots vertically
+        // Calculate total width and center position
+        const totalWidth = (this.slotSize * this.maxSlots) + (this.padding * (this.maxSlots - 1));
+        const startX = (screenWidth - totalWidth) / 2;
+        
+        // Create slots horizontally
         for (let i = 0; i < this.maxSlots; i++) {
-            const y = startY + i * (this.slotSize + this.padding);
+            const x = startX + (i * (this.slotSize + this.padding)) + (this.slotSize / 2);
             
-            const slotContainer = this.scene.add.container(0, y);
+            const slotContainer = this.scene.add.container(x, 0);
             
-            // Slot background with team color
+            // Enhanced slot background
             const bg = this.scene.add.graphics();
-            bg.fillStyle(0x000000, 0.7);
-            bg.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
-            bg.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.6);
-            bg.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+            this.drawSlotBackground(bg, false);
             
-            // Icon placeholder
-            const icon = this.scene.add.text(0, -2, '', {
-                fontSize: '24px',
+            // Icon with better positioning
+            const icon = this.scene.add.text(0, 0, '', {
+                fontSize: '28px',
                 fontFamily: 'Arial'
             });
             icon.setOrigin(0.5);
+            icon.setShadow(2, 2, '#000000', 2, true, true);
             
             // Count text
             const countText = this.scene.add.text(
@@ -104,23 +117,29 @@ export class PowerUpInventoryUI {
             );
             countText.setOrigin(1, 1);
             
-            // Key hint (1, 2, 3) - only for player
-            const keyHint = this.scene.add.text(
-                -this.slotSize/2 + 4,
-                -this.slotSize/2 + 2,
-                this.isOpponent ? '' : `${i + 1}`,
-                {
-                    fontSize: '10px',
-                    fontFamily: 'Arial Black',
-                    color: '#FFD700',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            );
-            keyHint.setOrigin(0, 0);
+            // Key hint badge - only for player
+            let keyHint: Phaser.GameObjects.Text;
+            if (!this.isOpponent) {
+                const badge = this.createKeyHintBadge(i + 1);
+                badge.setPosition(-this.slotSize/2 + 8, -this.slotSize/2 + 8);
+                slotContainer.add(badge);
+                keyHint = badge.getAt(1) as Phaser.GameObjects.Text;
+            } else {
+                keyHint = this.scene.add.text(0, 0, '');
+            }
             
-            slotContainer.add([bg, icon, countText, keyHint]);
+            slotContainer.add([bg, icon, countText]);
             this.container.add(slotContainer);
+            
+            // Add subtle idle animation
+            this.scene.tweens.add({
+                targets: slotContainer,
+                y: slotContainer.y + (this.isOpponent ? 2 : -2),
+                duration: 2000 + (i * 200),
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
             
             this.slots.push({
                 container: slotContainer,
@@ -131,6 +150,57 @@ export class PowerUpInventoryUI {
                 count: 0
             });
         }
+    }
+    
+    private createBackgroundPanel(screenWidth: number): void {
+        this.backgroundPanel = this.scene.add.graphics();
+        
+        // Create fort-like background panel
+        const panelHeight = 60;
+        const panelY = this.isOpponent ? -30 : -30;
+        
+        // Gradient-like background with multiple layers
+        this.backgroundPanel.fillStyle(this.isOpponent ? 0x1a0000 : 0x00001a, 0.6);
+        this.backgroundPanel.fillRect(0, panelY, screenWidth, panelHeight);
+        
+        this.backgroundPanel.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.3);
+        this.backgroundPanel.fillRect(0, panelY + 5, screenWidth, panelHeight - 10);
+        
+        // Border lines
+        this.backgroundPanel.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.3);
+        this.backgroundPanel.strokeRect(0, panelY, screenWidth, panelHeight);
+        
+        // Decorative elements - vertical lines for fort-like appearance
+        for (let i = 0; i < 5; i++) {
+            const x = (screenWidth / 5) * i + (screenWidth / 10);
+            this.backgroundPanel.lineStyle(1, 0xFFFFFF, 0.05);
+            this.backgroundPanel.beginPath();
+            this.backgroundPanel.moveTo(x, panelY + 5);
+            this.backgroundPanel.lineTo(x, panelY + panelHeight - 5);
+            this.backgroundPanel.strokePath();
+        }
+        
+        this.container.add(this.backgroundPanel);
+        this.backgroundPanel.setDepth(-1);
+    }
+    
+    private createKeyHintBadge(key: number): Phaser.GameObjects.Container {
+        const badge = this.scene.add.container(0, 0);
+        
+        // Badge background
+        const bg = this.scene.add.circle(0, 0, 10, 0xFFD700, 0.9);
+        bg.setStrokeStyle(2, 0x000000, 1);
+        
+        // Key number
+        const text = this.scene.add.text(0, 0, `${key}`, {
+            fontSize: '12px',
+            fontFamily: 'Arial Black',
+            color: '#000000'
+        });
+        text.setOrigin(0.5);
+        
+        badge.add([bg, text]);
+        return badge;
     }
     
     private setupEventListeners(): void {
@@ -190,21 +260,24 @@ export class PowerUpInventoryUI {
                     ease: 'Back.easeOut'
                 });
                 
-                // Glow effect
-                slot.background.clear();
-                slot.background.fillStyle(0x000000, 0.5);
-                slot.background.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
-                slot.background.lineStyle(2, 0xFFD700, 1);
-                slot.background.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+                // Enhanced collection effect
+                const collectFlash = this.scene.add.graphics();
+                collectFlash.fillStyle(0xFFD700, 0.5);
+                collectFlash.fillCircle(slot.container.x, 0, this.slotSize);
+                this.container.add(collectFlash);
                 
-                // Fade glow
-                this.scene.time.delayedCall(500, () => {
-                    slot!.background.clear();
-                    slot!.background.fillStyle(0x000000, 0.5);
-                    slot!.background.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
-                    slot!.background.lineStyle(2, 0x666666, 0.8);
-                    slot!.background.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+                this.scene.tweens.add({
+                    targets: collectFlash,
+                    alpha: 0,
+                    scale: 2,
+                    duration: 500,
+                    ease: 'Cubic.easeOut',
+                    onComplete: () => collectFlash.destroy()
                 });
+                
+                // Refresh slot background with glow
+                slot.background.clear();
+                this.drawSlotBackground(slot.background, true);
             }
         }
     }
@@ -242,6 +315,31 @@ export class PowerUpInventoryUI {
             slot.countText.setText('');
         } else {
             slot.countText.setText(slot.count > 1 ? `x${slot.count}` : '');
+        }
+    }
+    
+    private drawSlotBackground(bg: Phaser.GameObjects.Graphics, glowing: boolean = false): void {
+        bg.clear();
+        
+        // Multi-layer background for depth
+        bg.fillStyle(0x000000, 0.4);
+        bg.fillRoundedRect(-this.slotSize/2-2, -this.slotSize/2-2, this.slotSize+4, this.slotSize+4, 10);
+        
+        bg.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.6);
+        bg.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+        
+        bg.lineStyle(3, glowing ? 0xFFD700 : (this.isOpponent ? 0xFF6B6B : 0x4ECDC4), glowing ? 1 : 0.8);
+        bg.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+        
+        // Inner glow
+        bg.lineStyle(1, 0xFFFFFF, glowing ? 0.4 : 0.2);
+        bg.strokeRoundedRect(-this.slotSize/2+2, -this.slotSize/2+2, this.slotSize-4, this.slotSize-4, 6);
+        
+        if (glowing) {
+            // Fade the glow after a moment
+            this.scene.time.delayedCall(500, () => {
+                this.drawSlotBackground(bg, false);
+            });
         }
     }
     
