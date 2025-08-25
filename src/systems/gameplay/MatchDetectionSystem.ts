@@ -5,7 +5,6 @@ import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleColor, IHexPosition, ArenaZone } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
-import { MysteryBox } from '@/gameObjects/MysteryBox';
 
 export class MatchDetectionSystem {
     private scene: Scene;
@@ -51,11 +50,6 @@ export class MatchDetectionSystem {
         
         console.log(`Found ${matches.size} connected ${color.toString(16)} bubbles`);
         
-        // Check for Mystery Bubbles in matches
-        const mysteryBubbles = Array.from(matches).filter(bubble => 
-            bubble instanceof MysteryBubble && (bubble as MysteryBubble).isMysteryBubble()
-        );
-        
         if (matches.size >= this.minimumMatchSize) {
             console.log('Match detected! Removing bubbles...');
             
@@ -100,13 +94,8 @@ export class MatchDetectionSystem {
                 bubbleColor: bubbleColor
             });
             
-            // Remove matched bubbles
+            // Remove matched bubbles (Mystery bubbles will activate their power-ups when destroyed)
             await this.removeMatches(Array.from(matches));
-            
-            // Spawn Mystery Boxes for any Mystery Bubbles that were destroyed
-            if (mysteryBubbles.length > 0) {
-                this.spawnMysteryBoxes(mysteryBubbles as MysteryBubble[]);
-            }
             
             // Check for floating bubbles after removal
             this.checkFloatingBubbles();
@@ -124,7 +113,7 @@ export class MatchDetectionSystem {
     }
     
     /**
-     * Find all connected bubbles of the same color
+     * Find all connected bubbles of the same color (Mystery bubbles match any color)
      */
     private findColorMatches(startBubble: Bubble, targetColor: BubbleColor): Set<Bubble> {
         const matches = new Set<Bubble>();
@@ -140,8 +129,12 @@ export class MatchDetectionSystem {
             if (visited.has(current)) continue;
             visited.add(current);
             
-            // Skip if wrong color or not visible
-            if (!current.visible || current.getColor() !== targetColor) {
+            // Check if it's a Mystery Bubble (matches any color) or same color
+            const isMystery = current instanceof MysteryBubble;
+            const colorMatches = current.getColor() === targetColor;
+            
+            // Skip if wrong color (unless it's a mystery bubble) or not visible
+            if (!current.visible || (!isMystery && !colorMatches)) {
                 console.log(`Skipping bubble at (${current.x}, ${current.y}) - visible: ${current.visible}, color: ${current.getColor()?.toString(16)}`);
                 continue;
             }
@@ -646,43 +639,6 @@ export class MatchDetectionSystem {
     }
     
     // Score popup removed - handled by ComboManager
-    
-    /**
-     * Spawn Mystery Boxes from destroyed Mystery Bubbles
-     */
-    private spawnMysteryBoxes(mysteryBubbles: MysteryBubble[]): void {
-        mysteryBubbles.forEach((mysteryBubble, index) => {
-            // Get random power-up type from the mystery bubble
-            const powerUpType = mysteryBubble.getRandomPowerUpType();
-            
-            // Create mystery box at bubble position with slight delay for drama
-            this.scene.time.delayedCall(index * 100, () => {
-                const mysteryBox = new MysteryBox(
-                    this.scene,
-                    mysteryBubble.x,
-                    mysteryBubble.y,
-                    powerUpType
-                );
-                
-                // Add floating animation
-                this.scene.tweens.add({
-                    targets: mysteryBox,
-                    y: mysteryBox.y + 10,
-                    duration: 1000,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
-                
-                // Auto-collect after 3 seconds
-                this.scene.time.delayedCall(3000, () => {
-                    if (mysteryBox && mysteryBox.active) {
-                        mysteryBox.collect();
-                    }
-                });
-            });
-        });
-    }
     
     /**
      * Get current score

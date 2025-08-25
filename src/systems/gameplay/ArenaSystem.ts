@@ -3,6 +3,7 @@ import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition } from '@/types/Aren
 import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER_ZONE_CONFIG } from '@/config/ArenaConfig';
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
+import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Objective } from '@/gameObjects/Objective';
 import { InputManager } from '@/systems/input/InputManager';
@@ -16,6 +17,9 @@ import { VictoryScreen } from '@/ui/VictoryScreen';
 import { DefeatScreen } from '@/ui/DefeatScreen';
 import { ScoreEventManager, ScoreEventType, ScoreContext } from '@/systems/scoring/ScoreEventManager';
 import { UnifiedFeedbackSystem } from '@/systems/scoring/UnifiedFeedbackSystem';
+import { PowerUpInventoryUI } from '@/ui/PowerUpInventoryUI';
+import { PowerUpActivationSystem } from '@/systems/powerups/PowerUpActivationSystem';
+import { AimingModeSystem } from '@/systems/powerups/AimingModeSystem';
 
 export { AIDifficulty };
 
@@ -41,6 +45,9 @@ export class ArenaSystem {
     private comboManager?: ComboManager;
     private scoreEventManager?: ScoreEventManager;
     private unifiedFeedbackSystem?: UnifiedFeedbackSystem;
+    private powerUpInventory?: PowerUpInventoryUI;
+    private powerUpActivation?: PowerUpActivationSystem;
+    private aimingModeSystem?: AimingModeSystem;
     private playerScore: number = 0;
     private aiScore: number = 0;
     private gameOver: boolean = false;
@@ -140,6 +147,20 @@ export class ArenaSystem {
         // Initialize new unified scoring system
         this.scoreEventManager = new ScoreEventManager(this.scene);
         this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
+        
+        // Initialize power-up systems
+        this.powerUpInventory = new PowerUpInventoryUI(this.scene);
+        this.aimingModeSystem = new AimingModeSystem(this.scene);
+        
+        // Initialize power-up activation after launcher is created
+        if (this.playerLauncher) {
+            this.powerUpActivation = new PowerUpActivationSystem(
+                this.scene,
+                this.playerLauncher,
+                this.bubbleGrid,
+                this.aimingModeSystem
+            );
+        }
         
         // Connect scoring systems
         this.scoreEventManager.onScoreUpdate((score, isPlayer) => {
@@ -262,15 +283,11 @@ export class ArenaSystem {
                 const isMystery = Math.random() < 0.125; // 12.5% average
                 
                 if (isMystery) {
-                    // Create Mystery Bubble (will be implemented after import)
-                    const bubble = this.getBubbleFromPool();
-                    if (bubble) {
-                        bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
-                        bubble.setGridPosition(hexPos);
-                        bubble.setData('isMystery', true);
-                        this.bubbles.push(bubble);
-                        this.gridAttachmentSystem.addGridBubble(bubble);
-                    }
+                    // Create Mystery Bubble
+                    const mysteryBubble = new MysteryBubble(this.scene, pixelPos.x, pixelPos.y);
+                    mysteryBubble.setGridPosition(hexPos);
+                    this.bubbles.push(mysteryBubble);
+                    this.gridAttachmentSystem.addGridBubble(mysteryBubble);
                 } else {
                     // Create normal bubble
                     const bubble = this.getBubbleFromPool();
@@ -548,6 +565,18 @@ export class ArenaSystem {
         
         // Update shooting system
         this.shootingSystem?.update(delta);
+        
+        // Update power-up systems
+        this.powerUpActivation?.update(delta);
+        if (this.aimingModeSystem && this.playerLauncher) {
+            const pointerPos = this.inputManager.getPointerPosition();
+            this.aimingModeSystem.updateAiming(
+                pointerPos.x, 
+                pointerPos.y,
+                this.playerLauncher.x,
+                this.playerLauncher.y
+            );
+        }
         
         // Update objective shield
         this.updateObjectiveShield();

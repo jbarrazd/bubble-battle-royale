@@ -60,6 +60,13 @@ export class InputManager {
         return this.currentPosition;
     }
     
+    public getPointerPosition(): { x: number; y: number } {
+        return {
+            x: this.currentPosition.x,
+            y: this.currentPosition.y
+        };
+    }
+    
     public getAngleFrom(fromX: number, fromY: number): number {
         const dx = this.currentPosition.x - fromX;
         const dy = this.currentPosition.y - fromY;
