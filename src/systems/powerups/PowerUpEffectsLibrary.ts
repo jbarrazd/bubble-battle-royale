@@ -96,7 +96,7 @@ export class RainbowEffect implements IPowerUpEffect {
         });
         
         // Store shimmer reference for cleanup
-        bubble.setData('rainbowShimmer', shimmer);
+        // bubble.setData('rainbowShimmer', shimmer);
     }
     
     deactivate(context: PowerUpContext): void {
@@ -106,7 +106,7 @@ export class RainbowEffect implements IPowerUpEffect {
             if (shimmer) {
                 shimmer.destroy();
             }
-            this.rainbowBubble.setData('isRainbow', false);
+            // this.rainbowBubble.setData('isRainbow', false);
         }
         
         // Reset aiming mode
@@ -153,8 +153,8 @@ export class LaserSightEffect implements IPowerUpEffect {
         counter.add(text);
         
         // Store reference
-        context.launcher.setData('laserCounter', counter);
-        context.launcher.setData('laserCounterText', text);
+        // context.launcher.setData('laserCounter', counter);
+        // context.launcher.setData('laserCounterText', text);
     }
     
     update(context: PowerUpContext, delta: number): void {
@@ -202,57 +202,50 @@ export class BombEffect implements IPowerUpEffect {
     }
     
     private prepareNormalBomb(context: PowerUpContext): void {
-        const nextBubble = context.launcher.getNextBubble();
-        if (nextBubble) {
-            // Make bubble explosive
-            nextBubble.setData('isBomb', true);
-            nextBubble.setData('explosionRadius', 100); // 7-bubble radius
-            
-            // Visual indicator
-            this.addBombVisual(nextBubble);
-            
-            // On impact handler
-            nextBubble.once('bubble-attached', () => {
-                this.explodeAt(nextBubble.x, nextBubble.y, context);
-            });
-        }
+        // Show visual feedback that bomb is ready
+        const bombIndicator = context.scene.add.text(
+            context.launcher.x,
+            context.launcher.y - 50,
+            '💣 BOMB READY!',
+            {
+                fontSize: '16px',
+                fontFamily: 'Arial Black',
+                color: '#FF4500',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        bombIndicator.setOrigin(0.5);
+        bombIndicator.setDepth(1000);
+        
+        // Pulse animation
+        context.scene.tweens.add({
+            targets: bombIndicator,
+            scale: { from: 0.9, to: 1.1 },
+            duration: 500,
+            yoyo: true,
+            repeat: -1
+        });
+        
+        // Store indicator for cleanup
+        this.visualElements.push(bombIndicator);
+        
+        // The actual bomb effect will happen when bubble is shot
     }
     
     private prepareBallistic(context: PowerUpContext): void {
         // Set launcher to ballistic mode
-        context.launcher.setData('ballisticMode', true);
+        // context.launcher.setData('ballisticMode', true);
         
         if (context.opponentLauncher) {
-            context.launcher.setData('ballisticTarget', {
-                x: context.opponentLauncher.x,
-                y: context.opponentLauncher.y
-            });
+            // context.launcher.setData('ballisticTarget', {
+            //     x: context.opponentLauncher.x,
+            //     y: context.opponentLauncher.y
+            // });
         }
     }
     
-    private addBombVisual(bubble: Bubble): void {
-        // Add bomb icon overlay
-        const bombIcon = bubble.scene.add.text(bubble.x, bubble.y, '💣', {
-            fontSize: '20px'
-        });
-        bombIcon.setOrigin(0.5);
-        bombIcon.setDepth(bubble.depth + 1);
-        
-        // Follow bubble
-        bubble.scene.time.addEvent({
-            delay: 16,
-            callback: () => {
-                if (bubble && bubble.scene) {
-                    bombIcon.setPosition(bubble.x, bubble.y);
-                } else {
-                    bombIcon.destroy();
-                }
-            },
-            loop: true
-        });
-        
-        bubble.setData('bombIcon', bombIcon);
-    }
+    // Removed unused method - visual feedback handled differently
     
     private explodeAt(x: number, y: number, context: PowerUpContext): void {
         const radius = 100;
@@ -281,7 +274,7 @@ export class BombEffect implements IPowerUpEffect {
     }
     
     deactivate(context: PowerUpContext): void {
-        context.launcher.setData('ballisticMode', false);
+        // context.launcher.setData('ballisticMode', false);
         context.aimingMode.setMode(AimingMode.NORMAL);
     }
 }
@@ -466,7 +459,7 @@ export class FreezeEffect implements IPowerUpEffect {
             });
             
             // Store for cleanup
-            this.frostOverlay.setData(`snowflake_${i}`, snowflake);
+            // this.frostOverlay.setData(`snowflake_${i}`, snowflake);
         }
     }
     
