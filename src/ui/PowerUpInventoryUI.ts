@@ -47,48 +47,47 @@ export class PowerUpInventoryUI {
         const screenWidth = this.scene.cameras.main.width;
         const screenHeight = this.scene.cameras.main.height;
         
-        // Position horizontally at bottom for player, top for opponent
-        // In the "fort" area (first 40 pixels from edge)
-        const y = this.isOpponent ? 30 : screenHeight - 30;
+        // Position in corner of fort area
+        // Player: bottom-right, Opponent: top-left (mirrored)
+        const y = this.isOpponent ? 25 : screenHeight - 25;
         
         this.container = this.scene.add.container(0, y);
-        this.container.setDepth(Z_LAYERS.UI - 10); // Behind gameplay elements
+        this.container.setDepth(Z_LAYERS.UI + 5); // Above other UI but below popups
         
-        // Create background panel for fort integration
-        this.createBackgroundPanel(screenWidth);
+        // Create compact background for the inventory
+        this.createCompactBackground();
         
-        // Add stylized label
+        // Calculate position - right side for player, left for opponent
+        const slotSpacing = this.slotSize + this.padding;
+        const totalWidth = this.slotSize * this.maxSlots + this.padding * (this.maxSlots - 1);
+        
+        // Position based on player/opponent
+        const baseX = this.isOpponent ? 
+            60 : // Opponent: left side  
+            screenWidth - 60; // Player: right side
+        
+        // Add compact label
         const label = this.scene.add.text(
-            screenWidth / 2,
-            this.isOpponent ? -15 : 15,
-            this.isOpponent ? '⚔️ ENEMY ARSENAL ⚔️' : '🛡️ YOUR ARSENAL 🛡️',
+            baseX,
+            this.isOpponent ? -20 : 20,
+            this.isOpponent ? 'ENEMY' : 'ARSENAL',
             {
-                fontSize: '11px',
+                fontSize: '10px',
                 fontFamily: 'Arial Black',
                 color: '#FFFFFF',
                 stroke: this.isOpponent ? '#8B0000' : '#00008B',
-                strokeThickness: 3,
-                shadow: {
-                    offsetX: 2,
-                    offsetY: 2,
-                    color: '#000000',
-                    blur: 2,
-                    fill: true
-                }
+                strokeThickness: 2
             }
         );
         label.setOrigin(0.5, 0.5);
         this.container.add(label);
         
-        // Calculate total width and center position
-        const totalWidth = (this.slotSize * this.maxSlots) + (this.padding * (this.maxSlots - 1));
-        const startX = (screenWidth - totalWidth) / 2;
-        
-        // Create slots horizontally
+        // Create slots vertically (stacked)
         for (let i = 0; i < this.maxSlots; i++) {
-            const x = startX + (i * (this.slotSize + this.padding)) + (this.slotSize / 2);
+            // Stack vertically with proper spacing
+            const yOffset = (i - 1) * (this.slotSize + this.padding/2); // Center middle slot
             
-            const slotContainer = this.scene.add.container(x, 0);
+            const slotContainer = this.scene.add.container(baseX, yOffset);
             
             // Enhanced slot background
             const bg = this.scene.add.graphics();
@@ -152,33 +151,27 @@ export class PowerUpInventoryUI {
         }
     }
     
-    private createBackgroundPanel(screenWidth: number): void {
+    private createCompactBackground(): void {
+        const screenWidth = this.scene.cameras.main.width;
         this.backgroundPanel = this.scene.add.graphics();
         
-        // Create fort-like background panel
-        const panelHeight = 60;
-        const panelY = this.isOpponent ? -30 : -30;
+        // Compact background for side panel
+        const panelWidth = 80;
+        const panelHeight = 160;
+        const panelX = this.isOpponent ? 20 : screenWidth - panelWidth - 20;
+        const panelY = -panelHeight / 2;
         
-        // Gradient-like background with multiple layers
-        this.backgroundPanel.fillStyle(this.isOpponent ? 0x1a0000 : 0x00001a, 0.6);
-        this.backgroundPanel.fillRect(0, panelY, screenWidth, panelHeight);
+        // Semi-transparent background
+        this.backgroundPanel.fillStyle(0x000000, 0.5);
+        this.backgroundPanel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 10);
         
-        this.backgroundPanel.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.3);
-        this.backgroundPanel.fillRect(0, panelY + 5, screenWidth, panelHeight - 10);
+        // Team color border
+        this.backgroundPanel.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
+        this.backgroundPanel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 10);
         
-        // Border lines
-        this.backgroundPanel.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.3);
-        this.backgroundPanel.strokeRect(0, panelY, screenWidth, panelHeight);
-        
-        // Decorative elements - vertical lines for fort-like appearance
-        for (let i = 0; i < 5; i++) {
-            const x = (screenWidth / 5) * i + (screenWidth / 10);
-            this.backgroundPanel.lineStyle(1, 0xFFFFFF, 0.05);
-            this.backgroundPanel.beginPath();
-            this.backgroundPanel.moveTo(x, panelY + 5);
-            this.backgroundPanel.lineTo(x, panelY + panelHeight - 5);
-            this.backgroundPanel.strokePath();
-        }
+        // Inner glow
+        this.backgroundPanel.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.2);
+        this.backgroundPanel.fillRoundedRect(panelX + 2, panelY + 2, panelWidth - 4, panelHeight - 4, 8);
         
         this.container.add(this.backgroundPanel);
         this.backgroundPanel.setDepth(-1);

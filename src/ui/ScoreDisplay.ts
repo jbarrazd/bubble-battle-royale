@@ -6,33 +6,48 @@ export class ScoreDisplay extends Phaser.GameObjects.Container {
     private targetScore: number = 0;
     private comboText?: Phaser.GameObjects.Text;
     private comboMultiplier: number = 1;
+    private isOpponent: boolean;
     
-    constructor(scene: Phaser.Scene) {
-        super(scene, scene.cameras.main.centerX, 50);
+    constructor(scene: Phaser.Scene, isOpponent: boolean = false) {
+        // Position based on player/opponent
+        const screenWidth = scene.cameras.main.width;
+        const screenHeight = scene.cameras.main.height;
         
-        // Background panel for visibility
-        const bg = scene.add.rectangle(0, 0, 200, 60, 0x000000, 0.7);
-        bg.setStrokeStyle(2, 0xFFD700);
+        // Player: bottom-left, Opponent: top-right (mirrored)
+        const x = isOpponent ? 
+            screenWidth - 60 : // Opponent: right side
+            60; // Player: left side
+        const y = isOpponent ? 25 : screenHeight - 25;
+        
+        super(scene, x, y);
+        this.isOpponent = isOpponent;
+        
+        // Compact background panel
+        const bg = scene.add.graphics();
+        bg.fillStyle(0x000000, 0.5);
+        bg.fillRoundedRect(-40, -30, 80, 60, 10);
+        bg.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
+        bg.strokeRoundedRect(-40, -30, 80, 60, 10);
         
         // Score label
-        const label = scene.add.text(0, -15, 'SCORE', {
-            fontSize: '16px',
-            color: '#FFD700',
+        const label = scene.add.text(0, -15, this.isOpponent ? 'ENEMY' : 'SCORE', {
+            fontSize: '10px',
+            color: '#FFFFFF',
             fontFamily: 'Arial Black',
-            fontStyle: 'bold'
+            stroke: this.isOpponent ? '#8B0000' : '#00008B',
+            strokeThickness: 2
         }).setOrigin(0.5);
         
         // Score value
-        this.scoreText = scene.add.text(0, 10, '0', {
-            fontSize: '28px',
+        this.scoreText = scene.add.text(0, 5, '0', {
+            fontSize: '20px',
             color: '#FFFFFF',
-            fontFamily: 'Arial Black',
-            fontStyle: 'bold'
+            fontFamily: 'Arial Black'
         }).setOrigin(0.5);
         
-        // Combo text (hidden by default)
-        this.comboText = scene.add.text(0, 40, '', {
-            fontSize: '14px',
+        // Combo text (hidden by default) - positioned outside the compact box
+        this.comboText = scene.add.text(0, 35, '', {
+            fontSize: '10px',
             color: '#FFA500',
             fontFamily: 'Arial',
             fontStyle: 'bold'
