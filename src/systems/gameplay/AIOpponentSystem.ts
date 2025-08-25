@@ -17,6 +17,8 @@ interface IShootTarget {
     targetBubble?: Bubble;
     score: number;
     reasoning: string;
+    potentialFalls?: number; // Number of bubbles that would fall
+    totalValue?: number; // Total value including falls
 }
 
 export class AIOpponentSystem {
@@ -126,18 +128,39 @@ export class AIOpponentSystem {
         let bestTarget: IShootTarget | null = null;
         
         if (this.difficulty === AIDifficulty.HARD) {
-            // HARD: Find reachable same-color bubbles
-            if (sameColorBubbles.length > 0) {
-                // Sort by distance (prefer closer targets)
-                const sortedBubbles = sameColorBubbles.sort((a, b) => {
-                    const distA = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, a.x, a.y);
-                    const distB = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, b.x, b.y);
-                    return distA - distB;
+            // PRIORITY 1: Check if we can hit the objective directly!
+            const objectiveShot = this.checkObjectiveShot();
+            if (objectiveShot) {
+                console.log(`  🎯 WINNING SHOT AVAILABLE! Direct path to objective!`);
+                return objectiveShot;
+            }
+            // PRIORITY 2: Smart targeting for strategic eliminations
+            let allTargets: IShootTarget[] = [];
+            
+            // First, check if we should prioritize clearing path to objective
+            const objectiveExposed = this.isObjectiveExposed();
+            if (!objectiveExposed) {
+                console.log(`  🏯 Objective is protected - need to clear path`);
+                // Prioritize bubbles near the objective
+                const centerX = this.scene.cameras.main.centerX;
+                const centerY = this.scene.cameras.main.centerY;
+                
+                // Find bubbles blocking the objective
+                const blockingBubbles = sameColorBubbles.filter(b => {
+                    const dist = Phaser.Math.Distance.Between(b.x, b.y, centerX, centerY);
+                    return dist < BUBBLE_CONFIG.SIZE * 4; // Near objective
                 });
                 
-                // Try to find a clear shot to any same-color bubble
-                for (const targetBubble of sortedBubbles) {
-                    // Try different attachment points around the bubble
+                if (blockingBubbles.length > 0) {
+                    console.log(`  🎯 Found ${blockingBubbles.length} same-color bubbles near objective`);
+                    sameColorBubbles.unshift(...blockingBubbles); // Prioritize these
+                }
+            }
+            
+            if (sameColorBubbles.length > 0) {
+                // Analyze ALL possible shots, not just the first one found
+                for (const targetBubble of sameColorBubbles) {
+                    // Try different attachment points
                     const angles = [
                         this.calculateAngleToTarget(targetBubble.x, targetBubble.y - BUBBLE_CONFIG.SIZE),
                         this.calculateAngleToTarget(targetBubble.x - BUBBLE_CONFIG.SIZE * 0.5, targetBubble.y),
@@ -147,22 +170,48 @@ export class AIOpponentSystem {
                     
                     for (const angle of angles) {
                         if (angle >= 15 && angle <= 165) {
-                            // Check if trajectory is clear
                             const targetPos = { x: targetBubble.x, y: targetBubble.y };
                             if (this.isTrajectoryClear(angle, targetPos)) {
-                                bestTarget = {
+                                const potentialFalls = this.predictFallsFromShot(targetBubble, color);
+                                const matchSize = this.countPotentialMatch(targetBubble, color);
+                                
+                                // Check distance to objective for priority
+                                const centerX = this.scene.cameras.main.centerX;
+                                const centerY = this.scene.cameras.main.centerY;
+                                const distToObjective = Phaser.Math.Distance.Between(targetBubble.x, targetBubble.y, centerX, centerY);
+                                const nearObjective = distToObjective < BUBBLE_CONFIG.SIZE * 4;
+                                
+                                // Higher base score if near objective
+                                const baseScore = nearObjective ? 200 + (matchSize * 30) : 100 + (matchSize * 20);
+                                const fallBonus = potentialFalls * 300;
+                                
+                                allTargets.push({
                                     angle: angle,
                                     useWallBounce: 'none',
-                                    score: 150,
-                                    reasoning: `clear shot to ${this.getColorName(color)}`
-                                };
-                                console.log(`  ✅ Found clear path at ${angle.toFixed(1)}°`);
-                                break;
+                                    targetBubble: targetBubble,
+                                    score: baseScore,
+                                    reasoning: `match ${this.getColorName(color)}${nearObjective ? ' (clearing path to objective!)' : ''}`,
+                                    potentialFalls: potentialFalls,
+                                    totalValue: baseScore + fallBonus
+                                });
                             }
                         }
                     }
+                }
+                
+                // Sort all targets by total value (prioritizing falls)
+                allTargets.sort((a, b) => (b.totalValue || b.score) - (a.totalValue || a.score));
+                
+                if (allTargets.length > 0) {
+                    bestTarget = allTargets[0];
                     
-                    if (bestTarget) break;
+                    // Log strategic value
+                    if (bestTarget.potentialFalls && bestTarget.potentialFalls > 0) {
+                        console.log(`  🎆 STRATEGIC SHOT: ${bestTarget.reasoning} + ${bestTarget.potentialFalls} falling bubbles!`);
+                        console.log(`  💰 Total value: ${bestTarget.totalValue} (base: ${bestTarget.score})`);
+                    } else {
+                        console.log(`  🎯 Direct match: ${bestTarget.reasoning} at ${bestTarget.angle.toFixed(1)}°`);
+                    }
                 }
                 
                 // If no clear direct shot, try wall bounces
@@ -527,6 +576,90 @@ export class AIOpponentSystem {
         return count;
     }
     
+    private countPotentialMatch(targetBubble: Bubble, shootColor: BubbleColor): number {
+        // Count how many bubbles would be in the match group
+        const neighbors = this.getNeighborBubbles(targetBubble);
+        const sameColorNeighbors = neighbors.filter(n => n.getColor() === shootColor);
+        
+        if (targetBubble.getColor() === shootColor) {
+            return 1 + sameColorNeighbors.length; // Target + neighbors
+        } else if (sameColorNeighbors.length >= 2) {
+            return 1 + sameColorNeighbors.length; // New bubble + neighbors
+        }
+        
+        return 0;
+    }
+    
+    private predictFallsFromShot(targetBubble: Bubble, shootColor: BubbleColor): number {
+        // Get bubbles that would form a match with the target
+        const neighbors = this.getNeighborBubbles(targetBubble);
+        const sameColorNeighbors = neighbors.filter(n => n.getColor() === shootColor);
+        
+        // Check if target itself is same color (would form group)
+        const targetSameColor = targetBubble.getColor() === shootColor;
+        
+        // Build the group that would be removed
+        let wouldRemove: Bubble[] = [];
+        
+        if (targetSameColor && sameColorNeighbors.length >= 1) {
+            // Target + neighbors would form match-3+
+            wouldRemove = [targetBubble, ...sameColorNeighbors];
+        } else if (sameColorNeighbors.length >= 2) {
+            // New bubble + 2+ neighbors would form match-3+
+            wouldRemove = sameColorNeighbors;
+        }
+        
+        if (wouldRemove.length >= 2) {
+            return this.predictFallingBubbles(wouldRemove);
+        }
+        
+        return 0;
+    }
+    
+    private predictFallingBubbles(bubblesRemoved: Bubble[]): number {
+        // This is a simplified prediction - checks which bubbles would lose support
+        const gridBubbles = this.getGridBubbles();
+        const remaining = gridBubbles.filter(b => !bubblesRemoved.includes(b));
+        
+        // Mark all bubbles as unvisited
+        const visited = new Set<Bubble>();
+        const connected = new Set<Bubble>();
+        
+        // Find bubbles connected to the center (objective)
+        const centerY = this.scene.cameras.main.centerY;
+        const objectiveBubbles = remaining.filter(b => 
+            Math.abs(b.y - centerY) < BUBBLE_CONFIG.SIZE * 2
+        );
+        
+        // BFS from objective bubbles to find all connected
+        const queue = [...objectiveBubbles];
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            if (visited.has(current)) continue;
+            
+            visited.add(current);
+            connected.add(current);
+            
+            // Find neighbors of current that are in remaining
+            const neighbors = this.getNeighborBubbles(current);
+            for (const neighbor of neighbors) {
+                if (remaining.includes(neighbor) && !visited.has(neighbor)) {
+                    queue.push(neighbor);
+                }
+            }
+        }
+        
+        // Count disconnected bubbles (would fall)
+        let fallingCount = 0;
+        for (const bubble of remaining) {
+            if (!connected.has(bubble)) {
+                fallingCount++;
+            }
+        }
+        
+        return fallingCount;
+    }
+    
     private onShootingComplete = (): void => {
         // Don't immediately schedule - wait for cooldown
         // Cooldown is handled in performShot
@@ -544,6 +677,62 @@ export class AIOpponentSystem {
             [0x800080]: 'PURPLE'
         };
         return colorMap[color] || 'UNKNOWN';
+    }
+    
+    private checkObjectiveShot(): IShootTarget | null {
+        // Get objective position (center of screen)
+        const centerX = this.scene.cameras.main.centerX;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // Check if there are any bubbles protecting the objective
+        const protectingBubbles = this.getGridBubbles().filter(b => {
+            const dist = Phaser.Math.Distance.Between(b.x, b.y, centerX, centerY);
+            return dist < BUBBLE_CONFIG.SIZE * 2; // Bubbles very close to center
+        });
+        
+        // If objective is protected, we can't hit it directly
+        if (protectingBubbles.length > 0) {
+            console.log(`  ⛔ Objective is shielded by ${protectingBubbles.length} bubbles`);
+            return null;
+        }
+        
+        // Calculate angle to objective
+        const angle = this.calculateAngleToTarget(centerX, centerY);
+        
+        // Check if angle is valid
+        if (angle < 15 || angle > 165) {
+            console.log(`  ❌ Cannot reach objective - angle ${angle.toFixed(1)}° out of range`);
+            return null;
+        }
+        
+        // Check if path is clear
+        if (!this.isTrajectoryClear(angle, { x: centerX, y: centerY })) {
+            console.log(`  🚫 Path to objective blocked`);
+            return null;
+        }
+        
+        // We have a clear shot to the objective!
+        return {
+            angle: angle,
+            useWallBounce: 'none',
+            score: 10000, // Maximum priority!
+            reasoning: 'DIRECT HIT ON OBJECTIVE - WINNING SHOT!',
+            potentialFalls: 0,
+            totalValue: 10000
+        };
+    }
+    
+    private isObjectiveExposed(): boolean {
+        // Check if objective has any protecting bubbles
+        const centerX = this.scene.cameras.main.centerX;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        const nearbyBubbles = this.getGridBubbles().filter(b => {
+            const dist = Phaser.Math.Distance.Between(b.x, b.y, centerX, centerY);
+            return dist < BUBBLE_CONFIG.SIZE * 3; // Check wider area
+        });
+        
+        return nearbyBubbles.length === 0;
     }
     
     public destroy(): void {
