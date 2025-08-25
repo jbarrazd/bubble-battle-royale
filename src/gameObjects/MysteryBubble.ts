@@ -160,8 +160,8 @@ export class MysteryBubble extends Bubble {
     /**
      * Collect power-up when bubble is destroyed
      */
-    public collectPowerUp(): void {
-        console.log(`Collecting power-up: ${this.currentPowerUp} at position (${this.x}, ${this.y})`);
+    public collectPowerUp(isPlayerShot: boolean = true): void {
+        console.log(`Collecting power-up: ${this.currentPowerUp} at position (${this.x}, ${this.y}) for ${isPlayerShot ? 'player' : 'opponent'}`);
         
         // Create visual feedback at bubble position
         const config = this.powerUpIcons[this.currentPowerUp];
@@ -215,7 +215,8 @@ export class MysteryBubble extends Bubble {
         });
         
         // Emit event to add power-up to inventory
-        const owner = this.y > this.scene.cameras.main.centerY ? 'player' : 'opponent';
+        // Owner is determined by who shot the bubble that caused the match
+        const owner = isPlayerShot ? 'player' : 'opponent';
         console.log(`Emitting power-up-collected event: type=${this.currentPowerUp}, owner=${owner}`);
         
         this.scene.events.emit('power-up-collected', {
@@ -233,11 +234,8 @@ export class MysteryBubble extends Bubble {
             this.powerUpCycleTimer.destroy();
         }
         
-        // Collect power-up when destroyed (if part of a match)
-        if (this.visible) {
-            console.log('Collecting power-up before destruction');
-            this.collectPowerUp();
-        }
+        // Note: Power-ups are collected through MatchDetectionSystem now
+        // This destroy method is called when returning to pool, not when collecting
         
         super.destroy();
     }

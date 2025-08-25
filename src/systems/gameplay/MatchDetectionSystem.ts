@@ -92,7 +92,8 @@ export class MatchDetectionSystem {
             });
             
             // Remove matched bubbles (Mystery bubbles will activate their power-ups when destroyed)
-            await this.removeMatches(Array.from(matches));
+            // Pass !isAIMatch to indicate if it was a player shot
+            await this.removeMatches(Array.from(matches), !isAIMatch);
             
             // Check for floating bubbles after removal
             this.checkFloatingBubbles();
@@ -204,12 +205,12 @@ export class MatchDetectionSystem {
     /**
      * Remove matched bubbles with animation
      */
-    private async removeMatches(bubbles: Bubble[]): Promise<void> {
+    private async removeMatches(bubbles: Bubble[], isPlayerShot: boolean): Promise<void> {
         // First, check for and handle Mystery Bubbles BEFORE removal
         bubbles.forEach(bubble => {
             if (bubble instanceof MysteryBubble) {
-                console.log('Found MysteryBubble in matches, collecting power-up');
-                (bubble as MysteryBubble).collectPowerUp();
+                console.log('Found MysteryBubble in matches, collecting power-up for', isPlayerShot ? 'player' : 'opponent');
+                (bubble as MysteryBubble).collectPowerUp(isPlayerShot);
             }
         });
         
