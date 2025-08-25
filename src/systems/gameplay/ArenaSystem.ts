@@ -275,34 +275,81 @@ export class ArenaSystem {
     private createInitialBubbles(): void {
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
         
+        // Track Mystery Bubbles per side to ensure fair distribution
+        let playerSideMysteryCount = 0;
+        let opponentSideMysteryCount = 0;
+        const screenHeight = this.scene.cameras.main.height;
+        const midPoint = screenHeight / 2;
+        
+        // Collect all positions first
+        const allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
+        
         // Create 3 rings of bubbles around the objective
         for (let ring = 1; ring <= GRID_CONFIG.OBJECTIVE_RADIUS; ring++) {
             const positions = this.bubbleGrid.getRing(center, ring);
-            
             positions.forEach(hexPos => {
                 const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-                
-                // 10-15% chance for Mystery Bubble
-                const isMystery = Math.random() < 0.125; // 12.5% average
-                
-                if (isMystery) {
-                    // Create Mystery Bubble
-                    const mysteryBubble = new MysteryBubble(this.scene, pixelPos.x, pixelPos.y);
-                    mysteryBubble.setGridPosition(hexPos);
-                    this.bubbles.push(mysteryBubble);
-                    this.gridAttachmentSystem.addGridBubble(mysteryBubble);
-                } else {
-                    // Create normal bubble
-                    const bubble = this.getBubbleFromPool();
-                    if (bubble) {
-                        bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
-                        bubble.setGridPosition(hexPos);
-                        this.bubbles.push(bubble);
-                        this.gridAttachmentSystem.addGridBubble(bubble);
-                    }
-                }
+                allPositions.push({ hexPos, pixelPos });
             });
         }
+        
+        // Calculate how many Mystery Bubbles we want (12.5% of total)
+        const totalBubbles = allPositions.length;
+        const targetMysteryCount = Math.floor(totalBubbles * 0.125);
+        const mysteryPerSide = Math.floor(targetMysteryCount / 2);
+        
+        // Randomly select positions for Mystery Bubbles, ensuring balance
+        const mysteryPositions = new Set<number>();
+        
+        // First, ensure each side gets its fair share
+        for (const side of ['player', 'opponent']) {
+            let sideCount = 0;
+            const maxAttempts = 100; // Prevent infinite loop
+            let attempts = 0;
+            
+            while (sideCount < mysteryPerSide && attempts < maxAttempts) {
+                const index = Math.floor(Math.random() * allPositions.length);
+                if (!mysteryPositions.has(index)) {
+                    const pos = allPositions[index];
+                    const isPlayerSide = pos.pixelPos.y > midPoint;
+                    
+                    if ((side === 'player' && isPlayerSide) || (side === 'opponent' && !isPlayerSide)) {
+                        mysteryPositions.add(index);
+                        sideCount++;
+                    }
+                }
+                attempts++;
+            }
+        }
+        
+        // Create bubbles with balanced Mystery Bubble distribution
+        allPositions.forEach((pos, index) => {
+            if (mysteryPositions.has(index)) {
+                // Create Mystery Bubble
+                const mysteryBubble = new MysteryBubble(this.scene, pos.pixelPos.x, pos.pixelPos.y);
+                mysteryBubble.setGridPosition(pos.hexPos);
+                this.bubbles.push(mysteryBubble);
+                this.gridAttachmentSystem.addGridBubble(mysteryBubble);
+                
+                // Track distribution
+                if (pos.pixelPos.y > midPoint) {
+                    playerSideMysteryCount++;
+                } else {
+                    opponentSideMysteryCount++;
+                }
+            } else {
+                // Create normal bubble
+                const bubble = this.getBubbleFromPool();
+                if (bubble) {
+                    bubble.reset(pos.pixelPos.x, pos.pixelPos.y, Bubble.getRandomColor());
+                    bubble.setGridPosition(pos.hexPos);
+                    this.bubbles.push(bubble);
+                    this.gridAttachmentSystem.addGridBubble(bubble);
+                }
+            }
+        });
+        
+        console.log(`Mystery Bubbles distributed - Player side: ${playerSideMysteryCount}, Opponent side: ${opponentSideMysteryCount}`);
         
         // Update objective shield status based on bubbles
         this.updateObjectiveShield();
