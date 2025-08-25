@@ -10,7 +10,8 @@ import { ShootingSystem } from './ShootingSystem';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { MatchDetectionSystem } from './MatchDetectionSystem';
 import { AIOpponentSystem, AIDifficulty } from './AIOpponentSystem';
-import { ScoreDisplay } from '@/ui/ScoreDisplay';
+import { EnhancedScoreDisplay } from '@/ui/EnhancedScoreDisplay';
+import { ComboManager } from './ComboManager';
 import { VictoryScreen } from '@/ui/VictoryScreen';
 import { DefeatScreen } from '@/ui/DefeatScreen';
 
@@ -34,7 +35,8 @@ export class ArenaSystem {
     private matchDetectionSystem: MatchDetectionSystem;
     private aiOpponent?: AIOpponentSystem;
     private isSinglePlayer: boolean = true;
-    private scoreDisplay?: ScoreDisplay;
+    private enhancedScoreDisplay?: EnhancedScoreDisplay;
+    private comboManager?: ComboManager;
     private playerScore: number = 0;
     private aiScore: number = 0;
     private gameOver: boolean = false;
@@ -124,8 +126,9 @@ export class ArenaSystem {
         this.createInitialBubbles();
         this.createZoneVisuals();
         
-        // Initialize score display (shows player score only)
-        this.scoreDisplay = new ScoreDisplay(this.scene);
+        // Initialize enhanced scoring systems
+        this.enhancedScoreDisplay = new EnhancedScoreDisplay(this.scene);
+        this.comboManager = new ComboManager(this.scene);
         this.playerScore = 0;
         this.aiScore = 0;
         
@@ -181,9 +184,6 @@ export class ArenaSystem {
             this.scene.input.keyboard?.on('keydown-THREE', () => {
                 this.changeAIDifficulty(AIDifficulty.HARD);
             });
-            
-            // Show current controls
-            this.showControlsHint();
         }
     }
 
@@ -301,30 +301,7 @@ export class ArenaSystem {
         graphics.lineTo(this.scene.cameras.main.width, dangerLineY);
         graphics.strokePath();
         
-        // Add warning text
-        const warningText = this.scene.add.text(
-            this.scene.cameras.main.centerX,
-            dangerLineY - 15,
-            'DANGER ZONE',
-            {
-                fontSize: '12px',
-                color: '#FF6666',
-                fontFamily: 'Arial',
-                fontStyle: 'bold'
-            }
-        ).setOrigin(0.5);
-        warningText.setDepth(Z_LAYERS.UI);
-        warningText.setAlpha(0.6);
-        
-        // Pulse the warning
-        this.scene.tweens.add({
-            targets: warningText,
-            alpha: 0.3,
-            duration: 1500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
+        // Remove warning text for cleaner UI
     }
 
     private toggleDebug(): void {
@@ -524,14 +501,14 @@ export class ArenaSystem {
             this.debugGraphics.strokePath();
         }
     }
-
+    
     private changeAIDifficulty(difficulty: AIDifficulty): void {
         if (!this.aiOpponent) return;
         
         // Stop current AI
         this.aiOpponent.stop();
         
-        // Change difficulty
+        // Change difficulty  
         this.aiOpponent.setDifficulty(difficulty);
         
         // Restart AI
@@ -539,105 +516,86 @@ export class ArenaSystem {
             this.aiOpponent?.start();
         });
         
-        // Show notification
-        this.showDifficultyChangeNotification(difficulty);
+        // Show minimal notification
+        this.showDifficultyNotification(difficulty);
     }
     
-    private showDifficultyChangeNotification(difficulty: AIDifficulty): void {
-        const notification = this.scene.add.container(
-            this.scene.cameras.main.centerX,
-            200
-        );
-        
+    private showDifficultyNotification(difficulty: AIDifficulty): void {
+        // Colors for each difficulty
         const colors = {
-            [AIDifficulty.EASY]: 0x4CAF50,
-            [AIDifficulty.MEDIUM]: 0xFFC107,
-            [AIDifficulty.HARD]: 0xF44336
+            [AIDifficulty.EASY]: '#4CAF50',
+            [AIDifficulty.MEDIUM]: '#FFA726', 
+            [AIDifficulty.HARD]: '#F44336'
         };
         
-        const bg = this.scene.add.rectangle(0, 0, 200, 40, colors[difficulty], 0.9);
-        bg.setStrokeStyle(2, 0xFFFFFF);
-        
-        const text = this.scene.add.text(0, 0, `AI: ${difficulty}`, {
-            fontSize: '18px',
-            color: '#FFFFFF',
-            fontStyle: 'bold'
-        });
-        text.setOrigin(0.5);
-        
-        notification.add([bg, text]);
+        // Create small notification
+        const notification = this.scene.add.text(
+            this.scene.cameras.main.centerX,
+            160,
+            `AI: ${difficulty}`,
+            {
+                fontSize: '18px',
+                color: colors[difficulty],
+                fontFamily: 'Arial',
+                fontStyle: 'bold',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        notification.setOrigin(0.5);
         notification.setDepth(1500);
         notification.setScale(0);
         
-        // Animate
+        // Animate in
         this.scene.tweens.add({
             targets: notification,
             scale: 1,
             duration: 200,
-            ease: 'Back.easeOut',
-            onComplete: () => {
-                this.scene.time.delayedCall(1000, () => {
-                    this.scene.tweens.add({
-                        targets: notification,
-                        scale: 0,
-                        alpha: 0,
-                        duration: 200,
-                        onComplete: () => notification.destroy()
-                    });
-                });
-            }
+            ease: 'Back.easeOut'
+        });
+        
+        // Fade out after short delay
+        this.scene.time.delayedCall(1200, () => {
+            this.scene.tweens.add({
+                targets: notification,
+                alpha: 0,
+                scale: 0.8,
+                duration: 300,
+                ease: 'Power2',
+                onComplete: () => {
+                    notification.destroy();
+                }
+            });
         });
     }
     
-    private showControlsHint(): void {
-        // Create controls hint at bottom-left
-        const hintContainer = this.scene.add.container(10, this.scene.cameras.main.height - 60);
-        
-        const bg = this.scene.add.rectangle(0, 0, 250, 50, 0x000000, 0.7);
-        bg.setOrigin(0);
-        bg.setStrokeStyle(1, 0x555555);
-        
-        const title = this.scene.add.text(5, 5, 'Controls:', {
-            fontSize: '12px',
-            color: '#FFFFFF',
-            fontStyle: 'bold'
-        });
-        
-        const controls = this.scene.add.text(5, 20, 
-            'D: Debug | 1: Easy | 2: Medium | 3: Hard', {
-            fontSize: '11px',
-            color: '#CCCCCC'
-        });
-        
-        hintContainer.add([bg, title, controls]);
-        hintContainer.setDepth(900);
-        hintContainer.setAlpha(0.8);
-        
-        // Fade in
-        hintContainer.setAlpha(0);
-        this.scene.tweens.add({
-            targets: hintContainer,
-            alpha: 0.8,
-            duration: 1000,
-            delay: 2000
-        });
-    }
-    
-    private onScoreUpdate = (data: { score: number; delta: number; combo?: number; isAI?: boolean }): void => {
+    private onScoreUpdate = (data: { score: number; delta: number; combo?: number; isAI?: boolean; matchSize?: number; x?: number; y?: number; isOrphanBonus?: boolean; bubbleColor?: number }): void => {
         if (this.gameOver) return;
         
-        // Track scores separately
+        let finalScore = data.delta;
+        
+        // Check if this is an orphan bonus (dropped bubbles)
+        if (data.isOrphanBonus) {
+            // Orphan bonus already shows its own text, just use the delta
+            finalScore = data.delta;
+        } else if (data.matchSize && this.comboManager) {
+            // Regular match - use combo manager for scoring with bubble color
+            finalScore = this.comboManager.calculateScore(data.matchSize, data.x, data.y, data.bubbleColor);
+            
+            // Particle effects are now handled inside ComboManager with delay
+        }
+        
+        // Track scores separately and update enhanced display
         if (data.isAI) {
-            this.aiScore += data.delta;
+            this.aiScore += finalScore;
+            this.enhancedScoreDisplay?.updateOpponentScore(this.aiScore);
             console.log(`AI Score: ${this.aiScore}`);
         } else {
-            this.playerScore += data.delta;
-            // Only update display for player score
-            this.scoreDisplay?.updateScore(this.playerScore);
+            this.playerScore += finalScore;
+            this.enhancedScoreDisplay?.updatePlayerScore(this.playerScore);
             
-            if (data.combo && data.combo > 1) {
-                this.scoreDisplay?.setCombo(data.combo);
-            }
+            // Old display removed - no longer needed
+            // this.scoreDisplay?.updateScore(this.playerScore);
         }
     }
     
@@ -918,7 +876,8 @@ export class ArenaSystem {
         this.playerLauncher?.destroy();
         this.opponentLauncher?.destroy();
         this.debugGraphics?.destroy();
-        this.scoreDisplay?.destroy();
+        this.enhancedScoreDisplay?.destroy();
+        this.comboManager?.reset();
         this.victoryScreen?.destroy();
         this.defeatScreen?.destroy();
         

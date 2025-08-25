@@ -181,6 +181,12 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.pooled = true;
         this.setVisible(false);
         this.gridPosition = null;
+        // Reset position to avoid positioning bugs when reused
+        this.setPosition(0, 0);
+        this.setScale(1);
+        this.setAlpha(1);
+        this.setAngle(0);
+        this.clearTint();
     }
 
     public isPooled(): boolean {

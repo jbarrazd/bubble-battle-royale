@@ -52,6 +52,22 @@ export class MatchDetectionSystem {
         if (matches.size >= this.minimumMatchSize) {
             console.log('Match detected! Removing bubbles...');
             
+            // Calculate center position BEFORE any animations or removal
+            let avgX = 0, avgY = 0;
+            let bubbleColor: BubbleColor | undefined;
+            matches.forEach(bubble => {
+                avgX += bubble.x;
+                avgY += bubble.y;
+                if (!bubbleColor) {
+                    bubbleColor = bubble.getColor();
+                }
+            });
+            avgX /= matches.size;
+            avgY /= matches.size;
+            
+            // Determine if this was an AI or player match based on the attached bubble
+            const isAIMatch = attachedBubble.getShooter() === 'ai';
+            
             // Highlight matches briefly before removing
             this.highlightMatches(Array.from(matches));
             
@@ -65,6 +81,18 @@ export class MatchDetectionSystem {
             const score = this.calculateScore(matches);
             this.totalScore += score;
             
+            // Emit score update event BEFORE removal animations
+            this.scene.events.emit('score-update', {
+                score: this.totalScore,
+                delta: score,
+                combo: this.combo,
+                isAI: isAIMatch,
+                matchSize: matches.size,
+                x: avgX,
+                y: avgY,
+                bubbleColor: bubbleColor
+            });
+            
             // Remove matched bubbles
             await this.removeMatches(Array.from(matches));
             
@@ -77,17 +105,6 @@ export class MatchDetectionSystem {
                 score: score,
                 totalScore: this.totalScore,
                 combo: this.combo
-            });
-            
-            // Emit score update event for the score display
-            // Determine if this was an AI or player match based on the attached bubble
-            const isAIMatch = attachedBubble.getShooter() === 'ai';
-            
-            this.scene.events.emit('score-update', {
-                score: this.totalScore,
-                delta: score,
-                combo: this.combo,
-                isAI: isAIMatch
             });
         }
         
@@ -169,6 +186,9 @@ export class MatchDetectionSystem {
      */
     private highlightMatches(bubbles: Bubble[]): void {
         bubbles.forEach(bubble => {
+            // Kill any existing tweens on this bubble to prevent conflicts
+            this.scene.tweens.killTweensOf(bubble);
+            
             // Create a pulsing effect
             this.scene.tweens.add({
                 targets: bubble,
@@ -199,50 +219,156 @@ export class MatchDetectionSystem {
             return distA - distB;
         });
         
-        // Show score popup
-        this.showScorePopup(this.calculateScore(new Set(bubbles)), centerX, centerY);
+        // Score popup is handled by ComboManager now
+        
+        // Determine animation style based on match size
+        const matchSize = bubbles.length;
+        const animationStyle = this.getPopAnimationStyle(matchSize);
         
         // Animate removal
         const promises: Promise<void>[] = [];
         
         bubbles.forEach((bubble, index) => {
             const promise = new Promise<void>((resolve) => {
-                // Clear tint first
-                bubble.clearTint();
+                // Kill any existing tweens to prevent conflicts
+                this.scene.tweens.killTweensOf(bubble);
                 
-                // Particle effect
-                const bubbleColor = bubble.getColor();
-                if (bubbleColor !== undefined && bubbleColor !== null) {
-                    this.createParticles(bubble.x, bubble.y, bubbleColor);
+                // Clear tint and ensure bubble is in correct state
+                bubble.clearTint();
+                bubble.setVisible(true);
+                bubble.setAlpha(1);
+                bubble.setScale(1);
+                
+                // Particle effect only for 4+ matches
+                if (matchSize >= 4) {
+                    const bubbleColor = bubble.getColor();
+                    if (bubbleColor !== undefined && bubbleColor !== null) {
+                        this.createParticles(bubble.x, bubble.y, bubbleColor);
+                    }
                 }
                 
-                // Pop animation
-                this.scene.tweens.add({
-                    targets: bubble,
-                    scaleX: 1.3,
-                    scaleY: 1.3,
-                    alpha: 0,
-                    duration: 200,
-                    ease: 'Back.easeOut',
-                    delay: index * 30, // Stagger
-                    onComplete: () => {
-                        // Remove from grid
-                        this.gridAttachmentSystem.removeGridBubble(bubble);
-                        bubble.setGridPosition(null);
-                        bubble.returnToPool();
-                        resolve();
-                    }
-                });
+                // Different animations based on combo size
+                if (matchSize === 3) {
+                    // Simple fade for 3-match
+                    this.scene.tweens.add({
+                        targets: bubble,
+                        scale: 0.8,
+                        alpha: 0,
+                        duration: 150,
+                        ease: 'Power2',
+                        delay: index * 15,
+                        onComplete: () => {
+                            this.gridAttachmentSystem.removeGridBubble(bubble);
+                            bubble.setGridPosition(null);
+                            bubble.returnToPool();
+                            resolve();
+                        }
+                    });
+                } else if (matchSize === 4) {
+                    // Gentle pop for 4-match
+                    this.scene.tweens.add({
+                        targets: bubble,
+                        scale: 1.2,
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Back.easeOut',
+                        delay: index * 20,
+                        onComplete: () => {
+                            this.gridAttachmentSystem.removeGridBubble(bubble);
+                            bubble.setGridPosition(null);
+                            bubble.returnToPool();
+                            resolve();
+                        }
+                    });
+                } else if (matchSize === 5) {
+                    // Bouncy pop for 5-match
+                    this.scene.tweens.add({
+                        targets: bubble,
+                        scale: { from: 1, to: 1.4 },
+                        alpha: 0,
+                        y: bubble.y - 10,
+                        duration: 250,
+                        ease: 'Bounce.easeOut',
+                        delay: index * 25,
+                        onComplete: () => {
+                            this.gridAttachmentSystem.removeGridBubble(bubble);
+                            bubble.setGridPosition(null);
+                            bubble.returnToPool();
+                            resolve();
+                        }
+                    });
+                } else if (matchSize === 6) {
+                    // Spiral out for 6-match
+                    const angle = (index / bubbles.length) * Math.PI * 2;
+                    this.scene.tweens.add({
+                        targets: bubble,
+                        x: bubble.x + Math.cos(angle) * 30,
+                        y: bubble.y + Math.sin(angle) * 30,
+                        scale: 1.5,
+                        alpha: 0,
+                        angle: 180,
+                        duration: 300,
+                        ease: 'Cubic.easeOut',
+                        delay: index * 20,
+                        onComplete: () => {
+                            this.gridAttachmentSystem.removeGridBubble(bubble);
+                            bubble.setGridPosition(null);
+                            bubble.returnToPool();
+                            resolve();
+                        }
+                    });
+                } else {
+                    // Explosive scatter for 7+ match
+                    const explosionAngle = Math.random() * Math.PI * 2;
+                    const explosionDistance = Phaser.Math.Between(50, 100);
+                    
+                    // Ensure bubble is properly set up before animation
+                    bubble.clearTint();
+                    bubble.setVisible(true);
+                    bubble.setAlpha(1);
+                    
+                    this.scene.tweens.add({
+                        targets: bubble,
+                        x: bubble.x + Math.cos(explosionAngle) * explosionDistance,
+                        y: bubble.y + Math.sin(explosionAngle) * explosionDistance,
+                        scale: 0,  // Simplified to just scale to 0
+                        alpha: 0,
+                        angle: 360,
+                        duration: 400,
+                        ease: 'Power3.easeOut',
+                        delay: index * 10,
+                        onComplete: () => {
+                            // Make sure bubble is properly cleaned up
+                            bubble.setVisible(false);
+                            bubble.clearTint();
+                            bubble.setScale(1);
+                            bubble.setAlpha(1);
+                            bubble.setAngle(0);
+                            this.gridAttachmentSystem.removeGridBubble(bubble);
+                            bubble.setGridPosition(null);
+                            bubble.returnToPool();
+                            resolve();
+                        }
+                    });
+                }
             });
             promises.push(promise);
         });
         
-        // Screen shake for large matches
-        if (bubbles.length >= 7) {
-            this.scene.cameras.main.shake(200, 0.003);
+        // Screen shake only for large matches
+        if (bubbles.length >= 6) {
+            this.scene.cameras.main.shake(150, 0.002);
         }
         
         await Promise.all(promises);
+    }
+    
+    private getPopAnimationStyle(matchSize: number): string {
+        if (matchSize === 3) return 'fade';
+        if (matchSize === 4) return 'pop';
+        if (matchSize === 5) return 'bounce';
+        if (matchSize === 6) return 'spiral';
+        return 'explode';
     }
     
     /**
@@ -258,18 +384,150 @@ export class MatchDetectionSystem {
         });
         
         if (allDisconnected.length > 0) {
-            // Count bubbles that will fall up (from opponent side)
+            // Calculate center position for bonus display
+            let avgX = 0, avgY = 0;
+            allDisconnected.forEach(bubble => {
+                avgX += bubble.x;
+                avgY += bubble.y;
+            });
+            avgX /= allDisconnected.length;
+            avgY /= allDisconnected.length;
+            
+            // Count bubbles by direction
             const centerY = this.scene.cameras.main.centerY;
             const upwardBubbles = allDisconnected.filter(b => b.y < centerY).length;
+            const downwardBubbles = allDisconnected.filter(b => b.y >= centerY).length;
             
-            // Add bonus score for upward falling bubbles
-            if (upwardBubbles > 0) {
-                const dropScore = upwardBubbles * 5;
-                this.totalScore += dropScore;
+            // Calculate bonus score (10 points per orphan bubble)
+            const bonusPerBubble = 10;
+            const totalOrphanBonus = allDisconnected.length * bonusPerBubble;
+            
+            if (totalOrphanBonus > 0) {
+                this.totalScore += totalOrphanBonus;
+                
+                // Show orphan bonus feedback
+                this.showOrphanBonus(avgX, avgY, allDisconnected.length, totalOrphanBonus);
+                
+                // Emit score update for orphan bonus
+                // Determine shooter based on which side had more bubbles
+                const isAIBonus = upwardBubbles > downwardBubbles;
+                
+                this.scene.events.emit('score-update', {
+                    score: this.totalScore,
+                    delta: totalOrphanBonus,
+                    combo: 0,
+                    isAI: isAIBonus,
+                    matchSize: 0, // 0 indicates orphan bonus
+                    x: avgX,
+                    y: avgY,
+                    isOrphanBonus: true
+                });
             }
             
             // Apply bidirectional gravity
             this.gridAttachmentSystem.applyBidirectionalGravity(allDisconnected);
+        }
+    }
+    
+    /**
+     * Show orphan bonus visual feedback
+     */
+    private showOrphanBonus(x: number, y: number, count: number, bonus: number): void {
+        // Offset y position to avoid overlapping with combo displays
+        const adjustedY = y + 30; // Move down to avoid overlap
+        
+        // Create container for bonus display
+        const bonusContainer = this.scene.add.container(x, adjustedY);
+        bonusContainer.setDepth(Z_LAYERS.UI + 15); // Higher depth to ensure visibility
+        
+        // Create comic-style drop bonus text
+        const dropText = this.scene.add.text(0, -8, 'DROP BONUS', {
+            fontSize: '18px',
+            color: '#00FFFF',
+            fontFamily: 'Impact, Arial Black', // Comic style
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        dropText.setOrigin(0.5);
+        dropText.setShadow(1, 1, '#0066CC', 2, true, true);
+        
+        // Create points text with comic style
+        const pointsText = this.scene.add.text(0, 12, `+${bonus}`, {
+            fontSize: '22px',
+            color: '#FFD700',
+            fontFamily: 'Impact, Arial Black', // Comic style
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        pointsText.setOrigin(0.5);
+        
+        bonusContainer.add([dropText, pointsText]);
+        bonusContainer.setScale(0);
+        
+        // Elegant entrance animation
+        this.scene.tweens.add({
+            targets: bonusContainer,
+            scale: { from: 0, to: 1.1 },
+            duration: 250,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Subtle settle
+                this.scene.tweens.add({
+                    targets: bonusContainer,
+                    scale: 1,
+                    duration: 100,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        });
+        
+        // Float down instead of up to differentiate from combo text
+        this.scene.time.delayedCall(700, () => {
+            this.scene.tweens.add({
+                targets: bonusContainer,
+                y: adjustedY + 40, // Float down
+                alpha: 0,
+                scale: 0.9,
+                duration: 600,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    bonusContainer.destroy(true);
+                }
+            });
+        });
+        
+        // Create sparkle particles at adjusted position
+        this.createDropParticles(x, adjustedY, count);
+    }
+    
+    private createDropParticles(x: number, y: number, count: number): void {
+        const particleCount = Math.min(count * 3, 15);
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = this.scene.add.circle(
+                x + Phaser.Math.Between(-20, 20),
+                y + Phaser.Math.Between(-20, 20),
+                3,
+                0x00FFFF,
+                0.8
+            );
+            particle.setDepth(Z_LAYERS.UI + 5);
+            
+            // Sparkle animation
+            this.scene.tweens.add({
+                targets: particle,
+                y: particle.y - Phaser.Math.Between(30, 60),
+                alpha: 0,
+                scale: 0,
+                duration: Phaser.Math.Between(500, 800),
+                delay: i * 20,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    particle.destroy();
+                }
+            });
         }
     }
     
@@ -372,36 +630,7 @@ export class MatchDetectionSystem {
         }
     }
     
-    /**
-     * Show score popup
-     */
-    private showScorePopup(score: number, x: number, y: number): void {
-        const text = this.scene.add.text(
-            x, y,
-            `+${score}`,
-            {
-                fontSize: '28px',
-                fontStyle: 'bold',
-                color: '#FFD700',
-                stroke: '#000000',
-                strokeThickness: 3
-            }
-        );
-        text.setOrigin(0.5);
-        text.setDepth(Z_LAYERS.UI);
-        
-        this.scene.tweens.add({
-            targets: text,
-            y: y - 60,
-            alpha: 0,
-            scale: 1.5,
-            duration: 800,
-            ease: 'Power2',
-            onComplete: () => {
-                text.destroy();
-            }
-        });
-    }
+    // Score popup removed - handled by ComboManager
     
     /**
      * Get current score
