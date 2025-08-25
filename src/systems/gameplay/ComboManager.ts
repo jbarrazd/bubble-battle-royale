@@ -98,10 +98,10 @@ export class ComboManager {
         // Calculate final score
         const finalScore = Math.floor(basePoints * this.comboMultiplier * chainBonus);
         
-        // Always show score/combo display at match location
-        if (x !== undefined && y !== undefined) {
-            this.showCombo(comboConfig, finalScore, x, y, matchSize, bubbleColor);
-        }
+        // DISABLED: Visual effects now handled by UnifiedFeedbackSystem
+        // if (x !== undefined && y !== undefined) {
+        //     this.showCombo(comboConfig, finalScore, x, y, matchSize, bubbleColor);
+        // }
         
         return finalScore;
     }
@@ -563,37 +563,6 @@ export class ComboManager {
         }
     }
     
-    private createColorBurst(x: number, y: number, config: ComboConfig, bubbleColor?: number): void {
-        const burstColor = bubbleColor || config.color;
-        
-        // Create color burst rays
-        for (let i = 0; i < 12; i++) {
-            const angle = (Math.PI * 2 * i) / 12;
-            const ray = this.scene.add.rectangle(
-                x,
-                y,
-                3,
-                20,
-                burstColor,
-                0.7
-            );
-            ray.setOrigin(0.5, 0);
-            ray.setRotation(angle);
-            ray.setDepth(1048);
-            
-            this.scene.tweens.add({
-                targets: ray,
-                scaleY: 2,
-                alpha: 0,
-                duration: 400,
-                delay: i * 20,
-                ease: 'Power2.easeOut',
-                onComplete: () => {
-                    ray.destroy();
-                }
-            });
-        }
-    }
     
     private createFireExplosion(x: number, y: number, config: ComboConfig, bubbleColor?: number): void {
         // Create epic fire effect for mega combos

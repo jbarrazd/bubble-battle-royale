@@ -14,6 +14,8 @@ import { EnhancedScoreDisplay } from '@/ui/EnhancedScoreDisplay';
 import { ComboManager } from './ComboManager';
 import { VictoryScreen } from '@/ui/VictoryScreen';
 import { DefeatScreen } from '@/ui/DefeatScreen';
+import { ScoreEventManager, ScoreEventType, ScoreContext } from '@/systems/scoring/ScoreEventManager';
+import { UnifiedFeedbackSystem } from '@/systems/scoring/UnifiedFeedbackSystem';
 
 export { AIDifficulty };
 
@@ -37,6 +39,8 @@ export class ArenaSystem {
     private isSinglePlayer: boolean = true;
     private enhancedScoreDisplay?: EnhancedScoreDisplay;
     private comboManager?: ComboManager;
+    private scoreEventManager?: ScoreEventManager;
+    private unifiedFeedbackSystem?: UnifiedFeedbackSystem;
     private playerScore: number = 0;
     private aiScore: number = 0;
     private gameOver: boolean = false;
@@ -132,6 +136,26 @@ export class ArenaSystem {
         // Initialize enhanced scoring systems
         this.enhancedScoreDisplay = new EnhancedScoreDisplay(this.scene);
         this.comboManager = new ComboManager(this.scene);
+        
+        // Initialize new unified scoring system
+        this.scoreEventManager = new ScoreEventManager(this.scene);
+        this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
+        
+        // Connect scoring systems
+        this.scoreEventManager.onScoreUpdate((score, isPlayer) => {
+            if (isPlayer) {
+                this.playerScore = score;
+                this.enhancedScoreDisplay?.updatePlayerScore(score);
+            } else {
+                this.aiScore = score;
+                this.enhancedScoreDisplay?.updateOpponentScore(score);
+            }
+        });
+        
+        this.scoreEventManager.onVisualEffect((result, position) => {
+            this.unifiedFeedbackSystem?.queueFeedback(result, position);
+        });
+        
         this.playerScore = 0;
         this.aiScore = 0;
         
@@ -516,6 +540,9 @@ export class ArenaSystem {
         
         // Check danger zone proximity
         this.checkDangerZoneProximity();
+        
+        // Update unified feedback system
+        this.unifiedFeedbackSystem?.update(delta);
     }
     
     private updateLauncherAiming(): void {
@@ -630,30 +657,61 @@ export class ArenaSystem {
     private onScoreUpdate = (data: { score: number; delta: number; combo?: number; isAI?: boolean; matchSize?: number; x?: number; y?: number; isOrphanBonus?: boolean; bubbleColor?: number }): void => {
         if (this.gameOver) return;
         
-        let finalScore = data.delta;
-        
-        // Check if this is an orphan bonus (dropped bubbles)
-        if (data.isOrphanBonus) {
-            // Orphan bonus already shows its own text, just use the delta
-            finalScore = data.delta;
-        } else if (data.matchSize && this.comboManager) {
-            // Regular match - use combo manager for scoring with bubble color
-            finalScore = this.comboManager.calculateScore(data.matchSize, data.x, data.y, data.bubbleColor);
+        // Use new ScoreEventManager for all scoring
+        if (this.scoreEventManager) {
+            let context: ScoreContext;
             
-            // Particle effects are now handled inside ComboManager with delay
-        }
-        
-        // Track scores separately and update enhanced display
-        if (data.isAI) {
-            this.aiScore += finalScore;
-            this.enhancedScoreDisplay?.updateOpponentScore(this.aiScore);
-            console.log(`AI Score: ${this.aiScore}`);
+            if (data.isOrphanBonus) {
+                // Orphan drop event
+                context = {
+                    type: ScoreEventType.ORPHAN_DROP,
+                    baseValue: data.delta,
+                    position: { x: data.x || 0, y: data.y || 0 },
+                    isPlayer: !data.isAI,
+                    bubbleColor: data.bubbleColor,
+                    metadata: {
+                        dropCount: Math.floor(data.delta / 5) // Assuming 5 points per drop
+                    }
+                };
+            } else if (data.matchSize) {
+                // Bubble match event
+                context = {
+                    type: ScoreEventType.BUBBLE_MATCH,
+                    baseValue: data.delta,
+                    position: { x: data.x || 0, y: data.y || 0 },
+                    matchSize: data.matchSize,
+                    isPlayer: !data.isAI,
+                    bubbleColor: data.bubbleColor
+                };
+            } else {
+                // Generic score event
+                context = {
+                    type: ScoreEventType.SPECIAL_BONUS,
+                    baseValue: data.delta,
+                    position: { x: data.x || 0, y: data.y || 0 },
+                    isPlayer: !data.isAI,
+                    bubbleColor: data.bubbleColor
+                };
+            }
+            
+            this.scoreEventManager.queueEvent(context);
         } else {
-            this.playerScore += finalScore;
-            this.enhancedScoreDisplay?.updatePlayerScore(this.playerScore);
+            // Fallback to old system if new system not initialized
+            let finalScore = data.delta;
             
-            // Old display removed - no longer needed
-            // this.scoreDisplay?.updateScore(this.playerScore);
+            if (data.isOrphanBonus) {
+                finalScore = data.delta;
+            } else if (data.matchSize && this.comboManager) {
+                finalScore = this.comboManager.calculateScore(data.matchSize, data.x, data.y, data.bubbleColor);
+            }
+            
+            if (data.isAI) {
+                this.aiScore += finalScore;
+                this.enhancedScoreDisplay?.updateOpponentScore(this.aiScore);
+            } else {
+                this.playerScore += finalScore;
+                this.enhancedScoreDisplay?.updatePlayerScore(this.playerScore);
+            }
         }
     }
     
@@ -1038,6 +1096,8 @@ export class ArenaSystem {
         this.debugGraphics?.destroy();
         this.enhancedScoreDisplay?.destroy();
         this.comboManager?.reset();
+        this.scoreEventManager?.destroy();
+        this.unifiedFeedbackSystem?.destroy();
         this.victoryScreen?.destroy();
         this.defeatScreen?.destroy();
         

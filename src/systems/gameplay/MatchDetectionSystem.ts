@@ -405,10 +405,10 @@ export class MatchDetectionSystem {
             if (totalOrphanBonus > 0) {
                 this.totalScore += totalOrphanBonus;
                 
-                // Show orphan bonus feedback
-                this.showOrphanBonus(avgX, avgY, allDisconnected.length, totalOrphanBonus);
+                // DISABLED: Visual feedback now handled by UnifiedFeedbackSystem
+                // this.showOrphanBonus(avgX, avgY, allDisconnected.length, totalOrphanBonus);
                 
-                // Emit score update for orphan bonus
+                // Emit score update for orphan bonus with adjusted Y position
                 // Determine shooter based on which side had more bubbles
                 const isAIBonus = upwardBubbles > downwardBubbles;
                 
@@ -419,8 +419,11 @@ export class MatchDetectionSystem {
                     isAI: isAIBonus,
                     matchSize: 0, // 0 indicates orphan bonus
                     x: avgX,
-                    y: avgY,
-                    isOrphanBonus: true
+                    y: avgY + 40, // Offset down to avoid overlap with match score
+                    isOrphanBonus: true,
+                    metadata: {
+                        dropCount: allDisconnected.length
+                    }
                 });
             }
             
