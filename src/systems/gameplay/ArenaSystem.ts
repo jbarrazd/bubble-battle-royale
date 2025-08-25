@@ -40,6 +40,7 @@ export class ArenaSystem {
     private gameOver: boolean = false;
     private victoryScreen?: VictoryScreen;
     private defeatScreen?: DefeatScreen;
+    private isRestarting: boolean = false;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -725,6 +726,12 @@ export class ArenaSystem {
         // Show appropriate screen
         if (playerWins) {
             console.log('🎉 VICTORY! Player wins!');
+            
+            // Debug callback functions
+            console.log('Creating VictoryScreen with callbacks:');
+            console.log('restartGame type:', typeof this.restartGame);
+            console.log('returnToMenu type:', typeof this.returnToMenu);
+            
             this.victoryScreen = new VictoryScreen(
                 this.scene,
                 this.playerScore,
@@ -736,6 +743,12 @@ export class ArenaSystem {
             this.scene.cameras.main.flash(500, 255, 215, 0);
         } else {
             console.log('💀 DEFEAT! AI wins!');
+            
+            // Debug callback functions
+            console.log('Creating DefeatScreen with callbacks:');
+            console.log('restartGame type:', typeof this.restartGame);
+            console.log('returnToMenu type:', typeof this.returnToMenu);
+            
             this.defeatScreen = new DefeatScreen(
                 this.scene,
                 this.playerScore,
@@ -759,48 +772,138 @@ export class ArenaSystem {
     }
     
     private restartGame = (): void => {
-        console.log('Restarting game...');
+        console.log('🔄 RESTART BUTTON CLICKED!');
         
-        // Clean up all UI elements first
-        if (this.victoryScreen) {
-            this.victoryScreen.destroy();
-            this.victoryScreen = undefined;
+        try {
+            // Prevent multiple clicks
+            if (this.isRestarting) {
+                console.log('Already restarting, ignoring click');
+                return;
+            }
+            this.isRestarting = true;
+            
+            console.log('IMMEDIATE RESTART - No fade, direct action');
+            
+            // Clean up UI elements immediately
+            if (this.victoryScreen) {
+                this.victoryScreen.destroy();
+                this.victoryScreen = undefined;
+            }
+            if (this.defeatScreen) {
+                this.defeatScreen.destroy();
+                this.defeatScreen = undefined;
+            }
+            
+            console.log('UI cleaned up, attempting restart methods...');
+            
+            // Try Phaser method first (immediate)
+            console.log('Method 0: Phaser scene destruction and recreation');
+            try {
+                // Destroy all game objects
+                this.scene.children.removeAll(true);
+                
+                // Reset game state completely
+                this.gameOver = false;
+                this.playerScore = 0;
+                this.aiScore = 0;
+                this.isRestarting = false;
+                
+                // Restart the scene using scene manager
+                const sceneKey = this.scene.scene.key;
+                console.log('Restarting scene with key:', sceneKey);
+                
+                this.scene.scene.restart();
+                
+                console.log('✅ Phaser restart method attempted');
+                
+            } catch (phaserError) {
+                console.error('Phaser restart failed:', phaserError);
+                
+                // Fallback to page reload methods
+                console.log('Fallback: Attempting page reload methods...');
+                
+                // Method 1: Force reload with timestamp
+                console.log('Method 1: Force reload with timestamp');
+                window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+                
+                // Method 2: Backup - traditional reload after delay
+                setTimeout(() => {
+                    console.log('Method 2: Traditional reload backup');
+                    window.location.reload(true);
+                }, 100);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error in restartGame, trying alternative methods:', error);
+            
+            // Try alternative reload methods
+            try {
+                console.log('Emergency reload attempt 1: document.location.reload()');
+                (document.location as any).reload(true);
+            } catch (e2) {
+                console.log('Emergency reload attempt 2: history manipulation');
+                window.history.go(0);
+            }
         }
-        if (this.defeatScreen) {
-            this.defeatScreen.destroy();
-            this.defeatScreen = undefined;
-        }
-        
-        // Use a small delay to ensure UI cleanup completes
-        this.scene.time.delayedCall(50, () => {
-            console.log('Actually restarting scene now...');
-            // Restart the scene
-            this.scene.scene.restart();
-        });
     }
     
     private returnToMenu = (): void => {
-        console.log('Returning to menu...');
+        console.log('🏠 MENU BUTTON CLICKED!');
         
-        // Clean up all UI elements first
-        if (this.victoryScreen) {
-            this.victoryScreen.destroy();
-            this.victoryScreen = undefined;
-        }
-        if (this.defeatScreen) {
-            this.defeatScreen.destroy();
-            this.defeatScreen = undefined;
-        }
-        
-        // Use a small delay to ensure UI cleanup completes
-        this.scene.time.delayedCall(50, () => {
-            console.log('Returning to menu (restarting for now)...');
-            // Transition to menu scene (if it exists)
-            // this.scene.scene.start('MenuScene');
+        try {
+            // Prevent multiple clicks
+            if (this.isRestarting) {
+                console.log('Already transitioning, ignoring click');
+                return;
+            }
+            this.isRestarting = true;
             
-            // For now, just restart
-            this.scene.scene.restart();
-        });
+            console.log('MENU - Using same method as Try Again (works!)');
+            
+            // Clean up UI elements immediately
+            if (this.victoryScreen) {
+                this.victoryScreen.destroy();
+                this.victoryScreen = undefined;
+            }
+            if (this.defeatScreen) {
+                this.defeatScreen.destroy();
+                this.defeatScreen = undefined;
+            }
+            
+            console.log('UI cleaned up for menu, using restart method...');
+            
+            // Use the EXACT same method that works for Try Again
+            try {
+                // Destroy all game objects
+                this.scene.children.removeAll(true);
+                
+                // Reset game state completely
+                this.gameOver = false;
+                this.playerScore = 0;
+                this.aiScore = 0;
+                this.isRestarting = false;
+                
+                // Restart the scene using scene manager
+                const sceneKey = this.scene.scene.key;
+                console.log('Menu: Restarting scene with key:', sceneKey);
+                
+                this.scene.scene.restart();
+                
+                console.log('✅ Menu using restart method (same as Try Again)');
+                
+            } catch (phaserError) {
+                console.error('Menu restart failed:', phaserError);
+                
+                // Same fallback as Try Again
+                console.log('Menu Fallback: Force reload...');
+                window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+            }
+            
+        } catch (error) {
+            console.error('❌ Error in returnToMenu:', error);
+            // Force restart as last resort
+            window.location.reload();
+        }
     }
     
     public destroy(): void {

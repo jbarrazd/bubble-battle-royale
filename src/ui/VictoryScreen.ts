@@ -219,15 +219,30 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
         });
         
         bg.on('pointerdown', () => {
+            console.log(`💆 VictoryScreen button clicked: ${text}`);
+            
+            // Execute callback IMMEDIATELY without waiting for tween
+            console.log(`🚀 Executing callback for: ${text}`);
+            
+            try {
+                if (callback && typeof callback === 'function') {
+                    console.log(`💫 Callback type check passed, executing...`);
+                    callback();
+                    console.log(`✅ Callback executed successfully!`);
+                } else {
+                    console.error('❌ Callback is not a function:', callback, 'Type:', typeof callback);
+                }
+            } catch (error) {
+                console.error('❌ Error executing callback:', error);
+            }
+            
+            // Visual feedback AFTER callback
             scene.tweens.add({
                 targets: button,
-                scale: 0.95,
-                duration: 50,
+                scale: 0.9,
+                duration: 100,
                 yoyo: true,
-                onComplete: () => {
-                    // Ensure callback is executed
-                    if (callback) callback();
-                }
+                ease: 'Power2'
             });
         });
         
