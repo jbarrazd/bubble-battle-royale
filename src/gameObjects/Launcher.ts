@@ -60,14 +60,22 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));
             this.arrow.setRotation(Phaser.Math.DegToRad(launcherAngle));
         } else {
-            // For opponent launcher - allow wider range for AI
-            // Map angle for opponent (shooting downward)
-            let launcherAngle = angle - 90; // Convert to launcher-relative
+            // For opponent launcher - same range as player but inverted
+            // Opponent shoots downward (15° to 165° in world coordinates)
+            console.log(`Opponent Launcher: Input angle=${angle}°`);
             
-            // Clamp to reasonable range for downward shooting
-            // -60 to 60 degrees from vertical (30 to 150 in world space)
-            launcherAngle = Phaser.Math.Clamp(launcherAngle, -60, 60);
+            // Convert angle relative to downward direction (90°)
+            let launcherAngle = angle - 90; // Center on downward direction
+            
+            // Clamp to same range as player: -75° to 75° from vertical
+            // This gives world angles of 15° to 165° (90±75°)
+            launcherAngle = Phaser.Math.Clamp(launcherAngle, -75, 75);
+            
+            // Update the actual angle for validation
+            angle = launcherAngle + 90;
             this.currentAngle = angle;
+            
+            console.log(`Opponent Launcher: Clamped to ${angle}° (launcher angle: ${launcherAngle}°)`);
             
             // Apply rotation
             this.cannon.setRotation(Phaser.Math.DegToRad(launcherAngle));

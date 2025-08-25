@@ -130,11 +130,9 @@ export class ArenaSystem {
         if (this.isSinglePlayer) {
             this.aiOpponent = new AIOpponentSystem(
                 this.scene,
-                this.bubbleGrid,
-                this.opponentLauncher,
-                difficulty
+                this.opponentLauncher
             );
-            this.aiOpponent.setShootingSystem(this.shootingSystem);
+            this.aiOpponent.setDifficulty(difficulty);
             
             console.log(`ArenaSystem: AI opponent initialized with ${difficulty} difficulty`);
             

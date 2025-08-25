@@ -236,9 +236,10 @@ export class ShootingSystem {
         );
         
         // Calculate velocity based on angle
-        // The angle is already in the correct format (90 = down)
-        // Convert to radians for velocity calculation
-        const radians = Phaser.Math.DegToRad(data.angle - 90); // -90 to convert from down=90 to right=0
+        // AI uses standard math angles where:
+        // 0° = right, 90° = down, 180° = left, 270° = up
+        // No conversion needed!
+        const radians = Phaser.Math.DegToRad(data.angle);
         const velocity = new Phaser.Math.Vector2(
             Math.cos(radians) * this.shootSpeed,
             Math.sin(radians) * this.shootSpeed
