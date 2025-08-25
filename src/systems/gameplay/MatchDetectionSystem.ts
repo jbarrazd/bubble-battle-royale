@@ -4,6 +4,8 @@ import { BubbleGrid } from './BubbleGrid';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleColor, IHexPosition, ArenaZone } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { MysteryBubble } from '@/gameObjects/MysteryBubble';
+import { MysteryBox } from '@/gameObjects/MysteryBox';
 
 export class MatchDetectionSystem {
     private scene: Scene;
@@ -48,6 +50,11 @@ export class MatchDetectionSystem {
         const matches = this.findColorMatches(attachedBubble, color);
         
         console.log(`Found ${matches.size} connected ${color.toString(16)} bubbles`);
+        
+        // Check for Mystery Bubbles in matches
+        const mysteryBubbles = Array.from(matches).filter(bubble => 
+            bubble instanceof MysteryBubble && (bubble as MysteryBubble).isMysteryBubble()
+        );
         
         if (matches.size >= this.minimumMatchSize) {
             console.log('Match detected! Removing bubbles...');
@@ -95,6 +102,11 @@ export class MatchDetectionSystem {
             
             // Remove matched bubbles
             await this.removeMatches(Array.from(matches));
+            
+            // Spawn Mystery Boxes for any Mystery Bubbles that were destroyed
+            if (mysteryBubbles.length > 0) {
+                this.spawnMysteryBoxes(mysteryBubbles as MysteryBubble[]);
+            }
             
             // Check for floating bubbles after removal
             this.checkFloatingBubbles();
@@ -634,6 +646,43 @@ export class MatchDetectionSystem {
     }
     
     // Score popup removed - handled by ComboManager
+    
+    /**
+     * Spawn Mystery Boxes from destroyed Mystery Bubbles
+     */
+    private spawnMysteryBoxes(mysteryBubbles: MysteryBubble[]): void {
+        mysteryBubbles.forEach((mysteryBubble, index) => {
+            // Get random power-up type from the mystery bubble
+            const powerUpType = mysteryBubble.getRandomPowerUpType();
+            
+            // Create mystery box at bubble position with slight delay for drama
+            this.scene.time.delayedCall(index * 100, () => {
+                const mysteryBox = new MysteryBox(
+                    this.scene,
+                    mysteryBubble.x,
+                    mysteryBubble.y,
+                    powerUpType
+                );
+                
+                // Add floating animation
+                this.scene.tweens.add({
+                    targets: mysteryBox,
+                    y: mysteryBox.y + 10,
+                    duration: 1000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+                
+                // Auto-collect after 3 seconds
+                this.scene.time.delayedCall(3000, () => {
+                    if (mysteryBox && mysteryBox.active) {
+                        mysteryBox.collect();
+                    }
+                });
+            });
+        });
+    }
     
     /**
      * Get current score

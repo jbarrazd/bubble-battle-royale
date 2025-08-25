@@ -57,5 +57,6 @@ export const Z_LAYERS = {
     OBJECTIVE: 25,  // Objective should be above bubbles
     LAUNCHERS: 40,
     UI: 50,
+    FLOATING_UI: 60,  // For floating power-ups
     DEBUG_OVERLAY: 100
 };

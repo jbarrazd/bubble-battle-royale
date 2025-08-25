@@ -257,19 +257,33 @@ export class ArenaSystem {
             
             positions.forEach(hexPos => {
                 const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-                const bubble = this.getBubbleFromPool();
                 
-                if (bubble) {
-                    bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
-                    bubble.setGridPosition(hexPos);
-                    this.bubbles.push(bubble);
-                    
-                    // Register with grid attachment system
-                    this.gridAttachmentSystem.addGridBubble(bubble);
-                    
-                    // Add some random special bubbles
-                    if (Math.random() < 0.1) {
-                        bubble.setSpecial(true);
+                // 10-15% chance for Mystery Bubble
+                const isMystery = Math.random() < 0.125; // 12.5% average
+                
+                if (isMystery) {
+                    // Create Mystery Bubble (will be implemented after import)
+                    const bubble = this.getBubbleFromPool();
+                    if (bubble) {
+                        bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
+                        bubble.setGridPosition(hexPos);
+                        bubble.setData('isMystery', true);
+                        this.bubbles.push(bubble);
+                        this.gridAttachmentSystem.addGridBubble(bubble);
+                    }
+                } else {
+                    // Create normal bubble
+                    const bubble = this.getBubbleFromPool();
+                    if (bubble) {
+                        bubble.reset(pixelPos.x, pixelPos.y, Bubble.getRandomColor());
+                        bubble.setGridPosition(hexPos);
+                        this.bubbles.push(bubble);
+                        this.gridAttachmentSystem.addGridBubble(bubble);
+                        
+                        // Add some random special bubbles
+                        if (Math.random() < 0.1) {
+                            bubble.setSpecial(true);
+                        }
                     }
                 }
             });

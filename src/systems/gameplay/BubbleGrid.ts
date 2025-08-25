@@ -188,4 +188,32 @@ export class BubbleGrid {
             maxR: GRID_CONFIG.CENTER_ROW
         };
     }
+    
+    /**
+     * Get all bubbles currently in the grid
+     */
+    public getAllBubbles(): any[] {
+        // This would need to be implemented with actual bubble tracking
+        return [];
+    }
+    
+    /**
+     * Get bubble at specific world position
+     */
+    public getBubbleAt(x: number, y: number): any | null {
+        // Convert world position to hex position
+        const hex = this.pixelToHex({ x, y });
+        const key = this.getKey(hex.q, hex.r);
+        
+        // This would need actual bubble tracking
+        return null;
+    }
+    
+    /**
+     * Get bubbles within radius of a point
+     */
+    public getBubblesInRadius(x: number, y: number, radius: number): any[] {
+        // This would need actual implementation with bubble tracking
+        return [];
+    }
 }
