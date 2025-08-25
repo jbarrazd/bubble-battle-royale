@@ -48,10 +48,7 @@ export class MatchDetectionSystem {
         // Find connected bubbles of same color
         const matches = this.findColorMatches(attachedBubble, color);
         
-        console.log(`Found ${matches.size} connected ${color.toString(16)} bubbles`);
-        
         if (matches.size >= this.minimumMatchSize) {
-            console.log('Match detected! Removing bubbles...');
             
             // Calculate center position BEFORE any animations or removal
             let avgX = 0, avgY = 0;
@@ -120,8 +117,6 @@ export class MatchDetectionSystem {
         const visited = new Set<Bubble>();
         const queue: Bubble[] = [startBubble];
         
-        console.log(`Starting match detection from bubble at (${startBubble.x}, ${startBubble.y}) with color ${targetColor.toString(16)}`);
-        
         while (queue.length > 0) {
             const current = queue.shift()!;
             
@@ -129,29 +124,20 @@ export class MatchDetectionSystem {
             if (visited.has(current)) continue;
             visited.add(current);
             
-            // Check if it's a Mystery Bubble (matches any color) or same color
-            const isMystery = current instanceof MysteryBubble;
+            // Check if bubble color matches target color
             const colorMatches = current.getColor() === targetColor;
             
-            if (isMystery) {
-                console.log(`Found Mystery Bubble at (${current.x}, ${current.y})`);
-            }
-            
-            // Skip if wrong color (unless it's a mystery bubble) or not visible
-            if (!current.visible || (!isMystery && !colorMatches)) {
-                if (!current.visible || !colorMatches) {
-                    console.log(`Skipping bubble at (${current.x}, ${current.y}) - visible: ${current.visible}, mystery: ${isMystery}, color: ${current.getColor()?.toString(16)}`);
-                }
+            // Skip if wrong color or not visible
+            // Mystery Bubbles must ALSO match the color, they're not wildcards
+            if (!current.visible || !colorMatches) {
                 continue;
             }
             
             // Add to matches
             matches.add(current);
-            console.log(`Added bubble to matches at (${current.x}, ${current.y})`);
             
             // Get neighbors
             const neighbors = this.getNeighborBubbles(current);
-            console.log(`Found ${neighbors.length} neighbors`);
             for (const neighbor of neighbors) {
                 if (!visited.has(neighbor)) {
                     queue.push(neighbor);
@@ -159,7 +145,6 @@ export class MatchDetectionSystem {
             }
         }
         
-        console.log(`Total matches found: ${matches.size}`);
         return matches;
     }
     
