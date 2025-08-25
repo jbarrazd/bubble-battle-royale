@@ -17,8 +17,8 @@ export class PowerUpInventoryUI {
     private container: Phaser.GameObjects.Container;
     private slots: InventorySlot[] = [];
     private maxSlots: number = 3;
-    private slotSize: number = 45;
-    private padding: number = 10;
+    private slotSize: number = 32;
+    private padding: number = 5;
     private isOpponent: boolean;
     private backgroundPanel?: Phaser.GameObjects.Graphics;
     
@@ -54,25 +54,25 @@ export class PowerUpInventoryUI {
         this.container = this.scene.add.container(0, y);
         this.container.setDepth(Z_LAYERS.UI + 5); // Above other UI but below popups
         
-        // Create compact background for the inventory
-        this.createCompactBackground();
-        
-        // Calculate position - right side for player, left for opponent
-        const slotSpacing = this.slotSize + this.padding;
-        const totalWidth = this.slotSize * this.maxSlots + this.padding * (this.maxSlots - 1);
+        // Calculate total width for horizontal layout
+        const totalWidth = (this.slotSize * this.maxSlots) + (this.padding * (this.maxSlots - 1));
         
         // Position based on player/opponent
-        const baseX = this.isOpponent ? 
-            60 : // Opponent: left side  
-            screenWidth - 60; // Player: right side
+        // Right side for player, left for opponent
+        const centerX = this.isOpponent ? 
+            40 + totalWidth/2 : // Opponent: left side  
+            screenWidth - 40 - totalWidth/2; // Player: right side
         
-        // Add compact label
+        // Create compact background for the inventory
+        this.createCompactBackground(centerX, totalWidth);
+        
+        // Add compact label above slots
         const label = this.scene.add.text(
-            baseX,
-            this.isOpponent ? -20 : 20,
+            centerX,
+            this.isOpponent ? -22 : 22,
             this.isOpponent ? 'ENEMY' : 'ARSENAL',
             {
-                fontSize: '10px',
+                fontSize: '9px',
                 fontFamily: 'Arial Black',
                 color: '#FFFFFF',
                 stroke: this.isOpponent ? '#8B0000' : '#00008B',
@@ -82,36 +82,36 @@ export class PowerUpInventoryUI {
         label.setOrigin(0.5, 0.5);
         this.container.add(label);
         
-        // Create slots vertically (stacked)
+        // Create slots horizontally
         for (let i = 0; i < this.maxSlots; i++) {
-            // Stack vertically with proper spacing
-            const yOffset = (i - 1) * (this.slotSize + this.padding/2); // Center middle slot
+            // Calculate x position for each slot
+            const xOffset = centerX - totalWidth/2 + (i * (this.slotSize + this.padding)) + this.slotSize/2;
             
-            const slotContainer = this.scene.add.container(baseX, yOffset);
+            const slotContainer = this.scene.add.container(xOffset, 0);
             
             // Enhanced slot background
             const bg = this.scene.add.graphics();
             this.drawSlotBackground(bg, false);
             
-            // Icon with better positioning
+            // Icon with smaller size
             const icon = this.scene.add.text(0, 0, '', {
-                fontSize: '28px',
+                fontSize: '20px',
                 fontFamily: 'Arial'
             });
             icon.setOrigin(0.5);
-            icon.setShadow(2, 2, '#000000', 2, true, true);
+            icon.setShadow(1, 1, '#000000', 1, true, true);
             
             // Count text
             const countText = this.scene.add.text(
-                this.slotSize/2 - 4, 
-                this.slotSize/2 - 4, 
+                this.slotSize/2 - 2, 
+                this.slotSize/2 - 2, 
                 '', 
                 {
-                    fontSize: '12px',
+                    fontSize: '10px',
                     fontFamily: 'Arial Black',
                     color: '#FFFFFF',
                     stroke: '#000000',
-                    strokeThickness: 2
+                    strokeThickness: 1
                 }
             );
             countText.setOrigin(1, 1);
@@ -120,7 +120,7 @@ export class PowerUpInventoryUI {
             let keyHint: Phaser.GameObjects.Text;
             if (!this.isOpponent) {
                 const badge = this.createKeyHintBadge(i + 1);
-                badge.setPosition(-this.slotSize/2 + 8, -this.slotSize/2 + 8);
+                badge.setPosition(-this.slotSize/2 + 6, -this.slotSize/2 + 6);
                 slotContainer.add(badge);
                 keyHint = badge.getAt(1) as Phaser.GameObjects.Text;
             } else {
@@ -151,27 +151,26 @@ export class PowerUpInventoryUI {
         }
     }
     
-    private createCompactBackground(): void {
-        const screenWidth = this.scene.cameras.main.width;
+    private createCompactBackground(centerX: number, totalWidth: number): void {
         this.backgroundPanel = this.scene.add.graphics();
         
-        // Compact background for side panel
-        const panelWidth = 80;
-        const panelHeight = 160;
-        const panelX = this.isOpponent ? 20 : screenWidth - panelWidth - 20;
-        const panelY = -panelHeight / 2;
+        // Compact horizontal background
+        const panelWidth = totalWidth + 20;
+        const panelHeight = this.slotSize + 15;
+        const panelX = centerX - panelWidth/2;
+        const panelY = -panelHeight/2;
         
         // Semi-transparent background
-        this.backgroundPanel.fillStyle(0x000000, 0.5);
-        this.backgroundPanel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 10);
+        this.backgroundPanel.fillStyle(0x000000, 0.4);
+        this.backgroundPanel.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 8);
         
         // Team color border
-        this.backgroundPanel.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
-        this.backgroundPanel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 10);
+        this.backgroundPanel.lineStyle(1.5, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.3);
+        this.backgroundPanel.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 8);
         
-        // Inner glow
-        this.backgroundPanel.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.2);
-        this.backgroundPanel.fillRoundedRect(panelX + 2, panelY + 2, panelWidth - 4, panelHeight - 4, 8);
+        // Subtle inner glow
+        this.backgroundPanel.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.15);
+        this.backgroundPanel.fillRoundedRect(panelX + 1, panelY + 1, panelWidth - 2, panelHeight - 2, 7);
         
         this.container.add(this.backgroundPanel);
         this.backgroundPanel.setDepth(-1);
@@ -180,13 +179,13 @@ export class PowerUpInventoryUI {
     private createKeyHintBadge(key: number): Phaser.GameObjects.Container {
         const badge = this.scene.add.container(0, 0);
         
-        // Badge background
-        const bg = this.scene.add.circle(0, 0, 10, 0xFFD700, 0.9);
-        bg.setStrokeStyle(2, 0x000000, 1);
+        // Smaller badge background
+        const bg = this.scene.add.circle(0, 0, 7, 0xFFD700, 0.8);
+        bg.setStrokeStyle(1, 0x000000, 1);
         
         // Key number
         const text = this.scene.add.text(0, 0, `${key}`, {
-            fontSize: '12px',
+            fontSize: '9px',
             fontFamily: 'Arial Black',
             color: '#000000'
         });
