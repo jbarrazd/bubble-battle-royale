@@ -202,35 +202,97 @@ export class BombEffect implements IPowerUpEffect {
     }
     
     private prepareNormalBomb(context: PowerUpContext): void {
-        // Show visual feedback that bomb is ready
-        const bombIndicator = context.scene.add.text(
-            context.launcher.x,
-            context.launcher.y - 50,
-            '💣 BOMB READY!',
-            {
-                fontSize: '16px',
-                fontFamily: 'Arial Black',
-                color: '#FF4500',
-                stroke: '#000000',
-                strokeThickness: 3
-            }
-        );
-        bombIndicator.setOrigin(0.5);
-        bombIndicator.setDepth(1000);
+        // Create AAA bomb ready effect with particles
+        const x = context.launcher.x;
+        const y = context.launcher.y;
         
-        // Pulse animation
-        context.scene.tweens.add({
-            targets: bombIndicator,
-            scale: { from: 0.9, to: 1.1 },
-            duration: 500,
-            yoyo: true,
-            repeat: -1
+        // Create glowing orb effect
+        const bombGlow = context.scene.add.graphics();
+        bombGlow.setDepth(999);
+        this.visualElements.push(bombGlow);
+        
+        // Animated glow rings
+        let glowRadius = 0;
+        const glowTimer = context.scene.time.addEvent({
+            delay: 50,
+            callback: () => {
+                bombGlow.clear();
+                
+                // Multiple rings for depth
+                for (let i = 0; i < 3; i++) {
+                    const radius = (glowRadius + i * 15) % 60;
+                    const alpha = Math.max(0, 1 - radius / 60);
+                    bombGlow.lineStyle(3, 0xFF4500, alpha * 0.5);
+                    bombGlow.strokeCircle(x, y - 30, radius);
+                }
+                
+                glowRadius = (glowRadius + 2) % 60;
+            },
+            loop: true
         });
         
-        // Store indicator for cleanup
-        this.visualElements.push(bombIndicator);
+        // Particle emitter for sparks
+        const particles = context.scene.add.particles(x, y - 30, 'flares', {
+            frame: 'white',
+            color: [0xFF4500, 0xFF6500, 0xFFAA00],
+            colorEase: 'quad.out',
+            lifespan: 600,
+            angle: { min: -110, max: -70 },
+            scale: { start: 0.3, end: 0, ease: 'sine.out' },
+            speed: { min: 100, max: 200 },
+            advance: 2000,
+            blendMode: 'ADD',
+            quantity: 2
+        });
+        particles.setDepth(1000);
+        this.visualElements.push(particles);
         
-        // The actual bomb effect will happen when bubble is shot
+        // Explosive core visualization
+        const bombCore = context.scene.add.circle(x, y - 30, 8, 0xFF4500);
+        bombCore.setDepth(1001);
+        this.visualElements.push(bombCore);
+        
+        // Pulsing core
+        context.scene.tweens.add({
+            targets: bombCore,
+            scale: { from: 0.8, to: 1.3 },
+            alpha: { from: 1, to: 0.6 },
+            duration: 400,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Text with better styling
+        const bombText = context.scene.add.text(x, y - 60, 'BOMB ARMED', {
+            fontSize: '14px',
+            fontFamily: 'Arial Black',
+            color: '#FFFFFF',
+            stroke: '#FF4500',
+            strokeThickness: 4,
+            shadow: {
+                offsetX: 2,
+                offsetY: 2,
+                color: '#000000',
+                blur: 4,
+                fill: true
+            }
+        });
+        bombText.setOrigin(0.5);
+        bombText.setDepth(1002);
+        this.visualElements.push(bombText);
+        
+        // Flash effect
+        context.scene.tweens.add({
+            targets: bombText,
+            alpha: { from: 0, to: 1 },
+            scale: { from: 1.5, to: 1 },
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+        
+        // Store timer for cleanup
+        (this as any).glowTimer = glowTimer;
     }
     
     private prepareBallistic(context: PowerUpContext): void {
@@ -248,33 +310,145 @@ export class BombEffect implements IPowerUpEffect {
     // Removed unused method - visual feedback handled differently
     
     private explodeAt(x: number, y: number, context: PowerUpContext): void {
-        const radius = 100;
+        const radius = 120;
         
-        // Visual explosion
-        const explosion = context.scene.add.circle(x, y, radius, 0xFF4500, 0.5);
-        explosion.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        // AAA Explosion Effects
+        // 1. Shockwave ring
+        const shockwave = context.scene.add.graphics();
+        shockwave.setDepth(Z_LAYERS.BUBBLES_FRONT - 1);
+        
+        let shockRadius = 0;
+        const shockTimer = context.scene.time.addEvent({
+            delay: 20,
+            callback: () => {
+                shockwave.clear();
+                if (shockRadius < radius * 2) {
+                    const alpha = Math.max(0, 1 - shockRadius / (radius * 2));
+                    shockwave.lineStyle(4, 0xFFFFFF, alpha);
+                    shockwave.strokeCircle(x, y, shockRadius);
+                    shockwave.lineStyle(8, 0xFF4500, alpha * 0.5);
+                    shockwave.strokeCircle(x, y, shockRadius * 0.9);
+                    shockRadius += 8;
+                } else {
+                    shockTimer.destroy();
+                    shockwave.destroy();
+                }
+            },
+            loop: true
+        });
+        
+        // 2. Core flash
+        const flash = context.scene.add.circle(x, y, radius * 0.3, 0xFFFFFF, 1);
+        flash.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        flash.setBlendMode(Phaser.BlendModes.ADD);
         
         context.scene.tweens.add({
-            targets: explosion,
-            scale: { from: 0, to: 1 },
-            alpha: { from: 0.8, to: 0 },
+            targets: flash,
+            scale: { from: 0, to: 4 },
+            alpha: { from: 1, to: 0 },
             duration: 300,
-            ease: 'Cubic.easeOut',
-            onComplete: () => explosion.destroy()
+            ease: 'Expo.easeOut',
+            onComplete: () => flash.destroy()
         });
         
-        // Destroy bubbles in radius
+        // 3. Fire burst particles
+        const explosionParticles = context.scene.add.particles(x, y, 'flares', {
+            frame: 'white',
+            color: [0xFFFFFF, 0xFF4500, 0xFF6500, 0xFFAA00],
+            colorEase: 'quad.in',
+            lifespan: 800,
+            speed: { min: 200, max: 400 },
+            scale: { start: 0.5, end: 0, ease: 'power3' },
+            blendMode: 'ADD',
+            emitting: false,
+            angle: { min: 0, max: 360 },
+            quantity: 30
+        });
+        explosionParticles.setDepth(Z_LAYERS.BUBBLES_FRONT + 1);
+        explosionParticles.explode(30);
+        
+        // 4. Debris particles
+        const debrisParticles = context.scene.add.particles(x, y, 'flares', {
+            frame: 'white',
+            tint: [0xFF4500, 0xFF6500, 0xFFAA00],
+            lifespan: 1200,
+            speed: { min: 100, max: 300 },
+            scale: { start: 0.3, end: 0.1 },
+            gravityY: 200,
+            emitting: false,
+            angle: { min: -120, max: -60 },
+            quantity: 15
+        });
+        debrisParticles.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        debrisParticles.explode(15);
+        
+        // 5. Smoke effect
+        const smoke = context.scene.add.particles(x, y, 'flares', {
+            frame: 'white',
+            tint: 0x666666,
+            alpha: { start: 0.4, end: 0 },
+            scale: { start: 1, end: 2 },
+            lifespan: 1500,
+            speed: { min: 20, max: 50 },
+            emitting: false,
+            quantity: 8
+        });
+        smoke.setDepth(Z_LAYERS.BUBBLES_FRONT - 2);
+        smoke.explode(8);
+        
+        // Enhanced camera effects
+        context.scene.cameras.main.shake(300, 0.02);
+        context.scene.cameras.main.flash(100, 255, 100, 0, true);
+        
+        // Clean up particles
+        context.scene.time.delayedCall(2000, () => {
+            explosionParticles.destroy();
+            debrisParticles.destroy();
+            smoke.destroy();
+        });
+        
+        // Destroy bubbles with chain reaction
         const bubbles = context.bubbleGrid.getBubblesInRadius(x, y, radius);
-        bubbles.forEach(bubble => {
-            bubble.destroy();
+        bubbles.forEach((bubble, index) => {
+            const dist = Phaser.Math.Distance.Between(x, y, bubble.x, bubble.y);
+            const delay = (dist / radius) * 200;
+            
+            context.scene.time.delayedCall(delay, () => {
+                if (bubble && bubble.visible) {
+                    // Mini explosion per bubble
+                    const miniFlash = context.scene.add.circle(bubble.x, bubble.y, 15, 0xFF6500, 0.8);
+                    miniFlash.setDepth(Z_LAYERS.BUBBLES_FRONT);
+                    context.scene.tweens.add({
+                        targets: miniFlash,
+                        scale: { from: 0, to: 1.5 },
+                        alpha: 0,
+                        duration: 200,
+                        ease: 'Cubic.easeOut',
+                        onComplete: () => miniFlash.destroy()
+                    });
+                    
+                    bubble.destroy();
+                }
+            });
         });
-        
-        // Screen shake
-        context.scene.cameras.main.shake(200, 0.01);
     }
     
     deactivate(context: PowerUpContext): void {
-        // context.launcher.setData('ballisticMode', false);
+        // Clean up glow timer if exists
+        if ((this as any).glowTimer) {
+            (this as any).glowTimer.destroy();
+            (this as any).glowTimer = null;
+        }
+        
+        // Clean up visual elements
+        this.visualElements.forEach(element => {
+            if (element && element.destroy) {
+                element.destroy();
+            }
+        });
+        this.visualElements = [];
+        
+        // Reset aiming mode
         context.aimingMode.setMode(AimingMode.NORMAL);
     }
 }

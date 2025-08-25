@@ -19,6 +19,7 @@ export class PowerUpInventoryUI {
     private maxSlots: number = 3;
     private slotSize: number = 40;
     private padding: number = 8;
+    private isOpponent: boolean;
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
@@ -32,35 +33,53 @@ export class PowerUpInventoryUI {
         [PowerUpType.MAGNET]: '🧲'
     };
     
-    constructor(scene: Scene) {
+    constructor(scene: Scene, isOpponent: boolean = false) {
         this.scene = scene;
+        this.isOpponent = isOpponent;
         this.createUI();
-        this.setupEventListeners();
+        if (!isOpponent) {
+            this.setupEventListeners();
+        }
     }
     
     private createUI(): void {
         const screenWidth = this.scene.cameras.main.width;
         const screenHeight = this.scene.cameras.main.height;
         
-        // Position at bottom center
-        const totalWidth = (this.slotSize + this.padding) * this.maxSlots - this.padding;
-        const startX = (screenWidth - totalWidth) / 2;
-        const y = screenHeight - 80;
+        // Position on right side, vertically centered
+        const x = screenWidth - 60;
+        const startY = this.isOpponent ? 100 : screenHeight / 2 + 50;
         
-        this.container = this.scene.add.container(0, y);
+        this.container = this.scene.add.container(x, 0);
         this.container.setDepth(Z_LAYERS.UI + 10);
         
-        // Create slots
+        // Add label
+        const label = this.scene.add.text(
+            0,
+            startY - 30,
+            this.isOpponent ? 'OPPONENT' : 'POWER-UPS',
+            {
+                fontSize: '12px',
+                fontFamily: 'Arial Black',
+                color: this.isOpponent ? '#FF6B6B' : '#4ECDC4',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        );
+        label.setOrigin(0.5);
+        this.container.add(label);
+        
+        // Create slots vertically
         for (let i = 0; i < this.maxSlots; i++) {
-            const x = startX + i * (this.slotSize + this.padding);
+            const y = startY + i * (this.slotSize + this.padding);
             
-            const slotContainer = this.scene.add.container(x, 0);
+            const slotContainer = this.scene.add.container(0, y);
             
-            // Slot background
+            // Slot background with team color
             const bg = this.scene.add.graphics();
-            bg.fillStyle(0x000000, 0.5);
+            bg.fillStyle(0x000000, 0.7);
             bg.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
-            bg.lineStyle(2, 0x666666, 0.8);
+            bg.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.6);
             bg.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
             
             // Icon placeholder
@@ -85,11 +104,11 @@ export class PowerUpInventoryUI {
             );
             countText.setOrigin(1, 1);
             
-            // Key hint (1, 2, 3)
+            // Key hint (1, 2, 3) - only for player
             const keyHint = this.scene.add.text(
                 -this.slotSize/2 + 4,
                 -this.slotSize/2 + 2,
-                `${i + 1}`,
+                this.isOpponent ? '' : `${i + 1}`,
                 {
                     fontSize: '10px',
                     fontFamily: 'Arial Black',
@@ -118,10 +137,9 @@ export class PowerUpInventoryUI {
         // Listen for power-up collection
         this.scene.events.on('power-up-collected', (data: any) => {
             console.log('PowerUpInventoryUI received power-up-collected event:', data);
-            if (data.owner === 'player') {
+            const shouldAdd = this.isOpponent ? (data.owner === 'opponent') : (data.owner === 'player');
+            if (shouldAdd) {
                 this.addPowerUp(data.type);
-            } else {
-                console.log('Power-up was for opponent, not adding to player inventory');
             }
         });
         

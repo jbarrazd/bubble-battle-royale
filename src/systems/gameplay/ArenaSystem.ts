@@ -45,7 +45,8 @@ export class ArenaSystem {
     private comboManager?: ComboManager;
     private scoreEventManager?: ScoreEventManager;
     private unifiedFeedbackSystem?: UnifiedFeedbackSystem;
-    private powerUpInventory?: PowerUpInventoryUI;
+    private playerPowerUpInventory?: PowerUpInventoryUI;
+    private opponentPowerUpInventory?: PowerUpInventoryUI;
     private powerUpActivation?: PowerUpActivationSystem;
     private aimingModeSystem?: AimingModeSystem;
     private playerScore: number = 0;
@@ -149,7 +150,9 @@ export class ArenaSystem {
         this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
         
         // Initialize power-up systems
-        this.powerUpInventory = new PowerUpInventoryUI(this.scene);
+        // Create both player and opponent inventories
+        this.playerPowerUpInventory = new PowerUpInventoryUI(this.scene, false);
+        this.opponentPowerUpInventory = new PowerUpInventoryUI(this.scene, true);
         this.aimingModeSystem = new AimingModeSystem(this.scene);
         
         // Initialize power-up activation after launcher is created
