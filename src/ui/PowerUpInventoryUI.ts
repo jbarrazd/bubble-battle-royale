@@ -117,8 +117,11 @@ export class PowerUpInventoryUI {
     private setupEventListeners(): void {
         // Listen for power-up collection
         this.scene.events.on('power-up-collected', (data: any) => {
+            console.log('PowerUpInventoryUI received power-up-collected event:', data);
             if (data.owner === 'player') {
                 this.addPowerUp(data.type);
+            } else {
+                console.log('Power-up was for opponent, not adding to player inventory');
             }
         });
         
@@ -141,6 +144,8 @@ export class PowerUpInventoryUI {
     }
     
     private addPowerUp(type: PowerUpType): void {
+        console.log(`Adding power-up to inventory: ${type}`);
+        
         // Check if we already have this power-up
         let slot = this.slots.find(s => s.powerUpType === type);
         
@@ -148,11 +153,13 @@ export class PowerUpInventoryUI {
             // Increment count
             slot.count++;
             slot.countText.setText(slot.count > 1 ? `x${slot.count}` : '');
+            console.log(`Incremented count for ${type}, now: ${slot.count}`);
         } else {
             // Find empty slot
             slot = this.slots.find(s => !s.powerUpType);
             
             if (slot) {
+                console.log(`Adding ${type} to empty slot`);
                 slot.powerUpType = type;
                 slot.count = 1;
                 slot.icon.setText(this.powerUpIcons[type]);

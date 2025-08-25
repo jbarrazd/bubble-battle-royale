@@ -568,15 +568,8 @@ export class ArenaSystem {
         
         // Update power-up systems
         this.powerUpActivation?.update(delta);
-        if (this.aimingModeSystem && this.playerLauncher) {
-            const pointerPos = this.inputManager.getPointerPosition();
-            this.aimingModeSystem.updateAiming(
-                pointerPos.x, 
-                pointerPos.y,
-                this.playerLauncher.x,
-                this.playerLauncher.y
-            );
-        }
+        // Only update aiming mode system if a power-up is active
+        // (This will be controlled by PowerUpActivationSystem)
         
         // Update objective shield
         this.updateObjectiveShield();

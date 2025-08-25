@@ -133,9 +133,15 @@ export class MatchDetectionSystem {
             const isMystery = current instanceof MysteryBubble;
             const colorMatches = current.getColor() === targetColor;
             
+            if (isMystery) {
+                console.log(`Found Mystery Bubble at (${current.x}, ${current.y})`);
+            }
+            
             // Skip if wrong color (unless it's a mystery bubble) or not visible
             if (!current.visible || (!isMystery && !colorMatches)) {
-                console.log(`Skipping bubble at (${current.x}, ${current.y}) - visible: ${current.visible}, color: ${current.getColor()?.toString(16)}`);
+                if (!current.visible || !colorMatches) {
+                    console.log(`Skipping bubble at (${current.x}, ${current.y}) - visible: ${current.visible}, mystery: ${isMystery}, color: ${current.getColor()?.toString(16)}`);
+                }
                 continue;
             }
             
@@ -214,6 +220,14 @@ export class MatchDetectionSystem {
      * Remove matched bubbles with animation
      */
     private async removeMatches(bubbles: Bubble[]): Promise<void> {
+        // First, check for and handle Mystery Bubbles BEFORE removal
+        bubbles.forEach(bubble => {
+            if (bubble instanceof MysteryBubble) {
+                console.log('Found MysteryBubble in matches, collecting power-up');
+                (bubble as MysteryBubble).collectPowerUp();
+            }
+        });
+        
         // Sort bubbles by distance from center for staggered animation
         const centerX = bubbles.reduce((sum, b) => sum + b.x, 0) / bubbles.length;
         const centerY = bubbles.reduce((sum, b) => sum + b.y, 0) / bubbles.length;

@@ -41,12 +41,14 @@ export class AimingModeSystem {
     constructor(scene: Scene) {
         this.scene = scene;
         
-        // Create graphics layers
+        // Create graphics layers but keep them hidden by default
         this.aimingGraphics = scene.add.graphics();
         this.aimingGraphics.setDepth(Z_LAYERS.UI);
+        this.aimingGraphics.setVisible(false); // Hidden by default
         
         this.trajectoryLine = scene.add.graphics();
         this.trajectoryLine.setDepth(Z_LAYERS.UI - 1);
+        this.trajectoryLine.setVisible(false); // Hidden by default
     }
     
     /**
@@ -58,6 +60,15 @@ export class AimingModeSystem {
         
         // Clear previous graphics
         this.clearGraphics();
+        
+        // Show/hide graphics based on mode
+        if (mode !== AimingMode.NORMAL) {
+            this.aimingGraphics.setVisible(true);
+            this.trajectoryLine?.setVisible(true);
+        } else {
+            this.aimingGraphics.setVisible(false);
+            this.trajectoryLine?.setVisible(false);
+        }
         
         // Create mode-specific indicator
         this.createModeIndicator();

@@ -10,7 +10,7 @@ import {
     MultiShotEffect,
     IPowerUpEffect 
 } from './PowerUpEffectsLibrary';
-import { AimingModeSystem } from './AimingModeSystem';
+import { AimingModeSystem, AimingMode } from './AimingModeSystem';
 import { Launcher } from '@/gameObjects/Launcher';
 import { BubbleGrid } from '@/systems/gameplay/BubbleGrid';
 
@@ -61,6 +61,9 @@ export class PowerUpActivationSystem {
         if (this.activeEffect && this.activeEffect.deactivate) {
             this.activeEffect.deactivate(this.context);
         }
+        
+        // Reset aiming mode to normal first
+        this.context.aimingMode.setMode(AimingMode.NORMAL);
         
         // Get the effect
         const effect = this.effects.get(type);

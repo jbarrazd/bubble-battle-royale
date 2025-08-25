@@ -161,7 +161,7 @@ export class MysteryBubble extends Bubble {
      * Collect power-up when bubble is destroyed
      */
     public collectPowerUp(): void {
-        console.log(`Collecting power-up: ${this.currentPowerUp}`);
+        console.log(`Collecting power-up: ${this.currentPowerUp} at position (${this.x}, ${this.y})`);
         
         // Create visual feedback at bubble position
         const config = this.powerUpIcons[this.currentPowerUp];
@@ -215,21 +215,27 @@ export class MysteryBubble extends Bubble {
         });
         
         // Emit event to add power-up to inventory
+        const owner = this.y > this.scene.cameras.main.centerY ? 'player' : 'opponent';
+        console.log(`Emitting power-up-collected event: type=${this.currentPowerUp}, owner=${owner}`);
+        
         this.scene.events.emit('power-up-collected', {
             type: this.currentPowerUp,
             x: this.x,
             y: this.y,
-            owner: this.y > this.scene.cameras.main.centerY ? 'player' : 'opponent'
+            owner: owner
         });
     }
     
     public override destroy(): void {
+        console.log('MysteryBubble destroy called, visible:', this.visible);
+        
         if (this.powerUpCycleTimer) {
             this.powerUpCycleTimer.destroy();
         }
         
         // Collect power-up when destroyed (if part of a match)
         if (this.visible) {
+            console.log('Collecting power-up before destruction');
             this.collectPowerUp();
         }
         

@@ -34,15 +34,32 @@ export class RainbowEffect implements IPowerUpEffect {
         // Set aiming mode to rainbow
         context.aimingMode.setMode(AimingMode.RAINBOW, this.type);
         
-        // Get next bubble and make it multicolor
-        const nextBubble = context.launcher.getNextBubble();
-        if (nextBubble) {
-            this.rainbowBubble = nextBubble;
-            this.applyRainbowEffect(nextBubble);
-            
-            // Set special property for matching
-            nextBubble.setData('isRainbow', true);
-        }
+        // Visual feedback
+        const rainbowText = context.scene.add.text(
+            context.scene.cameras.main.centerX,
+            context.scene.cameras.main.centerY,
+            '🌈 RAINBOW BUBBLE!',
+            {
+                fontSize: '28px',
+                fontFamily: 'Arial Black',
+                color: '#FF69B4',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        rainbowText.setOrigin(0.5);
+        rainbowText.setDepth(1000);
+        
+        // Animate text
+        context.scene.tweens.add({
+            targets: rainbowText,
+            scale: { from: 0, to: 1.2 },
+            alpha: { from: 1, to: 0 },
+            y: rainbowText.y - 50,
+            duration: 1500,
+            ease: 'Power2',
+            onComplete: () => rainbowText.destroy()
+        });
         
         // Single shot power-up
         context.shotsRemaining = 1;
@@ -280,21 +297,34 @@ export class LightningEffect implements IPowerUpEffect {
         // Set selection cursor mode
         context.aimingMode.setMode(AimingMode.LIGHTNING, this.type);
         
-        // Change input to selection mode
-        this.selectionHandler = (pointer: Phaser.Input.Pointer) => {
-            const worldPoint = context.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-            const bubble = context.bubbleGrid.getBubbleAt(worldPoint.x, worldPoint.y);
-            
-            if (bubble) {
-                this.destroyWithLightning(bubble, context);
-                
-                // Clean up
-                context.scene.input.off('pointerdown', this.selectionHandler as any);
-                this.deactivate(context);
+        // Visual feedback
+        const lightningText = context.scene.add.text(
+            context.scene.cameras.main.centerX,
+            context.scene.cameras.main.centerY,
+            '⚡ LIGHTNING STRIKE!',
+            {
+                fontSize: '28px',
+                fontFamily: 'Arial Black',
+                color: '#FFFF00',
+                stroke: '#000000',
+                strokeThickness: 3
             }
-        };
+        );
+        lightningText.setOrigin(0.5);
+        lightningText.setDepth(1000);
         
-        context.scene.input.on('pointerdown', this.selectionHandler as any);
+        // Animate text
+        context.scene.tweens.add({
+            targets: lightningText,
+            scale: { from: 0, to: 1.2 },
+            alpha: { from: 1, to: 0 },
+            y: lightningText.y - 50,
+            duration: 1500,
+            ease: 'Power2',
+            onComplete: () => lightningText.destroy()
+        });
+        
+        // For now, just show the effect, actual bubble selection will be implemented later
         context.shotsRemaining = 1;
     }
     
@@ -361,21 +391,41 @@ export class FreezeEffect implements IPowerUpEffect {
         // Set freeze aiming mode
         context.aimingMode.setMode(AimingMode.FREEZE, this.type);
         
-        // Freeze all physics
-        context.scene.physics.pause();
-        
-        // Freeze bubble grid
-        context.bubbleGrid.setData('frozen', true);
+        // Freeze all physics (if physics exists)
+        if (context.scene.physics && context.scene.physics.pause) {
+            context.scene.physics.pause();
+        }
         
         // Create frost overlay
         this.createFrostOverlay(context);
         
-        // Store frozen bubbles
-        this.frozenBubbles = context.bubbleGrid.getAllBubbles();
+        // Store frozen bubbles (empty for now, will be implemented later)
+        this.frozenBubbles = [];
         
-        // Add ice effect to bubbles
-        this.frozenBubbles.forEach(bubble => {
-            bubble.setTint(0x87CEEB);
+        // Visual feedback for freeze effect
+        const freezeText = context.scene.add.text(
+            context.scene.cameras.main.centerX,
+            context.scene.cameras.main.centerY,
+            'TIME FROZEN!',
+            {
+                fontSize: '32px',
+                fontFamily: 'Arial Black',
+                color: '#00FFFF',
+                stroke: '#003366',
+                strokeThickness: 4
+            }
+        );
+        freezeText.setOrigin(0.5);
+        freezeText.setDepth(1000);
+        
+        // Animate and remove text
+        context.scene.tweens.add({
+            targets: freezeText,
+            scale: { from: 0, to: 1.5 },
+            alpha: { from: 1, to: 0 },
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => freezeText.destroy()
         });
         
         // Auto-deactivate after 5 seconds
@@ -422,10 +472,9 @@ export class FreezeEffect implements IPowerUpEffect {
     
     deactivate(context: PowerUpContext): void {
         // Resume physics
-        context.scene.physics.resume();
-        
-        // Unfreeze grid
-        context.bubbleGrid.setData('frozen', false);
+        if (context.scene.physics && context.scene.physics.resume) {
+            context.scene.physics.resume();
+        }
         
         // Remove tint from bubbles
         this.frozenBubbles.forEach(bubble => {
@@ -461,45 +510,41 @@ export class MultiShotEffect implements IPowerUpEffect {
         // Set multi-shot aiming mode
         context.aimingMode.setMode(AimingMode.MULTI, this.type);
         
-        // Prepare triple shot
-        const nextBubble = context.launcher.getNextBubble();
-        if (nextBubble) {
-            nextBubble.setData('isMultiShot', true);
-            
-            // Visual indicator
-            const indicator = context.scene.add.text(
-                nextBubble.x,
-                nextBubble.y - 30,
-                '×3',
-                {
-                    fontSize: '16px',
-                    fontFamily: 'Arial Black',
-                    color: '#FFD700',
-                    stroke: '#000000',
-                    strokeThickness: 2
-                }
-            );
-            indicator.setOrigin(0.5);
-            indicator.setDepth(nextBubble.depth + 1);
-            
-            nextBubble.setData('multiIndicator', indicator);
-        }
+        // Visual feedback
+        const multiText = context.scene.add.text(
+            context.scene.cameras.main.centerX,
+            context.scene.cameras.main.centerY,
+            '✨ MULTI-SHOT!',
+            {
+                fontSize: '28px',
+                fontFamily: 'Arial Black',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+        multiText.setOrigin(0.5);
+        multiText.setDepth(1000);
+        
+        // Animate text
+        context.scene.tweens.add({
+            targets: multiText,
+            scale: { from: 0, to: 1.2 },
+            alpha: { from: 1, to: 0 },
+            y: multiText.y - 50,
+            duration: 1500,
+            ease: 'Power2',
+            onComplete: () => multiText.destroy()
+        });
         
         context.shotsRemaining = 1;
     }
     
-    deactivate(context: PowerUpContext): void {
-        // Clean up indicator
-        const nextBubble = context.launcher.getNextBubble();
-        if (nextBubble) {
-            const indicator = nextBubble.getData('multiIndicator');
-            if (indicator) {
-                indicator.destroy();
-            }
+    deactivate?(context: PowerUpContext): void {
+        // Reset aiming mode
+        if (context.aimingMode) {
+            context.aimingMode.setMode(AimingMode.NORMAL);
         }
-        
-        // Reset aiming
-        context.aimingMode.setMode(AimingMode.NORMAL);
     }
 }
 
