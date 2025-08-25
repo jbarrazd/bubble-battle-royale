@@ -29,6 +29,7 @@ export interface IPowerUpEffect {
 export class RainbowEffect implements IPowerUpEffect {
     type = PowerUpType.RAINBOW;
     private rainbowBubble?: Bubble;
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Set aiming mode to rainbow
@@ -120,6 +121,7 @@ export class RainbowEffect implements IPowerUpEffect {
 export class LaserSightEffect implements IPowerUpEffect {
     type = PowerUpType.LASER;
     private remainingShots: number = 5;
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Set laser aiming mode
@@ -183,6 +185,7 @@ export class LaserSightEffect implements IPowerUpEffect {
 export class BombEffect implements IPowerUpEffect {
     type = PowerUpType.BOMB;
     private targetMode: 'bubbles' | 'castle' = 'bubbles';
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Check target mode
@@ -459,6 +462,7 @@ export class BombEffect implements IPowerUpEffect {
 export class LightningEffect implements IPowerUpEffect {
     type = PowerUpType.LIGHTNING;
     private selectionHandler?: Function;
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Set selection cursor mode
@@ -553,6 +557,7 @@ export class FreezeEffect implements IPowerUpEffect {
     type = PowerUpType.FREEZE;
     private frozenBubbles: Bubble[] = [];
     private frostOverlay?: Phaser.GameObjects.Graphics;
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Set freeze aiming mode
@@ -672,6 +677,7 @@ export class FreezeEffect implements IPowerUpEffect {
  */
 export class MultiShotEffect implements IPowerUpEffect {
     type = PowerUpType.MULTIPLIER; // Using as placeholder for MULTI_SHOT
+    private visualElements: any[] = [];
     
     activate(context: PowerUpContext): void {
         // Set multi-shot aiming mode
