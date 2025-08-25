@@ -8,6 +8,7 @@ export class Bubble extends Phaser.GameObjects.Container {
     private color: BubbleColor;
     private isSpecial: boolean = false;
     private pooled: boolean = false;
+    private shooter: 'player' | 'ai' | 'none' = 'none';
 
     constructor(scene: Phaser.Scene, x: number, y: number, color: BubbleColor) {
         super(scene, x, y);
@@ -41,6 +42,14 @@ export class Bubble extends Phaser.GameObjects.Container {
 
     public getGridPosition(): IHexPosition | null {
         return this.gridPosition;
+    }
+    
+    public setShooter(shooter: 'player' | 'ai'): void {
+        this.shooter = shooter;
+    }
+    
+    public getShooter(): 'player' | 'ai' | 'none' {
+        return this.shooter;
     }
 
     public getColor(): BubbleColor {

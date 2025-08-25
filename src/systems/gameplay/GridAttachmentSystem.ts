@@ -351,8 +351,8 @@ export class GridAttachmentSystem {
             
             this.attachmentInProgress = false;
             
-            // Emit bubble attached event
-            this.scene.events.emit('bubble-attached');
+            // Emit bubble attached event with data
+            this.scene.events.emit('bubble-attached', { bubble, position: hexPos });
             
             // If no matches, emit matches-resolved
             this.scene.time.delayedCall(100, () => {

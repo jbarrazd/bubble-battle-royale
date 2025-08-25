@@ -186,8 +186,9 @@ export class ShootingSystem {
             direction.y * this.shootSpeed
         );
         
-        // Set bubble to normal size
+        // Set bubble to normal size and mark as player shot
         this.currentBubble.setScale(1);
+        this.currentBubble.setShooter('player');
         
         // Add to active projectiles
         this.projectiles.push({
@@ -234,6 +235,7 @@ export class ShootingSystem {
             this.opponentLauncher.y + 30,
             data.color
         );
+        aiBubble.setShooter('ai');
         
         // Calculate velocity based on angle
         // AI uses standard math angles where:
@@ -289,6 +291,15 @@ export class ShootingSystem {
             // Update bubble position
             projectile.bubble.x += projectile.velocity.x * (delta / 1000);
             projectile.bubble.y += projectile.velocity.y * (delta / 1000);
+            
+            // Emit position update for chest collision detection
+            this.scene.events.emit('bubble-position-update', projectile.bubble);
+            
+            // Check if this bubble was marked as hit (chest collision)
+            if (!projectile.bubble.visible) {
+                projectile.isActive = false;
+                continue;
+            }
             
             // Check for grid collision if attachment system is available
             if (this.gridAttachmentSystem) {

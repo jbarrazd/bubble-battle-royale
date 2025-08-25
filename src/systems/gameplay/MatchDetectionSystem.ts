@@ -78,6 +78,17 @@ export class MatchDetectionSystem {
                 totalScore: this.totalScore,
                 combo: this.combo
             });
+            
+            // Emit score update event for the score display
+            // Determine if this was an AI or player match based on the attached bubble
+            const isAIMatch = attachedBubble.getShooter() === 'ai';
+            
+            this.scene.events.emit('score-update', {
+                score: this.totalScore,
+                delta: score,
+                combo: this.combo,
+                isAI: isAIMatch
+            });
         }
         
         this.isProcessing = false;

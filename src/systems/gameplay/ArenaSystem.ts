@@ -10,6 +10,9 @@ import { ShootingSystem } from './ShootingSystem';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { MatchDetectionSystem } from './MatchDetectionSystem';
 import { AIOpponentSystem, AIDifficulty } from './AIOpponentSystem';
+import { ScoreDisplay } from '@/ui/ScoreDisplay';
+import { VictoryScreen } from '@/ui/VictoryScreen';
+import { DefeatScreen } from '@/ui/DefeatScreen';
 
 export { AIDifficulty };
 
@@ -31,6 +34,12 @@ export class ArenaSystem {
     private matchDetectionSystem: MatchDetectionSystem;
     private aiOpponent?: AIOpponentSystem;
     private isSinglePlayer: boolean = true;
+    private scoreDisplay?: ScoreDisplay;
+    private playerScore: number = 0;
+    private aiScore: number = 0;
+    private gameOver: boolean = false;
+    private victoryScreen?: VictoryScreen;
+    private defeatScreen?: DefeatScreen;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -114,6 +123,11 @@ export class ArenaSystem {
         this.createInitialBubbles();
         this.createZoneVisuals();
         
+        // Initialize score display (shows player score only)
+        this.scoreDisplay = new ScoreDisplay(this.scene);
+        this.playerScore = 0;
+        this.aiScore = 0;
+        
         // Initialize shooting system with grid attachment
         this.shootingSystem = new ShootingSystem(
             this.scene,
@@ -142,6 +156,11 @@ export class ArenaSystem {
                 console.log('ArenaSystem: AI opponent started');
             });
         }
+        
+        // Listen for scoring events
+        this.scene.events.on('score-update', this.onScoreUpdate, this);
+        this.scene.events.on('bubble-attached', this.checkVictoryCondition, this);
+        this.scene.events.on('bubble-position-update', this.checkChestHit, this);
         
         // Enable debug with 'D' key
         this.scene.input.keyboard?.on('keydown-D', () => {
@@ -272,6 +291,39 @@ export class ArenaSystem {
         graphics.moveTo(0, opponentZone.y + opponentZone.height);
         graphics.lineTo(this.scene.cameras.main.width, opponentZone.y + opponentZone.height);
         graphics.strokePath();
+        
+        // Add DANGER LINE for player - this is where they lose if bubbles cross
+        const dangerLineY = playerZone.y + 30; // 30 pixels into player zone
+        graphics.lineStyle(3, 0xFF0000, 0.5); // Red line
+        graphics.beginPath();
+        graphics.moveTo(0, dangerLineY);
+        graphics.lineTo(this.scene.cameras.main.width, dangerLineY);
+        graphics.strokePath();
+        
+        // Add warning text
+        const warningText = this.scene.add.text(
+            this.scene.cameras.main.centerX,
+            dangerLineY - 15,
+            'DANGER ZONE',
+            {
+                fontSize: '12px',
+                color: '#FF6666',
+                fontFamily: 'Arial',
+                fontStyle: 'bold'
+            }
+        ).setOrigin(0.5);
+        warningText.setDepth(Z_LAYERS.UI);
+        warningText.setAlpha(0.6);
+        
+        // Pulse the warning
+        this.scene.tweens.add({
+            targets: warningText,
+            alpha: 0.3,
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
     }
 
     private toggleDebug(): void {
@@ -373,6 +425,9 @@ export class ArenaSystem {
     }
 
     private updateObjectiveShield(): void {
+        // Check if objective still exists (might be null after victory)
+        if (!this.objective) return;
+        
         // Check if there are bubbles adjacent to objective
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
         const neighbors = this.bubbleGrid.getNeighbors(center);
@@ -567,6 +622,187 @@ export class ArenaSystem {
         });
     }
     
+    private onScoreUpdate = (data: { score: number; delta: number; combo?: number; isAI?: boolean }): void => {
+        if (this.gameOver) return;
+        
+        // Track scores separately
+        if (data.isAI) {
+            this.aiScore += data.delta;
+            console.log(`AI Score: ${this.aiScore}`);
+        } else {
+            this.playerScore += data.delta;
+            // Only update display for player score
+            this.scoreDisplay?.updateScore(this.playerScore);
+            
+            if (data.combo && data.combo > 1) {
+                this.scoreDisplay?.setCombo(data.combo);
+            }
+        }
+    }
+    
+    private checkChestHit = (bubble: Bubble): void => {
+        if (this.gameOver || !this.objective || !bubble.visible) return;
+        
+        // Check if bubble hit the chest during flight
+        const distance = Phaser.Math.Distance.Between(
+            bubble.x, bubble.y,
+            this.objective.x, this.objective.y
+        );
+        
+        // Direct hit detection - bubble must overlap with chest
+        // The chest size is this.config.objectiveSize (60) and bubble is BUBBLE_CONFIG.SIZE (30)
+        // So combined radius is (60/2 + 30/2) = 45
+        const hitRadius = (this.config.objectiveSize / 2) + (BUBBLE_CONFIG.SIZE / 2);
+        
+        if (distance < hitRadius) {
+            const shooter = bubble.getShooter();
+            const playerWins = shooter === 'player';
+            
+            console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
+            console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
+            
+            // Mark game as over immediately to prevent multiple triggers
+            this.gameOver = true;
+            
+            // Stop the bubble
+            bubble.setVisible(false);
+            
+            // Store objective reference before nulling
+            const obj = this.objective;
+            this.objective = null as any;
+            
+            // Play victory animation
+            obj.playVictoryAnimation(() => {
+                this.triggerGameOver(playerWins);
+            });
+        }
+    }
+    
+    private checkVictoryCondition = (data: { bubble: Bubble; position: IHexPosition }): void => {
+        if (this.gameOver) return;
+        
+        const bubble = data.bubble;
+        
+        // Check for defeat conditions (bubbles reaching danger zone)
+        const playerZone = this.zones.get(ArenaZone.PLAYER)!;
+        const dangerLineY = playerZone.y + 30; // 30 pixels into player zone
+        
+        if (bubble.y > dangerLineY) {
+            console.log('💀 Bubble crossed danger line! Player loses!');
+            this.triggerGameOver(false); // Player loses
+        }
+    }
+    
+    private wasAIShot(bubble: Bubble): boolean {
+        // Track the last shooter - for now we can check the last shot event
+        // This is a simple heuristic: if the bubble was attached high, it likely came from below (player)
+        // If attached low, it came from above (AI)
+        // Better would be to track shooter in bubble data
+        
+        // Simple check: was the bubble's initial trajectory downward (AI) or upward (Player)?
+        // We'll check based on the position where it attached
+        const centerY = this.scene.cameras.main.centerY;
+        
+        // If bubble is in upper half and moving toward center, likely from AI
+        // This is simplified - ideally we'd track the shooter
+        return bubble.y < centerY - 100;
+    }
+    
+    private triggerGameOver(playerWins: boolean): void {
+        // Already set to true in checkChestHit, but double-check
+        if (this.gameOver && (this.victoryScreen || this.defeatScreen)) return;
+        
+        this.gameOver = true;
+        
+        // Stop all game systems
+        this.scene.physics.pause();
+        this.aiOpponent?.stop();
+        this.shootingSystem?.destroy();
+        
+        // Play victory/defeat sound (if implemented)
+        // this.scene.sound.play(playerWins ? 'victory' : 'defeat');
+        
+        // Show appropriate screen
+        if (playerWins) {
+            console.log('🎉 VICTORY! Player wins!');
+            this.victoryScreen = new VictoryScreen(
+                this.scene,
+                this.playerScore,
+                this.restartGame,
+                this.returnToMenu
+            );
+            
+            // Camera celebration effect
+            this.scene.cameras.main.flash(500, 255, 215, 0);
+        } else {
+            console.log('💀 DEFEAT! AI wins!');
+            this.defeatScreen = new DefeatScreen(
+                this.scene,
+                this.playerScore,
+                this.restartGame,
+                this.returnToMenu
+            );
+            
+            // Camera fade effect
+            this.scene.cameras.main.fade(500, 0, 0, 0, false);
+            this.scene.cameras.main.once('camerafadeoutcomplete', () => {
+                this.scene.cameras.main.fadeIn(500);
+            });
+        }
+        
+        // Fire game over event
+        this.scene.events.emit('game-over', { 
+            winner: playerWins ? 'player' : 'ai', 
+            playerScore: this.playerScore,
+            aiScore: this.aiScore
+        });
+    }
+    
+    private restartGame = (): void => {
+        console.log('Restarting game...');
+        
+        // Clean up all UI elements first
+        if (this.victoryScreen) {
+            this.victoryScreen.destroy();
+            this.victoryScreen = undefined;
+        }
+        if (this.defeatScreen) {
+            this.defeatScreen.destroy();
+            this.defeatScreen = undefined;
+        }
+        
+        // Use a small delay to ensure UI cleanup completes
+        this.scene.time.delayedCall(50, () => {
+            console.log('Actually restarting scene now...');
+            // Restart the scene
+            this.scene.scene.restart();
+        });
+    }
+    
+    private returnToMenu = (): void => {
+        console.log('Returning to menu...');
+        
+        // Clean up all UI elements first
+        if (this.victoryScreen) {
+            this.victoryScreen.destroy();
+            this.victoryScreen = undefined;
+        }
+        if (this.defeatScreen) {
+            this.defeatScreen.destroy();
+            this.defeatScreen = undefined;
+        }
+        
+        // Use a small delay to ensure UI cleanup completes
+        this.scene.time.delayedCall(50, () => {
+            console.log('Returning to menu (restarting for now)...');
+            // Transition to menu scene (if it exists)
+            // this.scene.scene.start('MenuScene');
+            
+            // For now, just restart
+            this.scene.scene.restart();
+        });
+    }
+    
     public destroy(): void {
         this.inputManager?.destroy();
         this.shootingSystem?.destroy();
@@ -579,5 +815,13 @@ export class ArenaSystem {
         this.playerLauncher?.destroy();
         this.opponentLauncher?.destroy();
         this.debugGraphics?.destroy();
+        this.scoreDisplay?.destroy();
+        this.victoryScreen?.destroy();
+        this.defeatScreen?.destroy();
+        
+        // Remove event listeners
+        this.scene.events.off('score-update', this.onScoreUpdate, this);
+        this.scene.events.off('bubble-attached', this.checkVictoryCondition, this);
+        this.scene.events.off('bubble-position-update', this.checkChestHit, this);
     }
 }
