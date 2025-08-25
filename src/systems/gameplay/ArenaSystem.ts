@@ -299,11 +299,6 @@ export class ArenaSystem {
                         bubble.setGridPosition(hexPos);
                         this.bubbles.push(bubble);
                         this.gridAttachmentSystem.addGridBubble(bubble);
-                        
-                        // Add some random special bubbles
-                        if (Math.random() < 0.1) {
-                            bubble.setSpecial(true);
-                        }
                     }
                 }
             });
