@@ -234,21 +234,44 @@ export class BombEffect implements IPowerUpEffect {
             loop: true
         });
         
-        // Particle emitter for sparks
-        const particles = context.scene.add.particles(x, y - 30, 'flares', {
-            frame: 'white',
-            color: [0xFF4500, 0xFF6500, 0xFFAA00],
-            colorEase: 'quad.out',
-            lifespan: 600,
-            angle: { min: -110, max: -70 },
-            scale: { start: 0.3, end: 0, ease: 'sine.out' },
-            speed: { min: 100, max: 200 },
-            advance: 2000,
-            blendMode: 'ADD',
-            quantity: 2
+        // Create spark particles using circles instead of textures
+        const sparkContainer = context.scene.add.container(x, y - 30);
+        sparkContainer.setDepth(1000);
+        this.visualElements.push(sparkContainer);
+        
+        // Animated sparks
+        const sparkTimer = context.scene.time.addEvent({
+            delay: 100,
+            callback: () => {
+                for (let i = 0; i < 2; i++) {
+                    const spark = context.scene.add.circle(
+                        0, 0, 
+                        Phaser.Math.Between(2, 4),
+                        Phaser.Math.RND.pick([0xFF4500, 0xFF6500, 0xFFAA00])
+                    );
+                    spark.setBlendMode(Phaser.BlendModes.ADD);
+                    sparkContainer.add(spark);
+                    
+                    const angle = Phaser.Math.Between(-110, -70) * Math.PI / 180;
+                    const speed = Phaser.Math.Between(100, 200);
+                    const vx = Math.cos(angle) * speed;
+                    const vy = Math.sin(angle) * speed;
+                    
+                    context.scene.tweens.add({
+                        targets: spark,
+                        x: spark.x + vx * 0.6,
+                        y: spark.y + vy * 0.6,
+                        scale: { from: 1, to: 0 },
+                        alpha: { from: 1, to: 0 },
+                        duration: 600,
+                        ease: 'Sine.easeOut',
+                        onComplete: () => spark.destroy()
+                    });
+                }
+            },
+            loop: true
         });
-        particles.setDepth(1000);
-        this.visualElements.push(particles);
+        (this as any).sparkTimer = sparkTimer;
         
         // Explosive core visualization
         const bombCore = context.scene.add.circle(x, y - 30, 8, 0xFF4500);
@@ -354,60 +377,101 @@ export class BombEffect implements IPowerUpEffect {
             onComplete: () => flash.destroy()
         });
         
-        // 3. Fire burst particles
-        const explosionParticles = context.scene.add.particles(x, y, 'flares', {
-            frame: 'white',
-            color: [0xFFFFFF, 0xFF4500, 0xFF6500, 0xFFAA00],
-            colorEase: 'quad.in',
-            lifespan: 800,
-            speed: { min: 200, max: 400 },
-            scale: { start: 0.5, end: 0, ease: 'power3' },
-            blendMode: 'ADD',
-            emitting: false,
-            angle: { min: 0, max: 360 },
-            quantity: 30
-        });
-        explosionParticles.setDepth(Z_LAYERS.BUBBLES_FRONT + 1);
-        explosionParticles.explode(30);
+        // 3. Fire burst effect with circles
+        const explosionContainer = context.scene.add.container(x, y);
+        explosionContainer.setDepth(Z_LAYERS.BUBBLES_FRONT + 1);
         
-        // 4. Debris particles
-        const debrisParticles = context.scene.add.particles(x, y, 'flares', {
-            frame: 'white',
-            tint: [0xFF4500, 0xFF6500, 0xFFAA00],
-            lifespan: 1200,
-            speed: { min: 100, max: 300 },
-            scale: { start: 0.3, end: 0.1 },
-            gravityY: 200,
-            emitting: false,
-            angle: { min: -120, max: -60 },
-            quantity: 15
-        });
-        debrisParticles.setDepth(Z_LAYERS.BUBBLES_FRONT);
-        debrisParticles.explode(15);
+        // Create explosion particles
+        for (let i = 0; i < 30; i++) {
+            const particle = context.scene.add.circle(
+                0, 0,
+                Phaser.Math.Between(3, 6),
+                Phaser.Math.RND.pick([0xFFFFFF, 0xFF4500, 0xFF6500, 0xFFAA00])
+            );
+            particle.setBlendMode(Phaser.BlendModes.ADD);
+            explosionContainer.add(particle);
+            
+            const angle = Phaser.Math.Between(0, 360) * Math.PI / 180;
+            const speed = Phaser.Math.Between(200, 400);
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            
+            context.scene.tweens.add({
+                targets: particle,
+                x: vx * 0.8,
+                y: vy * 0.8,
+                scale: { from: 1, to: 0 },
+                alpha: { from: 1, to: 0 },
+                duration: 800,
+                ease: 'Power3',
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // 4. Debris effect
+        const debrisContainer = context.scene.add.container(x, y);
+        debrisContainer.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        
+        for (let i = 0; i < 15; i++) {
+            const debris = context.scene.add.rectangle(
+                0, 0,
+                Phaser.Math.Between(4, 8),
+                Phaser.Math.Between(4, 8),
+                Phaser.Math.RND.pick([0xFF4500, 0xFF6500, 0xFFAA00])
+            );
+            debrisContainer.add(debris);
+            
+            const angle = Phaser.Math.Between(-120, -60) * Math.PI / 180;
+            const speed = Phaser.Math.Between(100, 300);
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            
+            context.scene.tweens.add({
+                targets: debris,
+                x: debris.x + vx,
+                y: debris.y + vy + 400, // Gravity effect
+                scale: { from: 0.3, to: 0.1 },
+                angle: Phaser.Math.Between(0, 360),
+                duration: 1200,
+                ease: 'Quad.easeIn',
+                onComplete: () => debris.destroy()
+            });
+        }
         
         // 5. Smoke effect
-        const smoke = context.scene.add.particles(x, y, 'flares', {
-            frame: 'white',
-            tint: 0x666666,
-            alpha: { start: 0.4, end: 0 },
-            scale: { start: 1, end: 2 },
-            lifespan: 1500,
-            speed: { min: 20, max: 50 },
-            emitting: false,
-            quantity: 8
-        });
-        smoke.setDepth(Z_LAYERS.BUBBLES_FRONT - 2);
-        smoke.explode(8);
+        const smokeContainer = context.scene.add.container(x, y);
+        smokeContainer.setDepth(Z_LAYERS.BUBBLES_FRONT - 2);
+        
+        for (let i = 0; i < 8; i++) {
+            const smoke = context.scene.add.circle(
+                Phaser.Math.Between(-10, 10),
+                Phaser.Math.Between(-10, 10),
+                Phaser.Math.Between(20, 30),
+                0x666666
+            );
+            smoke.setAlpha(0.4);
+            smokeContainer.add(smoke);
+            
+            context.scene.tweens.add({
+                targets: smoke,
+                scale: { from: 1, to: 2 },
+                alpha: 0,
+                y: smoke.y - Phaser.Math.Between(20, 50),
+                duration: 1500,
+                ease: 'Sine.easeOut',
+                onComplete: () => smoke.destroy()
+            });
+        }
         
         // Enhanced camera effects
         context.scene.cameras.main.shake(300, 0.02);
         context.scene.cameras.main.flash(100, 255, 100, 0, true);
         
-        // Clean up particles
+        // Clean up containers
         context.scene.time.delayedCall(2000, () => {
-            explosionParticles.destroy();
-            debrisParticles.destroy();
-            smoke.destroy();
+            explosionContainer.destroy();
+            debrisContainer.destroy();
+            smokeContainer.destroy();
         });
         
         // Destroy bubbles with chain reaction
@@ -437,10 +501,14 @@ export class BombEffect implements IPowerUpEffect {
     }
     
     deactivate(context: PowerUpContext): void {
-        // Clean up glow timer if exists
+        // Clean up timers if they exist
         if ((this as any).glowTimer) {
             (this as any).glowTimer.destroy();
             (this as any).glowTimer = null;
+        }
+        if ((this as any).sparkTimer) {
+            (this as any).sparkTimer.destroy();
+            (this as any).sparkTimer = null;
         }
         
         // Clean up visual elements
