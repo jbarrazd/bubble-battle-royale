@@ -107,8 +107,8 @@ export class PerformanceMonitor {
         console.log(
             `FPS: ${metrics.fps} | ` +
             `Frame Time: ${metrics.frameTime.toFixed(2)}ms | ` +
-            `Memory: ${metrics.memoryUsage || 'N/A'}MB | ` +
-            `Score: ${this.getPerformanceScore()}%`
+            `Memory: ${metrics.memoryUsage || 'N/A'}MB | ` 
+          // `Score: ${this.getPerformanceScore()}%`
         );
     }
 }
