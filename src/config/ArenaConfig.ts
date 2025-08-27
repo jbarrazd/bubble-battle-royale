@@ -33,9 +33,9 @@ export const GRID_CONFIG = {
 export const DANGER_ZONE_CONFIG = {
     PLAYER_OFFSET: 120,    // 120 pixels from bottom (well in front of player launcher at 50px)
     OPPONENT_OFFSET: 120,  // 120 pixels from top (well in front of opponent launcher at 50px)
-    LINE_COLOR: 0xFF0000,
-    LINE_ALPHA: 0.6,
-    LINE_WIDTH: 3,
+    LINE_COLOR: 0xFFFFFF,  // Changed to white (was red)
+    LINE_ALPHA: 0.08,      // Even more subtle (was 0.6)
+    LINE_WIDTH: 1,         // Thinner line (was 3)
     PULSE_DURATION: 1000  // Pulse animation when bubbles get close
 };
 

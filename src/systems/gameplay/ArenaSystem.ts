@@ -377,24 +377,7 @@ export class ArenaSystem {
     }
 
     private createZoneVisuals(): void {
-        // Create subtle zone separators
-        const graphics = this.scene.add.graphics();
-        graphics.setDepth(Z_LAYERS.ZONE_DEBUG);
-        
-        const playerZone = this.zones.get(ArenaZone.PLAYER)!;
-        const opponentZone = this.zones.get(ArenaZone.OPPONENT)!;
-        
-        // Draw zone separator lines
-        graphics.lineStyle(2, 0xffffff, 0.2);
-        graphics.beginPath();
-        graphics.moveTo(0, playerZone.y);
-        graphics.lineTo(this.scene.cameras.main.width, playerZone.y);
-        graphics.strokePath();
-        
-        graphics.beginPath();
-        graphics.moveTo(0, opponentZone.y + opponentZone.height);
-        graphics.lineTo(this.scene.cameras.main.width, opponentZone.y + opponentZone.height);
-        graphics.strokePath();
+        // Zone separator lines removed for cleaner UI
         
         // Add DANGER LINE for player - fixed position from bottom
         const screenHeight = this.scene.cameras.main.height;
@@ -413,20 +396,7 @@ export class ArenaSystem {
         this.playerDangerLine.lineTo(screenWidth, playerDangerY);
         this.playerDangerLine.strokePath();
         
-        // Add "DANGER" text for player
-        const playerDangerText = this.scene.add.text(
-            this.scene.cameras.main.width / 2,
-            playerDangerY - 10,
-            'DANGER',
-            {
-                fontSize: '10px',
-                color: '#FF0000',
-                fontFamily: 'Arial Black',
-                alpha: 0.6
-            }
-        );
-        playerDangerText.setOrigin(0.5);
-        playerDangerText.setDepth(Z_LAYERS.ZONE_DEBUG);
+        // "DANGER" text removed for cleaner UI
         
         // Add DANGER LINE for opponent - fixed position from top
         const opponentDangerY = DANGER_ZONE_CONFIG.OPPONENT_OFFSET;
@@ -443,20 +413,7 @@ export class ArenaSystem {
         this.opponentDangerLine.lineTo(screenWidth, opponentDangerY);
         this.opponentDangerLine.strokePath();
         
-        // Add "DANGER" text for opponent
-        const opponentDangerText = this.scene.add.text(
-            this.scene.cameras.main.width / 2,
-            opponentDangerY + 15,
-            'DANGER',
-            {
-                fontSize: '10px',
-                color: '#FF0000',
-                fontFamily: 'Arial Black',
-                alpha: 0.6
-            }
-        );
-        opponentDangerText.setOrigin(0.5);
-        opponentDangerText.setDepth(Z_LAYERS.ZONE_DEBUG);
+        // "DANGER" text removed for cleaner UI
     }
 
     private toggleDebug(): void {

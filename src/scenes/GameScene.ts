@@ -9,8 +9,9 @@ export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
-    private fpsText!: Phaser.GameObjects.Text;
-    private debugText!: Phaser.GameObjects.Text;
+    // fpsText removed for clean production UI
+    // debugText removed for clean production UI
+    // scoreText removed - using player-specific scores
     private isPaused: boolean = false;
 
     constructor() {
@@ -130,49 +131,13 @@ export class GameScene extends Scene {
     }
 
     private createUI(): void {
-        // FPS Display
-        this.fpsText = this.add.text(
-            this.cameras.main.width - 10,
-            10,
-            'FPS: 60',
-            {
-                fontFamily: 'monospace',
-                fontSize: '14px',
-                color: '#00ff00'
-            }
-        ).setOrigin(1, 0);
-        this.fpsText.setDepth(Z_LAYERS.UI);
+        // FPS Display removed for clean production UI
         
-        // Debug info
-        this.debugText = this.add.text(
-            10,
-            10,
-            'Press D for Debug\nPress ESC for Menu',
-            {
-                fontFamily: 'Arial',
-                fontSize: '12px',
-                color: '#ffffff'
-            }
-        );
-        this.debugText.setDepth(Z_LAYERS.UI);
+        // Debug text removed for clean production UI
         
-        // Pause button
-        const pauseButton = this.add.text(
-            this.cameras.main.width / 2,
-            30,
-            '⏸ PAUSE',
-            {
-                fontFamily: 'Arial',
-                fontSize: '16px',
-                color: '#ffffff',
-                backgroundColor: '#000000',
-                padding: { x: 10, y: 5 }
-            }
-        ).setOrigin(0.5);
+        // Pause button removed for cleaner UI
         
-        pauseButton.setInteractive({ useHandCursor: true });
-        pauseButton.on('pointerdown', () => this.togglePause());
-        pauseButton.setDepth(Z_LAYERS.UI);
+        // Central score display removed - using player-specific scores only
         
         // Score events are now handled by EnhancedScoreDisplay in ArenaSystem
         
@@ -305,30 +270,12 @@ export class GameScene extends Scene {
     public override update(time: number, delta: number): void {
         if (this.isPaused) return;
         
-        // Update FPS display once per second
-        if (this.fpsText && this.time.now % 1000 < 16) {
-            const fps = Math.round(this.game.loop.actualFps);
-            this.fpsText.setText(`FPS: ${fps}`);
-            
-            if (fps < 30) {
-                this.fpsText.setTint(0xff0000);
-            } else if (fps < 50) {
-                this.fpsText.setTint(0xffff00);
-            } else {
-                this.fpsText.setTint(0x00ff00);
-            }
-        }
+        // FPS display update removed
         
         // Update arena system
         this.arenaSystem?.update(time, delta);
         
-        // Update debug info
-        if (this.debugText) {
-            const bubbleCount = this.arenaSystem?.getBubbles().length || 0;
-            this.debugText.setText(
-                `Press D for Debug\nPress ESC for Menu\nBubbles: ${bubbleCount}`
-            );
-        }
+        // Debug info update removed
     }
 
     public shutdown(): void {

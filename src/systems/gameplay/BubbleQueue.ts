@@ -48,12 +48,7 @@ export class BubbleQueue {
         this.container.add(this.background);
         
         // Add "NEXT" label
-        const label = scene.add.text(0, -50, 'NEXT', {
-            fontFamily: 'Arial',
-            fontSize: '12px',
-            color: '#ecf0f1'
-        }).setOrigin(0.5);
-        this.container.add(label);
+      
         
         // Initialize queue
         this.fillQueue();
