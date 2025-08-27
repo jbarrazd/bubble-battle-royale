@@ -377,43 +377,8 @@ export class ArenaSystem {
     }
 
     private createZoneVisuals(): void {
-        // Zone separator lines removed for cleaner UI
-        
-        // Add DANGER LINE for player - fixed position from bottom
-        const screenHeight = this.scene.cameras.main.height;
-        const screenWidth = this.scene.cameras.main.width;
-        const playerDangerY = screenHeight - DANGER_ZONE_CONFIG.PLAYER_OFFSET;
-        
-        // Create player danger line with its own graphics object for animations
-        if (!this.playerDangerLine) {
-            this.playerDangerLine = this.scene.add.graphics();
-            this.playerDangerLine.setDepth(Z_LAYERS.ZONE_DEBUG);
-        }
-        this.playerDangerLine.clear();
-        this.playerDangerLine.lineStyle(DANGER_ZONE_CONFIG.LINE_WIDTH, DANGER_ZONE_CONFIG.LINE_COLOR, DANGER_ZONE_CONFIG.LINE_ALPHA);
-        this.playerDangerLine.beginPath();
-        this.playerDangerLine.moveTo(0, playerDangerY);
-        this.playerDangerLine.lineTo(screenWidth, playerDangerY);
-        this.playerDangerLine.strokePath();
-        
-        // "DANGER" text removed for cleaner UI
-        
-        // Add DANGER LINE for opponent - fixed position from top
-        const opponentDangerY = DANGER_ZONE_CONFIG.OPPONENT_OFFSET;
-        
-        // Create opponent danger line with its own graphics object for animations
-        if (!this.opponentDangerLine) {
-            this.opponentDangerLine = this.scene.add.graphics();
-            this.opponentDangerLine.setDepth(Z_LAYERS.ZONE_DEBUG);
-        }
-        this.opponentDangerLine.clear();
-        this.opponentDangerLine.lineStyle(DANGER_ZONE_CONFIG.LINE_WIDTH, DANGER_ZONE_CONFIG.LINE_COLOR, DANGER_ZONE_CONFIG.LINE_ALPHA);
-        this.opponentDangerLine.beginPath();
-        this.opponentDangerLine.moveTo(0, opponentDangerY);
-        this.opponentDangerLine.lineTo(screenWidth, opponentDangerY);
-        this.opponentDangerLine.strokePath();
-        
-        // "DANGER" text removed for cleaner UI
+        // All zone visuals removed for cleaner UI
+        // Danger zones are now only used for game logic, not visual display
     }
 
     private toggleDebug(): void {
