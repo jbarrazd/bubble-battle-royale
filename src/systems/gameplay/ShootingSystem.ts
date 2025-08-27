@@ -163,10 +163,11 @@ export class ShootingSystem {
             // Position bubble in launcher
             this.currentBubble.setPosition(
                 this.playerLauncher.x,
-                this.playerLauncher.y - 30
+                this.playerLauncher.y - 25  // Slightly closer to launcher
             );
-            this.currentBubble.setDepth(Z_LAYERS.BUBBLES);
-            this.currentBubble.setScale(0.8); // Slightly smaller when in launcher
+            // Set depth ABOVE launcher so bubble is visible
+            this.currentBubble.setDepth(Z_LAYERS.LAUNCHERS + 1);
+            this.currentBubble.setScale(0.9); // Slightly smaller than full size but visible
             
             // Make sure it's visible
             this.currentBubble.setVisible(true);
@@ -197,6 +198,8 @@ export class ShootingSystem {
         // Set bubble to normal size and mark as player shot
         this.currentBubble.setScale(1);
         this.currentBubble.setShooter('player');
+        // Return depth to projectile layer
+        this.currentBubble.setDepth(Z_LAYERS.BUBBLES_FRONT);
         
         // Add to active projectiles
         this.projectiles.push({
@@ -236,14 +239,25 @@ export class ShootingSystem {
         
         console.log('ShootingSystem: AI shooting angle=' + data.angle + ' color=0x' + data.color.toString(16));
         
-        // Create bubble for AI
-        const aiBubble = new Bubble(
-            this.scene,
-            this.opponentLauncher.x,
-            this.opponentLauncher.y + 30,
-            data.color
-        );
-        aiBubble.setShooter('ai');
+        // Use the bubble that AI already has loaded (if provided)
+        let aiBubble: Bubble;
+        if (data.bubble) {
+            // Use the existing bubble from AI
+            aiBubble = data.bubble;
+            aiBubble.setShooter('ai');
+            aiBubble.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        } else {
+            // Fallback: create new bubble (shouldn't happen)
+            console.warn('ShootingSystem: AI bubble not provided, creating new one');
+            aiBubble = new Bubble(
+                this.scene,
+                this.opponentLauncher.x,
+                this.opponentLauncher.y + 30,
+                data.color
+            );
+            aiBubble.setShooter('ai');
+            aiBubble.setDepth(Z_LAYERS.BUBBLES_FRONT);
+        }
         
         // Calculate velocity based on angle
         // AI uses standard math angles where:

@@ -13,9 +13,9 @@ export class BubbleQueue {
     
     // Queue settings
     private readonly QUEUE_SIZE = 3; // Current + next 2
-    private readonly BUBBLE_SPACING = 40;
-    private readonly QUEUE_X_OFFSET = -60;
-    private readonly QUEUE_Y_OFFSET = 10;
+    private readonly BUBBLE_SPACING = 35; // Horizontal spacing between bubbles
+    private readonly QUEUE_X_OFFSET = 0; // Center horizontally
+    private readonly QUEUE_Y_OFFSET = 45; // Position below launcher, above cooldown bar
     
     // Available colors
     private colors = [
@@ -31,30 +31,37 @@ export class BubbleQueue {
         this.isOpponent = isOpponent;
         
         // Create container for queue UI
-        // For opponent, mirror the X offset to show on the right side
-        const xOffset = isOpponent ? Math.abs(this.QUEUE_X_OFFSET) : this.QUEUE_X_OFFSET;
+        // Position horizontally - below player launcher, above opponent launcher
+        const xOffset = this.QUEUE_X_OFFSET;
         const yOffset = isOpponent ? -this.QUEUE_Y_OFFSET : this.QUEUE_Y_OFFSET;
         this.container = scene.add.container(x + xOffset, y + yOffset);
-        this.container.setDepth(Z_LAYERS.UI);
+        // Always behind UI elements for both player and opponent
+        this.container.setDepth(Z_LAYERS.UI - 2); // Well behind cooldown bar and other UI
         
-        // Create background panel - make it slightly larger and more visible
+        // Rotate 180 degrees for opponent so it faces the right way
+        if (isOpponent) {
+            this.container.setRotation(Math.PI); // 180 degrees
+        }
+        
+        // Create horizontal background panel
         this.background = scene.add.rectangle(
             0, 0,
-            55,
-            130,
+            100, // Compact width for 2 bubbles
+            40,  // Compact height
             0x2c3e50,
-            0.9
+            0.7
         );
-        this.background.setStrokeStyle(3, 0x34495e);
+        this.background.setStrokeStyle(2, 0x34495e);
         this.container.add(this.background);
         
-        // Add "NEXT" label - make it more visible
-        const label = this.scene.add.text(0, -55, 'NEXT', {
+        // Add "NEXT" label above the bubbles
+        const label = this.scene.add.text(0, -25, 'NEXT', {
             fontFamily: 'Arial',
-            fontSize: '14px',
+            fontSize: '11px',
             fontStyle: 'bold',
             color: '#ffffff'
         }).setOrigin(0.5);
+        label.setAlpha(0.9);
         this.container.add(label);
         
         // Initialize queue
@@ -87,19 +94,21 @@ export class BubbleQueue {
             const bubble = this.queue[index];
             const color = bubble.getColor();
             
-            const spacing = this.isOpponent ? -this.BUBBLE_SPACING : this.BUBBLE_SPACING;
-            const baseY = this.isOpponent ? 20 : -20;
-            const yPos = baseY + index * spacing;
+            // Horizontal layout - center the two bubbles
+            const totalWidth = this.BUBBLE_SPACING;
+            const startX = -totalWidth / 2;
+            const xPos = startX + (index * this.BUBBLE_SPACING);
+            const yPos = 0; // All bubbles on same horizontal line
             
             // Create a container for this visual bubble
-            const visualContainer = this.scene.add.container(0, yPos);
+            const visualContainer = this.scene.add.container(xPos, yPos);
             
-            // Create main bubble circle
-            const visualBubble = this.scene.add.circle(0, 0, 16, color);
+            // Create main bubble circle (slightly smaller for horizontal layout)
+            const visualBubble = this.scene.add.circle(0, 0, 14, color);
             visualBubble.setStrokeStyle(2, this.getDarkerColor(color), 1);
             
             // Add highlight for 3D effect
-            const highlight = this.scene.add.circle(-5, -5, 6, 0xffffff, 0.4);
+            const highlight = this.scene.add.circle(-4, -4, 5, 0xffffff, 0.4);
             
             // Add to visual container
             visualContainer.add([visualBubble, highlight]);
@@ -108,11 +117,15 @@ export class BubbleQueue {
             const alpha = index === 0 ? 1 : 0.7;
             visualContainer.setAlpha(alpha);
             
-            // Add "CURRENT" indicator ring for first bubble
+            // Add "CURRENT" indicator arrow for first bubble
             if (index === 0) {
-                const ring = this.scene.add.circle(0, 0, 20, 0xffffff, 0);
-                ring.setStrokeStyle(2, 0xffffff, 0.3);
-                visualContainer.add(ring);
+                // Small arrow pointing to launcher (up for player, down for opponent due to rotation)
+                const arrowY = this.isOpponent ? 22 : -22;
+                const arrow = this.scene.add.triangle(0, arrowY, -4, 4, 4, 4, 0, -4, 0xffffff, 0.6);
+                if (this.isOpponent) {
+                    arrow.setRotation(Math.PI); // Flip arrow for opponent
+                }
+                visualContainer.add(arrow);
             }
             
             // Add to main container
