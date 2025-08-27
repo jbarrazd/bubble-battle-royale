@@ -158,6 +158,8 @@ export class ShootingSystem {
         this.currentBubble = this.bubbleQueue.getNextBubble();
         
         if (this.currentBubble) {
+            console.log('ShootingSystem: Loaded bubble color:', this.currentBubble.getColor());
+            
             // Position bubble in launcher
             this.currentBubble.setPosition(
                 this.playerLauncher.x,
@@ -165,6 +167,12 @@ export class ShootingSystem {
             );
             this.currentBubble.setDepth(Z_LAYERS.BUBBLES);
             this.currentBubble.setScale(0.8); // Slightly smaller when in launcher
+            
+            // Make sure it's visible
+            this.currentBubble.setVisible(true);
+            this.currentBubble.setAlpha(1);
+        } else {
+            console.warn('ShootingSystem: No bubble available from queue!');
         }
     }
     
