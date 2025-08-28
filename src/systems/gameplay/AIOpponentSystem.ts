@@ -63,6 +63,12 @@ export class AIOpponentSystem {
             this.shootTimer.destroy();
             this.shootTimer = undefined;
         }
+        
+        // Clean up current bubble when stopping
+        if (this.currentBubble) {
+            this.currentBubble.destroy();
+            this.currentBubble = null;
+        }
     }
     
     private loadNextBubble(): void {
@@ -70,6 +76,10 @@ export class AIOpponentSystem {
         this.currentBubble = this.bubbleQueue.getNextBubble();
         
         if (this.currentBubble) {
+            const color = this.currentBubble.getColor();
+            const bubbleId = this.currentBubble.getData('bubbleId');
+            console.log(`AI loadNextBubble: Got bubble ID=${bubbleId} color=${color} hex=0x${color.toString(16)}`);
+            
             // Position bubble in opponent launcher
             this.currentBubble.setPosition(
                 this.launcher.x,
@@ -82,6 +92,10 @@ export class AIOpponentSystem {
             // Make sure it's visible
             this.currentBubble.setVisible(true);
             this.currentBubble.setAlpha(1);
+            
+            console.log(`AI loadNextBubble: Bubble ID=${bubbleId} positioned and visible at`, this.currentBubble.x, this.currentBubble.y);
+        } else {
+            console.warn('AI loadNextBubble: No bubble available from queue!');
         }
     }
     
@@ -113,11 +127,12 @@ export class AIOpponentSystem {
         if (this.isOnCooldown || !this.currentBubble) return;
         
         const color = this.currentBubble.getColor();
+        const bubbleId = this.currentBubble.getData('bubbleId');
         
         // Find best shot based on difficulty
         const target = this.calculateBestShot(color);
         
-        console.log(`🎯 AI shooting: ${this.getColorName(color)} at ${target.angle.toFixed(1)}° (${target.reasoning}) score=${target.score}`);
+        console.log(`🎯 AI shooting: ID=${bubbleId} ${this.getColorName(color)} at ${target.angle.toFixed(1)}° (${target.reasoning}) score=${target.score}`);
         
         // Update launcher aim
         this.launcher.setAimAngle(target.angle);

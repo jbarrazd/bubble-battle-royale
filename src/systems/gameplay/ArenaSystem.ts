@@ -593,6 +593,8 @@ export class ArenaSystem {
     private changeAIDifficulty(difficulty: AIDifficulty): void {
         if (!this.aiOpponent) return;
         
+        console.log(`=== Changing AI Difficulty to ${difficulty} ===`);
+        
         // Stop current AI
         this.aiOpponent.stop();
         
@@ -601,6 +603,7 @@ export class ArenaSystem {
         
         // Restart AI
         this.scene.time.delayedCall(500, () => {
+            console.log(`=== Restarting AI with ${difficulty} ===`);
             this.aiOpponent?.start();
         });
         

@@ -72,11 +72,23 @@ export class BubbleQueue {
     private fillQueue(): void {
         while (this.queue.length < this.QUEUE_SIZE) {
             const randomColor = this.colors[Math.floor(Math.random() * this.colors.length)];
+            if (!randomColor) continue; // Safety check
+            
             const bubble = new Bubble(this.scene, 0, 0, randomColor);
             bubble.setScale(0.6); // Smaller for queue display
             bubble.setVisible(false);
             bubble.setData('queueIndex', this.queue.length); // Track position in queue
+            // Add unique ID for tracking
+            const id = `${this.isOpponent ? 'AI' : 'Player'}_${Date.now()}_${Math.random()}`;
+            bubble.setData('bubbleId', id);
+            
+            // Force color update to ensure visual matches data
+            bubble.setColor(randomColor);
+            
             this.queue.push(bubble);
+            
+            const owner = this.isOpponent ? 'AI' : 'Player';
+            console.log(`BubbleQueue (${owner}): Created bubble ID=${id} color=${randomColor} hex=0x${randomColor.toString(16)}`);
         }
     }
     
@@ -155,8 +167,10 @@ export class BubbleQueue {
         if (!bubble) return null;
         
         // Debug: log what color we're giving
-        console.log('BubbleQueue: Giving bubble color:', bubble.getColor());
-        console.log('BubbleQueue: Next 2 colors in queue:', this.queue.slice(0, 2).map(b => b.getColor()));
+        const owner = this.isOpponent ? 'AI' : 'Player';
+        const bubbleId = bubble.getData('bubbleId');
+        console.log(`BubbleQueue (${owner}): Giving bubble ID=${bubbleId} color:`, bubble.getColor(), 'hex:', bubble.getColor().toString(16));
+        console.log(`BubbleQueue (${owner}): Next 2 colors in queue:`, this.queue.slice(0, 2).map(b => `${b.getColor()} (0x${b.getColor().toString(16)})`));
         
         // Reset bubble properties for gameplay
         bubble.setScale(1);
@@ -169,13 +183,23 @@ export class BubbleQueue {
         // Add ONE new bubble to end of queue to maintain size
         if (this.queue.length < this.QUEUE_SIZE) {
             const randomColor = this.colors[Math.floor(Math.random() * this.colors.length)];
-            const newBubble = new Bubble(this.scene, 0, 0, randomColor);
-            newBubble.setScale(0.6);
-            newBubble.setVisible(false);
-            newBubble.setData('queueIndex', this.queue.length);
-            this.queue.push(newBubble);
-            
-            console.log('BubbleQueue: Added new bubble to queue, color:', randomColor);
+            if (randomColor) { // Safety check
+                const newBubble = new Bubble(this.scene, 0, 0, randomColor);
+                newBubble.setScale(0.6);
+                newBubble.setVisible(false);
+                newBubble.setData('queueIndex', this.queue.length);
+                // Add unique ID for tracking
+                const id = `${this.isOpponent ? 'AI' : 'Player'}_${Date.now()}_${Math.random()}`;
+                newBubble.setData('bubbleId', id);
+                
+                // Force color update to ensure visual matches data
+                newBubble.setColor(randomColor);
+                
+                this.queue.push(newBubble);
+                
+                const owner = this.isOpponent ? 'AI' : 'Player';
+                console.log(`BubbleQueue (${owner}): Added new bubble ID=${id} color:`, randomColor, 'hex:', randomColor.toString(16));
+            }
         }
         
         // Update display immediately to show the new queue state

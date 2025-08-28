@@ -55,6 +55,13 @@ export class Bubble extends Phaser.GameObjects.Container {
     public getColor(): BubbleColor {
         return this.color;
     }
+    
+    public setColor(color: BubbleColor): void {
+        this.color = color;
+        // Update visual sprite to match
+        this.bubbleSprite.setFillStyle(color);
+        this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+    }
 
     public setTint(tint: number): void {
         this.bubbleSprite.setFillStyle(tint);
@@ -171,9 +178,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         // Update color if provided
         if (color !== undefined) {
-            this.color = color;
-            this.bubbleSprite.setFillStyle(color);
-            this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+            this.setColor(color);
         }
     }
 
