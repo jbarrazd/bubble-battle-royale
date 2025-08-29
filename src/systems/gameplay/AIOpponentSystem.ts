@@ -58,6 +58,10 @@ export class AIOpponentSystem {
     public start(): void {
         this.isActive = true;
         console.log('AI: Starting with difficulty', this.difficulty);
+        
+        // Set initial downward angle for opponent
+        this.launcher.setAimAngle(90); // 90 degrees = straight down for opponent
+        
         // Load first bubble
         this.loadNextBubble();
         // Start thinking about first shot

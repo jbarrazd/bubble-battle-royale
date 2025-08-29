@@ -54,17 +54,15 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.zone = zone;
         this.isOpponent = (zone === ArenaZone.OPPONENT);
         
-        // CRITICAL FIX: Proper positioning for opponent vs player
+        // Set positions - SAME for both (the flip will handle the difference)
+        this.BUBBLE_POSITION_Y = -35;  // Bubble at top
+        this.QUEUE_POSITION_Y = 5;     // Queue at bottom
+        
         if (this.isOpponent) {
-            // Opponent: bubble at +35, queue at -25 (inverted)
-            this.BUBBLE_POSITION_Y = 35;
-            this.QUEUE_POSITION_Y = -25;
-            this.setScale(1, -1); // Flip vertically for opponent
             this.currentAngle = 90;
+            // Flip the entire launcher for opponent
+            this.setScale(1, -1);
         } else {
-            // Player: bubble at -35, queue at +25 (normal)
-            this.BUBBLE_POSITION_Y = -35;
-            this.QUEUE_POSITION_Y = 25;
             this.currentAngle = 270;
         }
         
@@ -156,25 +154,32 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.platformGraphics.clear();
         
-        // Premium platform base with gradient effect
+        // Create integrated launcher body with single next bubble slot
+        const bodyWidth = 46;
+        const bodyHeight = 42; // Compact height for single bubble
+        const bodyY = 5; // Same for both - the flip handles the orientation
+        
+        // Main launcher body with gradient
         this.platformGraphics.fillGradientStyle(
-            this.currentTheme.platform.top, this.currentTheme.platform.top,
-            this.currentTheme.platform.bottom, this.currentTheme.platform.bottom,
-            1, 0.9, 0.8, 1
+            this.currentTheme.platform.top,
+            this.currentTheme.platform.top,
+            this.currentTheme.platform.bottom,
+            this.currentTheme.platform.bottom,
+            1, 1, 0.95, 0.95
         );
-        this.platformGraphics.fillRoundedRect(-30, -12, 60, 24, 12);
+        this.platformGraphics.fillRoundedRect(-bodyWidth/2, bodyY - bodyHeight/2, bodyWidth, bodyHeight, 10);
         
-        // Elegant metallic rim
-        this.platformGraphics.lineStyle(3, this.currentTheme.platform.rim, 0.95);
-        this.platformGraphics.strokeRoundedRect(-30, -12, 60, 24, 12);
+        // Strong border for definition
+        this.platformGraphics.lineStyle(2, this.currentTheme.platform.rim, 1);
+        this.platformGraphics.strokeRoundedRect(-bodyWidth/2, bodyY - bodyHeight/2, bodyWidth, bodyHeight, 10);
         
-        // Premium highlight strip
-        this.platformGraphics.fillStyle(this.currentTheme.platform.highlight, 0.4);
-        this.platformGraphics.fillRoundedRect(-25, -9, 50, 8, 6);
+        // Inner magazine channel for single bubble
+        this.platformGraphics.fillStyle(0x0a0a0a, 0.5);
+        this.platformGraphics.fillRoundedRect(-14, bodyY - 18, 28, 36, 6);
         
-        // Subtle depth shadow
-        this.platformGraphics.fillStyle(this.currentTheme.platform.shadow, 0.3);
-        this.platformGraphics.fillRoundedRect(-25, 2, 50, 6, 3);
+        // Single magazine slot
+        this.platformGraphics.lineStyle(1, this.currentTheme.platform.highlight, 0.3);
+        this.platformGraphics.strokeCircle(0, bodyY + 5, 10);
     }
 
     /**
@@ -185,37 +190,33 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.chamberGraphics.clear();
         
-        // Outer chamber ring - premium metallic finish
+        // Main firing chamber - top of the integrated launcher
         this.chamberGraphics.fillGradientStyle(
             this.currentTheme.chamber.outerTop, this.currentTheme.chamber.outerTop,
             this.currentTheme.chamber.outerBottom, this.currentTheme.chamber.outerBottom,
-            1, 1, 0.8, 0.8
+            1, 1, 0.95, 0.95
         );
         this.chamberGraphics.fillCircle(0, 0, 26);
         
-        // Chamber depth rim
-        this.chamberGraphics.lineStyle(4, this.currentTheme.chamber.rim, 1);
+        // Strong outer rim
+        this.chamberGraphics.lineStyle(3, this.currentTheme.chamber.rim, 1);
         this.chamberGraphics.strokeCircle(0, 0, 26);
         
-        // Inner chamber - perfect bubble fit
-        this.chamberGraphics.fillGradientStyle(
-            this.currentTheme.chamber.innerTop, this.currentTheme.chamber.innerTop,
-            this.currentTheme.chamber.innerBottom, this.currentTheme.chamber.innerBottom,
-            0.9, 0.7, 0.6, 0.8
-        );
+        // Inner chamber where bubble sits
+        this.chamberGraphics.fillStyle(0x0a0a0a, 0.7);
         this.chamberGraphics.fillCircle(0, 0, 20);
         
-        // Precision inner rim
-        this.chamberGraphics.lineStyle(2, this.currentTheme.chamber.innerRim, 1);
+        // Inner rim
+        this.chamberGraphics.lineStyle(2, this.currentTheme.chamber.innerRim, 0.9);
         this.chamberGraphics.strokeCircle(0, 0, 20);
         
-        // Premium highlight for 3D effect
-        this.chamberGraphics.fillStyle(this.currentTheme.chamber.highlight, 0.6);
-        this.chamberGraphics.fillCircle(-4, -4, 6);
+        // Power indicator ring
+        this.chamberGraphics.lineStyle(1, this.currentTheme.chamber.highlight, 0.6);
+        this.chamberGraphics.strokeCircle(0, 0, 23);
         
-        // Subtle depth indicator
-        this.chamberGraphics.fillStyle(this.currentTheme.chamber.depth, 0.4);
-        this.chamberGraphics.fillCircle(3, 3, 4);
+        // Central highlight
+        this.chamberGraphics.fillStyle(this.currentTheme.chamber.highlight, 0.4);
+        this.chamberGraphics.fillCircle(-5, -5, 4);
     }
 
     /**
@@ -226,23 +227,10 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.queueBackground.clear();
         
-        // Professional panel background with subtle gradient (adjusted for 2 bubbles)
-        this.queueBackground.fillGradientStyle(
-            this.currentTheme.queue.panelTop, this.currentTheme.queue.panelTop,
-            this.currentTheme.queue.panelBottom, this.currentTheme.queue.panelBottom,
-            0.9, 0.9, 0.7, 0.7
-        );
-        this.queueBackground.fillRoundedRect(-40, -20, 80, 40, 15); // Smaller width for 2 bubbles
+        // Queue is now integrated into the launcher body
+        // No separate background needed - bubbles sit in the magazine slots
         
-        // Elegant panel border
-        this.queueBackground.lineStyle(2, this.currentTheme.queue.panelBorder, 0.8);
-        this.queueBackground.strokeRoundedRect(-40, -20, 80, 40, 15);
-        
-        // Premium inner glow
-        this.queueBackground.lineStyle(1, this.currentTheme.queue.panelGlow, 0.6);
-        this.queueBackground.strokeRoundedRect(-37, -17, 74, 34, 12);
-        
-        // Render queue bubbles with enhanced visibility
+        // Render queue bubbles in the integrated magazine
         this.renderQueueBubbles();
     }
 
@@ -252,21 +240,17 @@ export class Launcher extends Phaser.GameObjects.Container {
     private renderQueueBubbles(): void {
         if (!this.queueBackground) return;
         
-        const maxBubbles = Math.min(2, this.nextBubbleColors.length); // Show only 2 next bubbles
-        const spacing = 32;
-        const startX = -(maxBubbles - 1) * spacing / 2;
-        
-        for (let i = 0; i < maxBubbles; i++) {
-            const color = this.nextBubbleColors[i];
-            // For opponent, reverse the order (rightmost is next from their perspective)
-            const xIndex = this.isOpponent ? (maxBubbles - 1 - i) : i;
-            const x = startX + xIndex * spacing;
-            // Fix: Invert Y position for opponent queue bubbles
-            const y = this.isOpponent ? -5 : 5;
-            const radius = 13 - i * 1; // More noticeable size difference for 2 bubbles
-            const alpha = 1.0 - i * 0.15; // More noticeable transparency difference
+        // Show only 1 next bubble for clean design
+        if (this.nextBubbleColors.length > 0) {
+            const color = this.nextBubbleColors[0];
             
-            this.renderPremiumQueueBubble(x, y, radius, alpha, color, i);
+            // Single bubble positioned in the magazine - same for both
+            const x = 0; // Centered
+            const y = 5; // Same position for both (flip handles the difference)
+            const radius = 11; // Good visible size
+            const alpha = 1.0; // Full opacity for clarity
+            
+            this.renderPremiumQueueBubble(x, y, radius, alpha, color, 0);
         }
     }
 
@@ -278,28 +262,34 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         const bubbleTheme = this.getBubbleColors(color);
         
-        // Premium bubble base with gradient
-        this.queueBackground.fillGradientStyle(
-            bubbleTheme.primary, bubbleTheme.primary,
-            bubbleTheme.secondary, bubbleTheme.secondary,
-            alpha, alpha, alpha * 0.8, alpha * 0.8
-        );
+        // Solid bubble base with full visibility
+        this.queueBackground.fillStyle(bubbleTheme.primary, alpha);
         this.queueBackground.fillCircle(x, y, radius);
         
-        // Crystal clear border for color recognition
+        // Strong border for clear definition
         this.queueBackground.lineStyle(2, bubbleTheme.dark, alpha);
         this.queueBackground.strokeCircle(x, y, radius);
         
-        // Premium 3D highlight - adjust for opponent orientation
-        this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.7);
-        const highlightY = this.isOpponent ? y + 2 : y - 2;
-        this.queueBackground.fillCircle(x - 2, highlightY, radius * 0.4);
+        // Clear 3D highlight - same for both (flip handles it)
+        this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.6);
+        this.queueBackground.fillCircle(x - 2, y - 2, radius * 0.3);
         
-        // Subtle position glow
-        if (index === 0) {
-            this.queueBackground.lineStyle(1, bubbleTheme.light, alpha * 0.5);
-            this.queueBackground.strokeCircle(x, y, radius + 2);
-        }
+        // Inner shadow for depth
+        this.queueBackground.fillStyle(bubbleTheme.dark, alpha * 0.3);
+        this.queueBackground.fillCircle(x + 2, y + 2, radius * 0.25);
+        
+        // "NEXT" indicator - subtle pulsing glow
+        this.queueBackground.lineStyle(1.5, bubbleTheme.accent, alpha * 0.4);
+        this.queueBackground.strokeCircle(x, y, radius + 3);
+        
+        // Small arrow pointing to chamber - same for both (flip handles it)
+        const arrowY = y - radius - 5;
+        this.queueBackground.fillStyle(0xffffff, alpha * 0.4);
+        this.queueBackground.fillTriangle(
+            x - 3, arrowY + 2,
+            x + 3, arrowY + 2,
+            x, arrowY - 3
+        );
     }
 
     /**
@@ -438,8 +428,16 @@ export class Launcher extends Phaser.GameObjects.Container {
      * Updates theme with unified design consistency
      */
     private updateTheme(color: BubbleColor): void {
+        // Store current scale before updating
+        const currentScaleY = this.scaleY;
+        
         this.currentTheme = this.getExceptionalTheme(color);
         this.updateAllVisuals();
+        
+        // Restore scale after updating visuals
+        if (this.isOpponent) {
+            this.setScale(1, -1);
+        }
     }
 
     /**
@@ -488,6 +486,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
         
         this.currentAngle = visualAngle;
+        
+        // No visual rotation - the launcher stays fixed
+        // The trajectory preview shows the aiming direction
     }
 
     public getAimAngle(): number {
@@ -540,10 +541,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         const scale = enabled ? 1.05 : 1.0;
         const alpha = enabled ? 1.0 : 0.95;
         
+        // Don't animate scale for the entire container - it breaks the flip
         this.scene.tweens.add({
             targets: this,
-            scaleX: scale,
-            scaleY: scale,
             alpha,
             duration: 200,
             ease: 'Power2.Out'
@@ -575,6 +575,11 @@ export class Launcher extends Phaser.GameObjects.Container {
             ease: 'Elastic.Out'
         });
         
+        // Double-check flip is maintained for opponent after all updates
+        if (this.isOpponent && this.scaleY !== -1) {
+            this.setScale(1, -1);
+        }
+        
         // Chamber response animation
         this.scene.tweens.add({
             targets: this.bubbleChamber,
@@ -598,6 +603,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
         this.loadedBubble = undefined;
         this.renderGlowEffects();
+        
+        // Ensure flip is maintained for opponent
+        if (this.isOpponent && this.scaleY !== -1) {
+            this.setScale(1, -1);
+        }
     }
 
     public updateQueueColors(colors: BubbleColor[]): void {
@@ -630,12 +640,12 @@ export class Launcher extends Phaser.GameObjects.Container {
             });
         }
         
-        // Platform shake
+        // Platform shake - NO SCALE ANIMATION for these (it breaks the flip)
         if (this.launcherPlatform) {
+            // Use position shake instead of scale
             this.scene.tweens.add({
                 targets: this.launcherPlatform,
-                scaleX: { from: 1, to: 0.95, to: 1.02, to: 1 },
-                scaleY: { from: 1, to: 0.95, to: 1.02, to: 1 },
+                x: { from: 0, to: -2, to: 2, to: 0 },
                 duration: 350,
                 ease: 'Power2.Out'
             });
