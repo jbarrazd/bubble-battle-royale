@@ -259,16 +259,15 @@ export class ShootingSystem {
             this.canShoot = true;
             this.playerLauncher.setHighlight(false);
             this.cooldownBarBg?.setVisible(false);
+            // Load next bubble after cooldown completes (like opponent)
+            this.loadNextBubble();
         });
         
         // Visual feedback during cooldown
         this.playerLauncher.setHighlight(true);
         
-        // Load next bubble after a short delay
+        // Clear current bubble immediately
         this.currentBubble = null;
-        this.scene.time.delayedCall(100, () => {
-            this.loadNextBubble();
-        });
     }
     
     private onAIShoot = (data: any): void => {
