@@ -1,6 +1,22 @@
 import { ArenaZone, BubbleColor } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { Bubble } from './Bubble';
+import { PowerUpType } from '@/systems/powerups/PowerUpManager';
+
+// Arsenal slot interface for integrated weapon system
+interface ArsenalSlot {
+    container: Phaser.GameObjects.Container;
+    background: Phaser.GameObjects.Graphics;
+    icon: Phaser.GameObjects.Text;
+    countText: Phaser.GameObjects.Text;
+    energyConduit?: Phaser.GameObjects.Graphics;
+    position: { x: number, y: number };
+    powerUpType?: PowerUpType;
+    count: number;
+    isActive: boolean;
+    cooldownOverlay?: Phaser.GameObjects.Graphics;
+    progressArc?: Phaser.GameObjects.Graphics;
+}
 
 /**
  * EXCEPTIONAL LAUNCHER - Premium Mobile-First Game Experience
@@ -48,6 +64,13 @@ export class Launcher extends Phaser.GameObjects.Container {
     private queueContainer?: Phaser.GameObjects.Container;
     private nextBubbleFrame?: Phaser.GameObjects.Graphics;
     
+    // === ARSENAL INTEGRATION ===
+    private arsenalSlots: ArsenalSlot[] = [];
+    private weaponRing?: Phaser.GameObjects.Container;
+    private energyConduits?: Phaser.GameObjects.Graphics;
+    private activePowerUp?: PowerUpType;
+    private arsenalContainer?: Phaser.GameObjects.Container;
+    
     // === ANIMATION SYSTEMS ===
     private idleAnimation?: Phaser.Tweens.Tween;
     private chargingTween?: Phaser.Tweens.Tween;
@@ -69,6 +92,31 @@ export class Launcher extends Phaser.GameObjects.Container {
     // === POSITIONING CONSTANTS ===
     private readonly BUBBLE_POSITION_Y: number;
     private readonly QUEUE_POSITION_Y: number;
+    
+    // === ARSENAL POSITIONING ===
+    private readonly ARSENAL_POSITIONS_PLAYER = [
+        { x: 70, y: -35 },     // Right side horizontal, slot 1
+        { x: 110, y: -35 },    // Right side horizontal, slot 2
+        { x: 150, y: -35 }     // Right side horizontal, slot 3
+    ];
+    private readonly ARSENAL_POSITIONS_OPPONENT = [
+        { x: -70, y: -35 },    // Left side horizontal, slot 1
+        { x: -110, y: -35 },   // Left side horizontal, slot 2
+        { x: -150, y: -35 }    // Left side horizontal, slot 3
+    ];
+    private readonly SLOT_SIZE = 32;
+    
+    // Power-up icons
+    private powerUpIcons: Record<PowerUpType, string> = {
+        [PowerUpType.RAINBOW]: '🌈',
+        [PowerUpType.BOMB]: '💣',
+        [PowerUpType.LIGHTNING]: '⚡',
+        [PowerUpType.FREEZE]: '❄️',
+        [PowerUpType.LASER]: '🎯',
+        [PowerUpType.MULTIPLIER]: '✨',
+        [PowerUpType.SHIELD]: '🛡️',
+        [PowerUpType.MAGNET]: '🧲'
+    };
 
     constructor(scene: Phaser.Scene, x: number, y: number, zone: ArenaZone) {
         super(scene, x, y);
@@ -91,12 +139,18 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Build the exceptional launcher
         this.createExceptionalLauncher();
         
+        // Create integrated arsenal for both player and opponent
+        this.createIntegratedArsenal();
+        
         this.setDepth(Z_LAYERS.LAUNCHERS);
         scene.add.existing(this);
         
         // Initialize with accessible theme
         this.updateTheme(BubbleColor.BLUE);
         this.startEnhancedIdleAnimations();
+        
+        // Setup arsenal event listeners
+        this.setupArsenalListeners();
         
         // Add touch area for better mobile interaction
         this.setupMobileTouchArea();
@@ -927,6 +981,9 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.readyIndicator.setStrokeStyle(2, this.currentTheme.platform.rim, 0);
         }
         
+        // Update arsenal slot colors to match launcher theme
+        this.updateArsenalTheme();
+        
         // Enhanced mobile loading animation with better visual feedback
         this.loadedBubble.setScale(0);
         this.scene.tweens.add({
@@ -1152,16 +1209,461 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
     }
 
+    private updateArsenalTheme(): void {
+        if (!this.arsenalSlots || !this.currentTheme) return;
+        
+        // Update all arsenal slot backgrounds with new theme
+        this.arsenalSlots.forEach(slot => {
+            if (slot.background) {
+                this.drawArsenalSlotBackground(slot.background, slot.isActive);
+            }
+        });
+    }
+    
+    // === ARSENAL INTEGRATION METHODS ===
+    
+    private createIntegratedArsenal(): void {
+        // Create container for arsenal system
+        this.arsenalContainer = this.scene.add.container(0, 0);
+        this.add(this.arsenalContainer);
+        
+        // Create energy conduits layer
+        this.energyConduits = this.scene.add.graphics();
+        this.arsenalContainer.add(this.energyConduits);
+        
+        // Use appropriate positions based on player/opponent
+        const positions = this.isOpponent ? 
+            this.ARSENAL_POSITIONS_OPPONENT : 
+            this.ARSENAL_POSITIONS_PLAYER;
+        
+        // Create arsenal slots in horizontal formation
+        positions.forEach((pos, index) => {
+            const slot = this.createArsenalSlot(pos, index);
+            this.arsenalSlots.push(slot);
+            this.arsenalContainer.add(slot.container);
+        });
+        
+        // Position arsenal at same depth as launcher components
+        this.arsenalContainer.setDepth(1);
+    }
+    
+    private createArsenalSlot(position: { x: number, y: number }, index: number): ArsenalSlot {
+        const container = this.scene.add.container(position.x, position.y);
+        
+        // Counter-rotate the container for opponent to keep content readable
+        if (this.isOpponent) {
+            container.setScale(1, -1);
+        }
+        
+        // Create slot background with weapon mount design
+        const background = this.scene.add.graphics();
+        this.drawArsenalSlotBackground(background, false);
+        
+        // Create power-up icon
+        const icon = this.scene.add.text(0, 0, '', {
+            fontSize: '20px',
+            fontFamily: 'Arial'
+        });
+        icon.setOrigin(0.5);
+        icon.setShadow(2, 2, '#000000', 2, true, true);
+        
+        // Create count text
+        const countText = this.scene.add.text(
+            this.SLOT_SIZE/2 - 2,
+            this.SLOT_SIZE/2 - 2,
+            '',
+            {
+                fontSize: '9px',
+                fontFamily: 'Arial Black',
+                color: '#FFFFFF',
+                stroke: '#000000',
+                strokeThickness: 2
+            }
+        );
+        countText.setOrigin(1, 1);
+        
+        // Add key hint for slots 1-3 (only on desktop)
+        const isMobile = this.scene.game.device.input.touch;
+        if (!isMobile) {
+            const keyHint = this.createKeyHintBadge(index + 1);
+            keyHint.setPosition(-this.SLOT_SIZE/2 + 6, -this.SLOT_SIZE/2 + 6);
+            container.add(keyHint);
+        }
+        
+        container.add([background, icon, countText]);
+        
+        // Make interactive only for player
+        if (!this.isOpponent) {
+            const touchPadding = 6;
+            container.setInteractive(
+                new Phaser.Geom.Rectangle(
+                    -this.SLOT_SIZE/2 - touchPadding,
+                    -this.SLOT_SIZE/2 - touchPadding,
+                    this.SLOT_SIZE + touchPadding * 2,
+                    this.SLOT_SIZE + touchPadding * 2
+                ),
+                Phaser.Geom.Rectangle.Contains
+            );
+            
+            // Add hover/press effects
+            container.on('pointerdown', () => {
+                this.activateArsenalSlot(index);
+            });
+            
+            container.on('pointerover', () => {
+                const baseScale = this.isOpponent ? -1 : 1;
+                this.scene.tweens.add({
+                    targets: container,
+                    scaleX: 1.1,
+                    scaleY: 1.1 * baseScale,
+                    duration: 200,
+                    ease: 'Power2'
+                });
+            });
+            
+            container.on('pointerout', () => {
+                const baseScale = this.isOpponent ? -1 : 1;
+                this.scene.tweens.add({
+                    targets: container,
+                    scaleX: 1.0,
+                    scaleY: 1.0 * baseScale,
+                    duration: 200,
+                    ease: 'Power2'
+                });
+            });
+        }
+        
+        return {
+            container,
+            background,
+            icon,
+            countText,
+            position,
+            count: 0,
+            isActive: false
+        };
+    }
+    
+    private drawArsenalSlotBackground(graphics: Phaser.GameObjects.Graphics, isActive: boolean): void {
+        graphics.clear();
+        
+        const size = this.SLOT_SIZE;
+        const halfSize = size / 2;
+        
+        if (!this.currentTheme) return;
+        
+        // Use launcher theme colors
+        const colors = {
+            primary: this.currentTheme.primary,
+            secondary: this.currentTheme.secondary,
+            glow: this.currentTheme.glow.pulse,
+            rim: this.currentTheme.platform.rim
+        };
+        
+        // Background matching launcher style
+        graphics.fillStyle(0x000000, 0.4);
+        graphics.fillRoundedRect(-halfSize - 2, -halfSize - 2, size + 4, size + 4, 8);
+        
+        // Inner background with theme color
+        graphics.fillStyle(colors.secondary, 0.3);
+        graphics.fillRoundedRect(-halfSize, -halfSize, size, size, 6);
+        
+        // Border matching launcher theme
+        graphics.lineStyle(2, isActive ? 0xFFD700 : colors.rim, isActive ? 1 : 0.8);
+        graphics.strokeRoundedRect(-halfSize, -halfSize, size, size, 6);
+        
+        // Inner glow effect
+        if (isActive) {
+            graphics.lineStyle(1, 0xFFFFFF, 0.4);
+            graphics.strokeRoundedRect(-halfSize + 2, -halfSize + 2, size - 4, size - 4, 4);
+        }
+    }
+    
+    private createKeyHintBadge(key: number): Phaser.GameObjects.Container {
+        const badge = this.scene.add.container(0, 0);
+        
+        // Use theme color for badge
+        const badgeColor = this.currentTheme?.glow?.pulse || 0xFFD700;
+        
+        const bg = this.scene.add.circle(0, 0, 7, badgeColor, 0.9);
+        bg.setStrokeStyle(1, 0x000000, 1);
+        
+        const text = this.scene.add.text(0, 0, `${key}`, {
+            fontSize: '9px',
+            fontFamily: 'Arial Black',
+            color: '#000000'
+        });
+        text.setOrigin(0.5);
+        
+        badge.add([bg, text]);
+        return badge;
+    }
+    
+    private setupArsenalListeners(): void {
+        // Listen for power-up collection
+        this.scene.events.on('power-up-collected', (data: any) => {
+            const shouldAdd = this.isOpponent ? 
+                (data.owner === 'opponent') : 
+                (data.owner === 'player');
+            
+            if (shouldAdd) {
+                this.addPowerUpToArsenal(data.type);
+            }
+        });
+        
+        // Keyboard controls only for player (only on desktop)
+        if (!this.isOpponent && !this.scene.game.device.input.touch) {
+            this.scene.input.keyboard?.on('keydown-ONE', () => this.activateArsenalSlot(0));
+            this.scene.input.keyboard?.on('keydown-TWO', () => this.activateArsenalSlot(1));
+            this.scene.input.keyboard?.on('keydown-THREE', () => this.activateArsenalSlot(2));
+        }
+    }
+    
+    private addPowerUpToArsenal(type: PowerUpType): void {
+        // Check if we already have this power-up
+        let slot = this.arsenalSlots.find(s => s.powerUpType === type);
+        
+        if (slot) {
+            // Increment count
+            slot.count++;
+            slot.countText.setText(slot.count > 1 ? `x${slot.count}` : '');
+        } else {
+            // Find empty slot
+            slot = this.arsenalSlots.find(s => !s.powerUpType);
+            
+            if (slot) {
+                slot.powerUpType = type;
+                slot.count = 1;
+                slot.icon.setText(this.powerUpIcons[type]);
+                
+                // Collection animation
+                this.showPowerUpCollectionEffect(slot);
+            }
+        }
+    }
+    
+    private activateArsenalSlot(index: number): void {
+        const slot = this.arsenalSlots[index];
+        
+        if (!slot || !slot.powerUpType || slot.count <= 0) {
+            // Empty slot feedback
+            if (slot) {
+                this.showEmptySlotFeedback(slot);
+            }
+            return;
+        }
+        
+        // Activate power-up
+        this.activatePowerUp(slot);
+    }
+    
+    private activatePowerUp(slot: ArsenalSlot): void {
+        if (!slot.powerUpType) return;
+        
+        // Visual activation sequence
+        this.showPowerUpActivation(slot);
+        
+        // Set active power-up
+        this.activePowerUp = slot.powerUpType;
+        
+        // Emit activation event
+        this.scene.events.emit('activate-power-up', {
+            type: slot.powerUpType
+        });
+        
+        // Decrease count
+        slot.count--;
+        
+        if (slot.count <= 0) {
+            // Clear slot
+            slot.powerUpType = undefined;
+            slot.icon.setText('');
+            slot.countText.setText('');
+            slot.isActive = false;
+        } else {
+            slot.countText.setText(slot.count > 1 ? `x${slot.count}` : '');
+        }
+        
+        // Start cooldown
+        this.startSlotCooldown(slot, 2000);
+    }
+    
+    private showPowerUpActivation(slot: ArsenalSlot): void {
+        // Create energy beam from slot to launcher
+        this.renderEnergyConduit(slot);
+        
+        // Chamber enhancement effect - maintain orientation
+        if (this.bubbleChamber) {
+            const baseScale = this.isOpponent ? -1 : 1;
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                scaleX: { from: 1, to: 1.2, end: 1 },
+                scaleY: { from: baseScale, to: 1.2 * baseScale, end: baseScale },
+                duration: 300,
+                ease: 'Power2'
+            });
+        }
+        
+        // Slot activation burst
+        const burst = this.scene.add.graphics();
+        burst.fillStyle(0xFFD700, 0.6);
+        burst.fillCircle(slot.position.x, slot.position.y, this.SLOT_SIZE/2);
+        this.arsenalContainer?.add(burst);
+        
+        this.scene.tweens.add({
+            targets: burst,
+            scale: 2,
+            alpha: 0,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => burst.destroy()
+        });
+    }
+    
+    private renderEnergyConduit(slot: ArsenalSlot): void {
+        if (!this.energyConduits) return;
+        
+        // Clear previous conduits
+        this.energyConduits.clear();
+        
+        // Draw energy beam
+        const startX = slot.position.x;
+        const startY = slot.position.y;
+        const endX = 0;
+        const endY = this.BUBBLE_POSITION_Y;
+        
+        // Animated energy beam
+        this.energyConduits.lineStyle(3, 0xFFD700, 0.8);
+        this.energyConduits.lineBetween(startX, startY, endX, endY);
+        
+        // Create energy particles along the beam
+        for (let i = 0; i < 5; i++) {
+            const t = i / 4;
+            const px = startX + (endX - startX) * t;
+            const py = startY + (endY - startY) * t;
+            
+            const particle = this.scene.add.circle(px, py, 2, 0xFFD700);
+            this.arsenalContainer?.add(particle);
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: endX,
+                y: endY,
+                scale: 0,
+                duration: 500,
+                delay: i * 50,
+                ease: 'Power2',
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // Fade out conduit
+        this.scene.time.delayedCall(600, () => {
+            this.scene.tweens.add({
+                targets: this.energyConduits,
+                alpha: 0,
+                duration: 200,
+                onComplete: () => {
+                    this.energyConduits?.clear();
+                    this.energyConduits?.setAlpha(1);
+                }
+            });
+        });
+    }
+    
+    private showPowerUpCollectionEffect(slot: ArsenalSlot): void {
+        // Scale animation - maintain correct orientation for opponent
+        const baseScale = this.isOpponent ? -1 : 1;
+        this.scene.tweens.add({
+            targets: slot.container,
+            scaleX: { from: 1.3, to: 1 },
+            scaleY: { from: 1.3 * baseScale, to: baseScale },
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+        
+        // Glow effect
+        const collectFlash = this.scene.add.graphics();
+        collectFlash.fillStyle(0xFFD700, 0.5);
+        collectFlash.fillCircle(slot.position.x, slot.position.y, this.SLOT_SIZE);
+        this.arsenalContainer?.add(collectFlash);
+        
+        this.scene.tweens.add({
+            targets: collectFlash,
+            alpha: 0,
+            scale: 2,
+            duration: 500,
+            ease: 'Cubic.easeOut',
+            onComplete: () => collectFlash.destroy()
+        });
+    }
+    
+    private showEmptySlotFeedback(slot: ArsenalSlot): void {
+        // Red flash for empty slot
+        const flash = this.scene.add.graphics();
+        flash.fillStyle(0xFF0000, 0.3);
+        flash.fillCircle(0, 0, this.SLOT_SIZE/2);
+        slot.container.add(flash);
+        
+        this.scene.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
+    }
+    
+    private startSlotCooldown(slot: ArsenalSlot, duration: number): void {
+        // Create cooldown overlay
+        const overlay = this.scene.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillCircle(0, 0, this.SLOT_SIZE/2);
+        slot.container.add(overlay);
+        
+        // Progress arc
+        const progressArc = this.scene.add.graphics();
+        slot.container.add(progressArc);
+        
+        this.scene.tweens.add({
+            targets: { progress: 0 },
+            progress: 1,
+            duration: duration,
+            onUpdate: (tween) => {
+                const progress = tween.getValue();
+                progressArc.clear();
+                progressArc.lineStyle(3, 0x4ECDC4, 0.8);
+                progressArc.beginPath();
+                progressArc.arc(0, 0, this.SLOT_SIZE/2 - 2, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress), false);
+                progressArc.strokePath();
+            },
+            onComplete: () => {
+                overlay.destroy();
+                progressArc.destroy();
+                this.drawArsenalSlotBackground(slot.background, false);
+            }
+        });
+    }
+    
     /**
      * Cleanup method
      */
     public destroy(): void {
+        // Clean up arsenal
+        this.arsenalSlots.forEach(slot => {
+            this.scene.tweens.killTweensOf(slot.container);
+        });
+        
+        // Clean up animations
         if (this.idleAnimation) {
             this.idleAnimation.destroy();
         }
         if (this.chargingTween) {
             this.chargingTween.destroy();
         }
+        
+        // Remove event listeners
+        this.scene.events.off('power-up-collected');
+        this.scene.events.off('activate-power-up');
         
         super.destroy();
     }
