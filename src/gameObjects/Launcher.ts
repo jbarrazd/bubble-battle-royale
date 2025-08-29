@@ -150,14 +150,15 @@ export class Launcher extends Phaser.GameObjects.Container {
      * NEW: Creates visual state indicators for better UX
      */
     private createStateIndicators(): void {
-        this.stateIndicator = this.scene.add.container(0, 0);
+        // State indicator as graphics for drawing
+        this.stateIndicator = this.scene.add.graphics();
+        this.add(this.stateIndicator);
         
         // Ready indicator ring around chamber
         this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28, 0x00ff00, 0);
         this.readyIndicator.setStrokeStyle(2, 0x00ff00, 0);
         this.readyIndicator.setVisible(false);
-        
-        this.stateIndicator.add(this.readyIndicator);
+        this.add(this.readyIndicator);
     }
 
     /**
