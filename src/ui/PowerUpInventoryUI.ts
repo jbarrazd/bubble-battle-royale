@@ -17,10 +17,18 @@ export class PowerUpInventoryUI {
     private container: Phaser.GameObjects.Container;
     private slots: InventorySlot[] = [];
     private maxSlots: number = 3;
-    private slotSize: number = 32;
-    private padding: number = 5;
+    private slotSize: number = 36; // Balanced size - still accessible but not huge
+    private padding: number = 6; // Compact spacing
     private isOpponent: boolean;
     private backgroundPanel?: Phaser.GameObjects.Graphics;
+    
+    // Visual state constants
+    private readonly SLOT_STATES = {
+        EMPTY: { color: 0x2C2C54, alpha: 0.3 },
+        AVAILABLE: { color: 0x4ECDC4, alpha: 0.8 },
+        COOLDOWN: { color: 0x95A5A6, alpha: 0.5 },
+        ACTIVATING: { color: 0xFFD700, alpha: 1.0 }
+    };
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
@@ -46,10 +54,14 @@ export class PowerUpInventoryUI {
     private createUI(): void {
         const screenWidth = this.scene.cameras.main.width;
         const screenHeight = this.scene.cameras.main.height;
+        const safeAreaTop = 44; // Account for notch/status bar
+        const safeAreaBottom = 34; // Account for home indicator
         
-        // Position in corner of fort area
+        // Position with safe areas
         // Player: bottom-right, Opponent: top-left (mirrored)
-        const y = this.isOpponent ? 25 : screenHeight - 25;
+        const y = this.isOpponent ? 
+            safeAreaTop + 30 : // Safe distance from top
+            screenHeight - safeAreaBottom - 30; // Safe distance from bottom
         
         this.container = this.scene.add.container(0, y);
         this.container.setDepth(Z_LAYERS.UI + 5); // Above other UI but below popups
@@ -93,25 +105,25 @@ export class PowerUpInventoryUI {
             const bg = this.scene.add.graphics();
             this.drawSlotBackground(bg, false);
             
-            // Icon with smaller size
+            // Icon with balanced size
             const icon = this.scene.add.text(0, 0, '', {
-                fontSize: '20px',
+                fontSize: '22px', // Balanced for visibility without being huge
                 fontFamily: 'Arial'
             });
             icon.setOrigin(0.5);
-            icon.setShadow(1, 1, '#000000', 1, true, true);
+            icon.setShadow(2, 2, '#000000', 2, true, true); // Good shadow
             
-            // Count text
+            // Count text with good visibility
             const countText = this.scene.add.text(
-                this.slotSize/2 - 2, 
-                this.slotSize/2 - 2, 
+                this.slotSize/2 - 3, 
+                this.slotSize/2 - 3, 
                 '', 
                 {
-                    fontSize: '10px',
+                    fontSize: '10px', // Compact but readable
                     fontFamily: 'Arial Black',
                     color: '#FFFFFF',
                     stroke: '#000000',
-                    strokeThickness: 1
+                    strokeThickness: 2
                 }
             );
             countText.setOrigin(1, 1);
@@ -154,9 +166,9 @@ export class PowerUpInventoryUI {
     private createCompactBackground(centerX: number, totalWidth: number): void {
         this.backgroundPanel = this.scene.add.graphics();
         
-        // Compact horizontal background
-        const panelWidth = totalWidth + 20;
-        const panelHeight = this.slotSize + 15;
+        // Compact panel size
+        const panelWidth = totalWidth + 16;
+        const panelHeight = this.slotSize + 14;
         const panelX = centerX - panelWidth/2;
         const panelY = -panelHeight/2;
         
@@ -179,13 +191,13 @@ export class PowerUpInventoryUI {
     private createKeyHintBadge(key: number): Phaser.GameObjects.Container {
         const badge = this.scene.add.container(0, 0);
         
-        // Smaller badge background
-        const bg = this.scene.add.circle(0, 0, 7, 0xFFD700, 0.8);
-        bg.setStrokeStyle(1, 0x000000, 1);
+        // Compact badge
+        const bg = this.scene.add.circle(0, 0, 8, 0xFFD700, 0.9);
+        bg.setStrokeStyle(1.5, 0x000000, 1);
         
         // Key number
         const text = this.scene.add.text(0, 0, `${key}`, {
-            fontSize: '9px',
+            fontSize: '10px', // Compact text
             fontFamily: 'Arial Black',
             color: '#000000'
         });
@@ -210,15 +222,35 @@ export class PowerUpInventoryUI {
         this.scene.input.keyboard?.on('keydown-TWO', () => this.activateSlot(1));
         this.scene.input.keyboard?.on('keydown-THREE', () => this.activateSlot(2));
         
-        // Mobile touch controls
+        // Mobile touch controls with accessible hit area
         this.slots.forEach((slot, index) => {
+            // Add touch padding to reach 44px minimum
+            const touchPadding = 6; // Makes total touch area ~48px
             slot.container.setInteractive(
-                new Phaser.Geom.Rectangle(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize),
+                new Phaser.Geom.Rectangle(
+                    -this.slotSize/2 - touchPadding, 
+                    -this.slotSize/2 - touchPadding, 
+                    this.slotSize + touchPadding * 2, 
+                    this.slotSize + touchPadding * 2
+                ),
                 Phaser.Geom.Rectangle.Contains
             );
             
             slot.container.on('pointerdown', () => {
+                // Haptic feedback for mobile
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(30); // Light haptic feedback
+                }
                 this.activateSlot(index);
+                
+                // Visual press feedback
+                this.scene.tweens.add({
+                    targets: slot.container,
+                    scale: 0.95,
+                    duration: 100,
+                    yoyo: true,
+                    ease: 'Power2'
+                });
             });
         });
     }
@@ -278,19 +310,20 @@ export class PowerUpInventoryUI {
         const slot = this.slots[index];
         
         if (!slot || !slot.powerUpType || slot.count <= 0) {
-            // Empty slot or no power-ups
+            // Empty slot feedback
+            if (slot) {
+                this.showEmptySlotFeedback(slot);
+            }
             return;
         }
         
         console.log(`Activating power-up: ${slot.powerUpType}`);
         
-        // Visual feedback
-        this.scene.tweens.add({
-            targets: slot.container,
-            scale: { from: 1, to: 0.8, end: 1 },
-            duration: 200,
-            ease: 'Quad.easeOut'
-        });
+        // Enhanced activation feedback
+        this.showActivationEffect(slot);
+        
+        // Start cooldown visual
+        this.startCooldownEffect(slot, 2000); // 2 second cooldown
         
         // Emit activation event
         this.scene.events.emit('activate-power-up', {
@@ -310,18 +343,22 @@ export class PowerUpInventoryUI {
         }
     }
     
-    private drawSlotBackground(bg: Phaser.GameObjects.Graphics, glowing: boolean = false): void {
+    private drawSlotBackground(bg: Phaser.GameObjects.Graphics, glowing: boolean = false, state: string = 'AVAILABLE'): void {
         bg.clear();
+        
+        // Get state colors
+        const stateConfig = this.SLOT_STATES[state as keyof typeof this.SLOT_STATES] || this.SLOT_STATES.AVAILABLE;
         
         // Multi-layer background for depth
         bg.fillStyle(0x000000, 0.4);
-        bg.fillRoundedRect(-this.slotSize/2-2, -this.slotSize/2-2, this.slotSize+4, this.slotSize+4, 10);
+        bg.fillRoundedRect(-this.slotSize/2-2, -this.slotSize/2-2, this.slotSize+4, this.slotSize+4, 12);
         
-        bg.fillStyle(this.isOpponent ? 0x330000 : 0x000033, 0.6);
-        bg.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+        bg.fillStyle(this.isOpponent ? 0x330000 : 0x000033, stateConfig.alpha);
+        bg.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 10);
         
-        bg.lineStyle(3, glowing ? 0xFFD700 : (this.isOpponent ? 0xFF6B6B : 0x4ECDC4), glowing ? 1 : 0.8);
-        bg.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 8);
+        const borderColor = glowing ? 0xFFD700 : (state === 'COOLDOWN' ? 0x95A5A6 : (this.isOpponent ? 0xFF6B6B : 0x4ECDC4));
+        bg.lineStyle(3, borderColor, glowing ? 1 : 0.8);
+        bg.strokeRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 10);
         
         // Inner glow
         bg.lineStyle(1, 0xFFFFFF, glowing ? 0.4 : 0.2);
@@ -335,7 +372,88 @@ export class PowerUpInventoryUI {
         }
     }
     
+    private showEmptySlotFeedback(slot: InventorySlot): void {
+        // Red flash for empty slot
+        const flash = this.scene.add.graphics();
+        flash.fillStyle(0xFF0000, 0.3);
+        flash.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 10);
+        slot.container.add(flash);
+        
+        this.scene.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
+    }
+    
+    private showActivationEffect(slot: InventorySlot): void {
+        // Activation burst effect
+        const burst = this.scene.add.graphics();
+        burst.fillStyle(0xFFD700, 0.6);
+        burst.fillCircle(0, 0, this.slotSize/2);
+        slot.container.add(burst);
+        
+        this.scene.tweens.add({
+            targets: burst,
+            scale: 2,
+            alpha: 0,
+            duration: 400,
+            ease: 'Power2',
+            onComplete: () => burst.destroy()
+        });
+        
+        // Scale punch
+        this.scene.tweens.add({
+            targets: slot.container,
+            scale: { from: 1.2, to: 1 },
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+    }
+    
+    private startCooldownEffect(slot: InventorySlot, duration: number): void {
+        // Create cooldown overlay
+        const overlay = this.scene.add.graphics();
+        overlay.fillStyle(0x000000, 0.7);
+        overlay.fillRoundedRect(-this.slotSize/2, -this.slotSize/2, this.slotSize, this.slotSize, 10);
+        slot.container.add(overlay);
+        
+        // Cooldown progress arc
+        const progressArc = this.scene.add.graphics();
+        slot.container.add(progressArc);
+        
+        this.scene.tweens.add({
+            targets: { progress: 0 },
+            progress: 1,
+            duration: duration,
+            onUpdate: (tween) => {
+                const progress = tween.getValue();
+                progressArc.clear();
+                progressArc.lineStyle(4, 0x4ECDC4, 0.8);
+                progressArc.beginPath();
+                progressArc.arc(0, 0, this.slotSize/2 - 4, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress), false);
+                progressArc.strokePath();
+            },
+            onComplete: () => {
+                overlay.destroy();
+                progressArc.destroy();
+                // Refresh background to available state
+                this.drawSlotBackground(slot.background, false, 'AVAILABLE');
+            }
+        });
+    }
+    
     public destroy(): void {
+        // Clean up event listeners
+        this.scene.events.off('power-up-collected');
+        this.scene.events.off('activate-power-up');
+        
+        // Destroy all tweens
+        this.slots.forEach(slot => {
+            this.scene.tweens.killTweensOf(slot.container);
+        });
+        
         this.container.destroy();
     }
 }

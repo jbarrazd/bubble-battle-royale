@@ -150,9 +150,10 @@ export class ArenaSystem {
         this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
         
         // Initialize power-up systems
-        // Create both player and opponent inventories
+        // Create only player inventory UI (opponent collects but doesn't show)
         this.playerPowerUpInventory = new PowerUpInventoryUI(this.scene, false);
-        this.opponentPowerUpInventory = new PowerUpInventoryUI(this.scene, true);
+        // Opponent inventory is hidden - AI can still collect and use power-ups internally
+        // this.opponentPowerUpInventory = new PowerUpInventoryUI(this.scene, true);
         this.aimingModeSystem = new AimingModeSystem(this.scene);
         
         // Initialize power-up activation after launcher is created
@@ -1106,6 +1107,8 @@ export class ArenaSystem {
         this.unifiedFeedbackSystem?.destroy();
         this.victoryScreen?.destroy();
         this.defeatScreen?.destroy();
+        this.playerPowerUpInventory?.destroy();
+        // this.opponentPowerUpInventory?.destroy(); // No longer created
         
         // Remove event listeners
         this.scene.events.off('score-update', this.onScoreUpdate, this);
