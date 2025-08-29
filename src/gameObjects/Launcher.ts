@@ -306,21 +306,30 @@ export class Launcher extends Phaser.GameObjects.Container {
      * NEW: Renders state indicators for better game feel
      */
     private renderStateIndicators(): void {
-        if (!this.readyIndicator || !this.currentTheme) return;
+        if (!this.readyIndicator) return;
         
-        // Update ready indicator based on state
+        // Don't show indicator if we don't have a theme yet
+        if (!this.currentTheme) {
+            this.readyIndicator.setVisible(false);
+            return;
+        }
+        
+        // Update ready indicator based on state - using theme colors
         switch (this.launcherState) {
             case 'ready':
                 this.readyIndicator.setVisible(true);
-                this.readyIndicator.setStrokeStyle(2, 0x00ff88, 0.8);
+                // Use the current bubble's theme color instead of hardcoded green
+                this.readyIndicator.setStrokeStyle(2, this.currentTheme.platform.rim, 0.8);
                 break;
             case 'aiming':
                 this.readyIndicator.setVisible(true);
-                this.readyIndicator.setStrokeStyle(2, 0xffaa00, 0.6);
+                // Use accent color for aiming
+                this.readyIndicator.setStrokeStyle(2, this.currentTheme.glow.aiming, 0.6);
                 break;
             case 'charging':
                 this.readyIndicator.setVisible(true);
-                this.readyIndicator.setStrokeStyle(3, 0xff4444, 0.9);
+                // Use pulse color for charging
+                this.readyIndicator.setStrokeStyle(3, this.currentTheme.glow.pulse, 0.9);
                 break;
             default:
                 this.readyIndicator.setVisible(false);
@@ -911,8 +920,10 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Update theme to match loaded bubble
         this.updateTheme(color);
         
-        // Update ready indicator color to match bubble
+        // Update ready indicator color to match bubble - no alpha initially
         if (this.readyIndicator && this.currentTheme) {
+            // Don't set visibility here, let renderStateIndicators handle it
+            // Just prepare the color for when it becomes visible
             this.readyIndicator.setStrokeStyle(2, this.currentTheme.platform.rim, 0);
         }
         
