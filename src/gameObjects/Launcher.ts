@@ -392,13 +392,13 @@ export class Launcher extends Phaser.GameObjects.Container {
                     dark: 0xCC8F00,
                     light: 0xFFE870
                 };
-            case BubbleColor.PURPLE:
+            case BubbleColor.PURPLE: // Actually PINK/MAGENTA (0xff00ff)
                 return {
-                    primary: 0xA55EEA,
-                    secondary: 0x8E44AD,
-                    accent: 0xBB7EED,
-                    dark: 0x6B3A87,
-                    light: 0xD39BF0
+                    primary: 0xFF00FF,  // Bright magenta/pink
+                    secondary: 0xE600E6,
+                    accent: 0xFF66FF,
+                    dark: 0xCC00CC,
+                    light: 0xFF99FF
                 };
             default: // Cyan
                 return {
@@ -665,54 +665,58 @@ export class Launcher extends Phaser.GameObjects.Container {
         if (!bubbleColor) return;
         
         const colors = this.getBubbleColors(bubbleColor);
-        const effectY = this.y + this.BUBBLE_POSITION_Y;
+        // For opponent, the bubble exits from the bottom (positive Y in world space)
+        const effectY = this.isOpponent ? 
+            this.y + Math.abs(this.BUBBLE_POSITION_Y) :  // Opponent: bubble exits from bottom
+            this.y + this.BUBBLE_POSITION_Y;              // Player: bubble exits from top
         
-        // Dramatic muzzle flash
-        const flash = this.scene.add.circle(this.x, effectY, 20, colors.light, 0.8);
+        // Balanced muzzle flash with proper color
+        const flash = this.scene.add.circle(this.x, effectY, 22, colors.primary, 0.9);
         flash.setBlendMode(Phaser.BlendModes.ADD);
         
         this.scene.tweens.add({
             targets: flash,
-            scale: { from: 0.5, to: 2.5, to: 0 },
+            scale: { from: 0.5, to: 2.2, to: 0 },
             alpha: { from: 0.8, to: 0.4, to: 0 },
-            duration: 300,
+            duration: 280,
             ease: 'Power2.Out',
             onComplete: () => flash.destroy()
         });
         
-        // Premium sparkle burst
-        for (let i = 0; i < 8; i++) {
-            const angle = (Math.PI * 2 / 8) * i;
-            const distance = 15 + Math.random() * 10;
+        // Balanced sparkle burst 
+        for (let i = 0; i < 10; i++) {
+            const angle = (Math.PI * 2 / 10) * i;
+            const distance = 10 + Math.random() * 12;
             const sparkX = this.x + Math.cos(angle) * distance;
             const sparkY = effectY + Math.sin(angle) * distance;
             
-            const sparkle = this.scene.add.circle(sparkX, sparkY, 3, colors.primary, 0.9);
+            // Medium-sized particles
+            const sparkle = this.scene.add.circle(sparkX, sparkY, 4.5, colors.primary, 0.95);
             sparkle.setBlendMode(Phaser.BlendModes.ADD);
             
             this.scene.tweens.add({
                 targets: sparkle,
-                scale: { from: 1, to: 0.3, to: 0 },
+                scale: { from: 1.1, to: 0.4, to: 0 },
                 alpha: { from: 0.9, to: 0.5, to: 0 },
-                x: sparkX + Math.cos(angle) * 20,
-                y: sparkY + Math.sin(angle) * 20,
-                duration: 400,
-                delay: i * 25,
+                x: sparkX + Math.cos(angle) * 28,
+                y: sparkY + Math.sin(angle) * 28,
+                duration: 450,
+                delay: i * 18,
                 ease: 'Power2.Out',
                 onComplete: () => sparkle.destroy()
             });
         }
         
-        // Energy ring expansion
-        const ring = this.scene.add.circle(this.x, effectY, 15, colors.primary, 0);
-        ring.setStrokeStyle(3, colors.accent, 0.8);
+        // Balanced energy ring expansion
+        const ring = this.scene.add.circle(this.x, effectY, 19, colors.primary, 0);
+        ring.setStrokeStyle(3.5, colors.primary, 0.9);
         ring.setBlendMode(Phaser.BlendModes.ADD);
         
         this.scene.tweens.add({
             targets: ring,
-            scale: { from: 0.8, to: 2.2 },
+            scale: { from: 0.6, to: 2.2 },
             alpha: { from: 0.8, to: 0 },
-            duration: 350,
+            duration: 380,
             ease: 'Power2.Out',
             onComplete: () => ring.destroy()
         });

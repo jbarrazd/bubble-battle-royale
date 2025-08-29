@@ -167,6 +167,9 @@ export class AIOpponentSystem {
         // Remove bubble from launcher before shooting
         this.launcher.clearLoadedBubble();
         
+        // Animate the launcher shooting with the bubble color
+        this.launcher.animateShoot(color);
+        
         // Position bubble at launcher's world position for shooting
         bubbleToShoot.setPosition(
             this.launcher.x,
