@@ -17,6 +17,7 @@ export class Launcher extends Phaser.GameObjects.Container {
     private bubbleCradleGraphics?: Phaser.GameObjects.Graphics;
     private glowRingGraphics?: Phaser.GameObjects.Graphics;
     private targetingGraphics?: Phaser.GameObjects.Graphics;
+    private trajectoryGraphics?: Phaser.GameObjects.Graphics;
     
     private zone: ArenaZone;
     private currentAngle: number = 0;
@@ -80,25 +81,28 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     public showAiming(show: boolean): void {
-        const targets = [this.aimingMechanism].filter(Boolean);
+        const aimingTargets = [this.aimingMechanism].filter(Boolean);
             
         if (show) {
+            // Show aiming mechanism with subtle scale
             this.scene.tweens.add({
-                targets: targets,
+                targets: aimingTargets,
                 scaleX: 1.05,
                 scaleY: 1.05,
                 duration: 200,
                 ease: 'Power2'
             });
         } else {
+            // Hide aiming mechanism
             this.scene.tweens.add({
-                targets: targets,
+                targets: aimingTargets,
                 scaleX: 1,
                 scaleY: 1,
                 duration: 200,
                 ease: 'Power2'
             });
         }
+        // Trajectory preview is handled by TrajectoryPreview class
     }
 
     public animateShoot(bubbleColor?: BubbleColor): void {
@@ -212,30 +216,52 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Clear and recreate rings with queue colors
         this.decorativeRingGraphics.clear();
         
-        // Draw filled circles from largest to smallest (so they layer correctly)
+        // Enhanced queue rings with better visual hierarchy
         
         // Outer circle - bubble after next (largest, drawn first)
         if (this.nextBubbleColors[1]) {
-            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[1], 0.25);
+            // Subtle glow effect
+            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[1], 0.1);
+            this.decorativeRingGraphics.fillCircle(0, 0, 44);
+            
+            // Main ring
+            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[1], 0.3);
             this.decorativeRingGraphics.fillCircle(0, 0, 42);
-            this.decorativeRingGraphics.lineStyle(1, this.nextBubbleColors[1], 0.4);
+            
+            // Border
+            this.decorativeRingGraphics.lineStyle(1.5, this.nextBubbleColors[1], 0.6);
             this.decorativeRingGraphics.strokeCircle(0, 0, 42);
         }
         
         // Middle circle - next bubble color
         if (this.nextBubbleColors[0]) {
-            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[0], 0.35);
+            // Subtle glow
+            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[0], 0.15);
+            this.decorativeRingGraphics.fillCircle(0, 0, 34);
+            
+            // Main ring
+            this.decorativeRingGraphics.fillStyle(this.nextBubbleColors[0], 0.4);
             this.decorativeRingGraphics.fillCircle(0, 0, 32);
-            this.decorativeRingGraphics.lineStyle(1.5, this.nextBubbleColors[0], 0.5);
+            
+            // Border
+            this.decorativeRingGraphics.lineStyle(2, this.nextBubbleColors[0], 0.7);
             this.decorativeRingGraphics.strokeCircle(0, 0, 32);
         }
         
         // Inner circle - current bubble color (smallest, drawn last)
         if (this.loadedBubble) {
             const currentColor = this.loadedBubble.getColor();
+            
+            // Subtle glow
             this.decorativeRingGraphics.fillStyle(currentColor, 0.2);
+            this.decorativeRingGraphics.fillCircle(0, 0, 26);
+            
+            // Main ring
+            this.decorativeRingGraphics.fillStyle(currentColor, 0.35);
             this.decorativeRingGraphics.fillCircle(0, 0, 24);
-            this.decorativeRingGraphics.lineStyle(2, currentColor, 0.6);
+            
+            // Border
+            this.decorativeRingGraphics.lineStyle(2.5, currentColor, 0.8);
             this.decorativeRingGraphics.strokeCircle(0, 0, 24);
         }
     }
@@ -312,8 +338,15 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
         this.basePlatformGraphics = this.scene.add.graphics();
         
-        // Hexagonal base with color gradient
+        // Enhanced hexagonal base with better gradient and details
         const hexPoints = this.createHexagonPoints(35);
+        
+        // Shadow/depth layer
+        this.basePlatformGraphics.fillStyle(0x000000, 0.2);
+        const shadowHexPoints = this.createHexagonPoints(37);
+        this.basePlatformGraphics.fillPoints(shadowHexPoints, true);
+        
+        // Main gradient base
         this.basePlatformGraphics.fillGradientStyle(
             palette.primary,
             palette.secondary,
@@ -322,41 +355,60 @@ export class Launcher extends Phaser.GameObjects.Container {
         );
         this.basePlatformGraphics.fillPoints(hexPoints, true);
         
+        // Inner highlight
+        this.basePlatformGraphics.fillStyle(palette.highlight, 0.3);
+        const innerHexPoints = this.createHexagonPoints(30);
+        this.basePlatformGraphics.fillPoints(innerHexPoints, true);
+        
+        // Border styling
         this.basePlatformGraphics.lineStyle(3, palette.highlight, 0.9);
         this.basePlatformGraphics.strokePoints(hexPoints, true);
         
+        // Inner border for depth
+        this.basePlatformGraphics.lineStyle(1, palette.accent, 0.6);
+        this.basePlatformGraphics.strokePoints(innerHexPoints, true);
+        
         this.launcherBase?.add(this.basePlatformGraphics);
         
-        // Update bubble platform with better design
+        // Enhanced bubble platform design
         if (this.innerPlatformGraphics) {
             this.innerPlatformGraphics.destroy();
         }
         this.innerPlatformGraphics = this.scene.add.graphics();
         
-        // Outer glow ring
-        this.innerPlatformGraphics.fillStyle(palette.glow, 0.2);
+        // Outer glow ring with soft falloff
+        this.innerPlatformGraphics.fillStyle(palette.glow, 0.15);
+        this.innerPlatformGraphics.fillCircle(0, -35, 28);
+        this.innerPlatformGraphics.fillStyle(palette.glow, 0.25);
         this.innerPlatformGraphics.fillCircle(0, -35, 26);
         
-        // Main platform with gradient effect
+        // Main platform with enhanced gradient
         this.innerPlatformGraphics.fillGradientStyle(
+            palette.highlight,
             palette.accent,
             palette.primary,
-            palette.secondary,
-            palette.dark
+            palette.secondary
         );
         this.innerPlatformGraphics.fillCircle(0, -35, 22);
         
-        // Inner depression for bubble to sit in
-        this.innerPlatformGraphics.fillStyle(palette.dark, 0.4);
+        // Inner depression with subtle gradient
+        this.innerPlatformGraphics.fillGradientStyle(
+            palette.dark,
+            palette.secondary,
+            palette.primary,
+            palette.accent
+        );
         this.innerPlatformGraphics.fillCircle(0, -35, 18);
         
-        // Bright rim
-        this.innerPlatformGraphics.lineStyle(2, palette.highlight, 0.9);
+        // Enhanced rim system
+        this.innerPlatformGraphics.lineStyle(3, palette.highlight, 0.9);
         this.innerPlatformGraphics.strokeCircle(0, -35, 22);
         
-        // Inner rim
-        this.innerPlatformGraphics.lineStyle(1, palette.glow, 0.6);
-        this.innerPlatformGraphics.strokeCircle(0, -35, 18);
+        this.innerPlatformGraphics.lineStyle(2, palette.glow, 0.7);
+        this.innerPlatformGraphics.strokeCircle(0, -35, 19);
+        
+        this.innerPlatformGraphics.lineStyle(1, palette.accent, 0.5);
+        this.innerPlatformGraphics.strokeCircle(0, -35, 16);
         
         this.launcherBase?.add(this.innerPlatformGraphics);
         
@@ -387,11 +439,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Update targeting graphics if exists
         if (this.targetingGraphics && this.targetingReticle) {
             this.targetingGraphics.clear();
-            this.targetingGraphics.lineStyle(2, palette.accent, 0.4);
-            // Aiming line from bubble position
-            this.targetingGraphics.moveTo(0, -35); // Start from bubble
-            this.targetingGraphics.lineTo(0, -65); // Extend upward
-            this.targetingGraphics.stroke();
+            // Removed the incorrect aiming line and arrow - trajectory preview handles aiming
         }
     }
     
@@ -424,6 +472,8 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.decorativeElements!,
             this.aimingMechanism!
         ]);
+        
+        // Trajectory preview is handled by TrajectoryPreview class
     }
     
     /**
@@ -447,31 +497,52 @@ export class Launcher extends Phaser.GameObjects.Container {
     private createAimingMechanism(): void {
         this.aimingMechanism = this.scene.add.container(0, 0);
         
-        // Simple aiming line from bubble position
+        // Create targeting reticle
         this.targetingReticle = this.scene.add.container(0, 0);
         this.targetingGraphics = this.scene.add.graphics();
-        this.targetingGraphics.lineStyle(2, 0x00CCFF, 0.4);
         
-        // Line extending from bubble position
-        this.targetingGraphics.moveTo(0, -35); // Start from bubble
-        this.targetingGraphics.lineTo(0, -65); // Extend upward
-        this.targetingGraphics.stroke();
+        // Trajectory preview is handled by TrajectoryPreview class
+        // Don't create duplicate trajectory graphics here
+        
+        this.createAimingIndicator();
         
         this.targetingReticle.add(this.targetingGraphics);
         this.aimingMechanism.add(this.targetingReticle);
     }
     
     /**
+     * Creates the aiming indicator with proper design
+     */
+    private createAimingIndicator(): void {
+        if (!this.targetingGraphics) return;
+        
+        this.targetingGraphics.clear();
+        // No static aiming indicators - trajectory preview handles all aiming visuals
+    }
+    
+    /**
      * Rotates launcher components for aiming
      */
     private rotateLauncher(angle: number): void {
-        // The aiming mechanism rotates around center, but visually extends from bubble
-        const rotation = Phaser.Math.DegToRad(angle + 90);
+        // Convert angle to radians (add 90 to align with visual orientation)
+        const rotation = Phaser.Math.DegToRad(angle - 90);
         
         // Rotate the aiming mechanism
         if (this.aimingMechanism) {
             this.aimingMechanism.setRotation(rotation);
         }
+        
+        // Trajectory preview is handled by TrajectoryPreview class in ShootingSystem
+        // this.updateTrajectoryPreview(angle); // Disabled to avoid duplicate
+    }
+    
+    /**
+     * Updates trajectory preview dots
+     * DISABLED: Using TrajectoryPreview class instead to avoid duplicates
+     */
+    private updateTrajectoryPreview(angle: number): void {
+        // Disabled - handled by TrajectoryPreview class in ShootingSystem
+        return;
     }
     
     /**

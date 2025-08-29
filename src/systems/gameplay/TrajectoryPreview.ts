@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { BubbleColor } from '@/types/ArenaTypes';
 
 interface ITrajectoryDot {
     dot: Phaser.GameObjects.Arc;
@@ -12,6 +13,7 @@ export class TrajectoryPreview {
     private launcher: Launcher;
     private dots: ITrajectoryDot[] = [];
     private dotPool: Phaser.GameObjects.Arc[] = [];
+    private currentBubbleColor: number = 0xFFFFFF;
     
     // Preview settings
     private readonly DOT_COUNT = 20;
@@ -56,9 +58,12 @@ export class TrajectoryPreview {
         }
     }
     
-    public show(angle: number): void {
+    public show(angle: number, bubbleColor?: number): void {
         if (!this.isVisible) {
             this.isVisible = true;
+            if (bubbleColor !== undefined) {
+                this.currentBubbleColor = bubbleColor;
+            }
             this.calculateTrajectory(angle);
         }
     }
@@ -129,7 +134,6 @@ export class TrajectoryPreview {
                 const dot = this.dotPool[dotIndex];
                 dot.setPosition(x, y);
                 dot.setVisible(true);
-                
                 // Calculate fade based on distance
                 const fadeStart = 0.3; // Start more visible
                 const fadeEnd = 0.8; // End still visible
@@ -143,8 +147,12 @@ export class TrajectoryPreview {
         }
     }
     
-    public update(angle: number, delta: number): void {
+    public update(angle: number, delta: number, bubbleColor?: number): void {
         if (!this.isVisible) return;
+        
+        if (bubbleColor !== undefined) {
+            this.currentBubbleColor = bubbleColor;
+        }
         
         // Recalculate trajectory
         this.calculateTrajectory(angle);
@@ -166,16 +174,22 @@ export class TrajectoryPreview {
             // Apply alpha
             dot.setAlpha(animatedAlpha);
             
-            // Bright yellow to orange gradient for better visibility
+            // Create gradient based on bubble color
             const colorProgress = index / this.dots.length;
-            const red = 255;
-            const green = Math.floor(255 - (100 * colorProgress)); // Yellow to orange
-            const blue = Math.floor(100 * (1 - colorProgress)); // Slight warmth
+            
+            // Get RGB components from bubble color
+            const baseColor = Phaser.Display.Color.IntegerToColor(this.currentBubbleColor);
+            
+            // Create gradient by darkening the color progressively
+            const red = Math.floor(baseColor.red * (1 - colorProgress * 0.4)); // Darken red
+            const green = Math.floor(baseColor.green * (1 - colorProgress * 0.4)); // Darken green  
+            const blue = Math.floor(baseColor.blue * (1 - colorProgress * 0.4)); // Darken blue
+            
             const color = Phaser.Display.Color.GetColor(red, green, blue);
             dot.setFillStyle(color);
             
-            // Add stroke for extra visibility
-            dot.setStrokeStyle(1, 0xFFFFFF, 0.3);
+            // Add stroke with bubble color for extra visibility
+            dot.setStrokeStyle(1, this.currentBubbleColor, 0.3);
         });
     }
     

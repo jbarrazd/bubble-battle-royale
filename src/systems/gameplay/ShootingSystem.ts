@@ -103,10 +103,11 @@ export class ShootingSystem {
     }
     
     private onPointerDown(): void {
-        if (this.canShoot) {
-            // Show trajectory preview when aiming
+        if (this.canShoot && this.currentBubble) {
+            // Show trajectory preview when aiming with current bubble color
             const angle = this.playerLauncher.getAimAngle();
-            this.trajectoryPreview.show(angle);
+            const bubbleColor = this.currentBubble.getColor();
+            this.trajectoryPreview.show(angle, bubbleColor);
         }
     }
     
@@ -328,9 +329,10 @@ export class ShootingSystem {
     
     public update(delta: number): void {
         // Update trajectory preview if aiming
-        if (this.canShoot && this.inputManager.isPointerActive()) {
+        if (this.canShoot && this.inputManager.isPointerActive() && this.currentBubble) {
             const angle = this.playerLauncher.getAimAngle();
-            this.trajectoryPreview.update(angle, delta);
+            const bubbleColor = this.currentBubble.getColor();
+            this.trajectoryPreview.update(angle, delta, bubbleColor);
         }
         
         // Check for projectile-to-projectile collisions
