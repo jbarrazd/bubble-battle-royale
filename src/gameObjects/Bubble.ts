@@ -4,6 +4,7 @@ import { BUBBLE_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
 export class Bubble extends Phaser.GameObjects.Container {
     private bubbleSprite: Phaser.GameObjects.Arc;
     private highlightSprite: Phaser.GameObjects.Arc;
+    private patternSprite?: Phaser.GameObjects.Graphics;
     private gridPosition: IHexPosition | null = null;
     private color: BubbleColor;
     private isSpecial: boolean = false;
@@ -28,7 +29,11 @@ export class Bubble extends Phaser.GameObjects.Container {
             0.4
         );
         
-        this.add([this.bubbleSprite, this.highlightSprite]);
+        // Create pattern for colorblind accessibility
+        this.patternSprite = scene.add.graphics();
+        this.addColorblindPattern(color);
+        
+        this.add([this.bubbleSprite, this.patternSprite, this.highlightSprite]);
         
         this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
         this.setDepth(Z_LAYERS.BUBBLES);  // Use regular bubble layer, not front
@@ -61,6 +66,8 @@ export class Bubble extends Phaser.GameObjects.Container {
         // Update visual sprite to match
         this.bubbleSprite.setFillStyle(color);
         this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+        // Update pattern for colorblind accessibility
+        this.addColorblindPattern(color);
     }
 
     public setTint(tint: number): void {
@@ -117,6 +124,75 @@ export class Bubble extends Phaser.GameObjects.Container {
         return (Math.floor(r * 0.7) << 16) | 
                (Math.floor(g * 0.7) << 8) | 
                Math.floor(b * 0.7);
+    }
+
+    /**
+     * Adds colorblind-friendly patterns to bubbles
+     * Each color gets a unique pattern for accessibility
+     */
+    private addColorblindPattern(color: BubbleColor): void {
+        if (!this.patternSprite) return;
+        
+        this.patternSprite.clear();
+        this.patternSprite.lineStyle(1.5, 0xffffff, 0.4);
+        
+        const radius = BUBBLE_CONFIG.SIZE / 2;
+        
+        switch (color) {
+            case BubbleColor.RED:
+                // Horizontal lines pattern
+                for (let y = -radius + 4; y < radius; y += 6) {
+                    const x = Math.sqrt(radius * radius - y * y) * 0.8;
+                    this.patternSprite.lineBetween(-x, y, x, y);
+                }
+                break;
+                
+            case BubbleColor.BLUE:
+                // Vertical lines pattern
+                for (let x = -radius + 4; x < radius; x += 6) {
+                    const y = Math.sqrt(radius * radius - x * x) * 0.8;
+                    this.patternSprite.lineBetween(x, -y, x, y);
+                }
+                break;
+                
+            case BubbleColor.GREEN:
+                // Diagonal lines (top-left to bottom-right)
+                for (let offset = -radius; offset < radius; offset += 6) {
+                    const startX = Math.max(-radius * 0.7, offset - radius * 0.7);
+                    const startY = Math.max(-radius * 0.7, -offset - radius * 0.7);
+                    const endX = Math.min(radius * 0.7, offset + radius * 0.7);
+                    const endY = Math.min(radius * 0.7, -offset + radius * 0.7);
+                    this.patternSprite.lineBetween(startX, startY, endX, endY);
+                }
+                break;
+                
+            case BubbleColor.YELLOW:
+                // Dots pattern
+                for (let x = -radius + 5; x < radius; x += 8) {
+                    for (let y = -radius + 5; y < radius; y += 8) {
+                        if (x * x + y * y < radius * radius * 0.7) {
+                            this.patternSprite.fillStyle(0xffffff, 0.5);
+                            this.patternSprite.fillCircle(x, y, 1.5);
+                        }
+                    }
+                }
+                break;
+                
+            case BubbleColor.PURPLE:
+                // Cross-hatch pattern (X pattern)
+                for (let offset = -radius; offset < radius; offset += 6) {
+                    // Diagonal 1
+                    const x1 = Math.max(-radius * 0.7, offset - radius * 0.7);
+                    const y1 = Math.max(-radius * 0.7, -offset - radius * 0.7);
+                    const x2 = Math.min(radius * 0.7, offset + radius * 0.7);
+                    const y2 = Math.min(radius * 0.7, -offset + radius * 0.7);
+                    this.patternSprite.lineBetween(x1, y1, x2, y2);
+                    
+                    // Diagonal 2 (opposite)
+                    this.patternSprite.lineBetween(x1, -y1, x2, -y2);
+                }
+                break;
+        }
     }
 
     public pop(): void {

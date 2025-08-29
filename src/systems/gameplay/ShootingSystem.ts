@@ -104,6 +104,10 @@ export class ShootingSystem {
     
     private onPointerDown(): void {
         if (this.canShoot && this.currentBubble) {
+            // Start power charging
+            this.playerLauncher.startPowerCharge();
+            this.playerLauncher.setState('charging');
+            
             // Show trajectory preview when aiming with current bubble color
             const angle = this.playerLauncher.getAimAngle();
             const bubbleColor = this.currentBubble.getColor();
@@ -210,16 +214,22 @@ export class ShootingSystem {
         
         if (!this.canShoot || !this.currentBubble) return;
         
-        // No turn checking - allow simultaneous shooting
+        // Get power level and release it
+        const powerLevel = this.playerLauncher.releasePowerCharge();
+        this.playerLauncher.setState('cooldown');
+        
+        // Calculate speed based on power level (minimum 50% speed, maximum 150%)
+        const powerMultiplier = 0.5 + (powerLevel / 100) * 1.0;
+        const adjustedSpeed = this.shootSpeed * powerMultiplier;
         
         // Get launcher angle and direction
         const angle = this.playerLauncher.getAimAngle();
         const direction = this.playerLauncher.getAimDirection();
         
-        // Create velocity vector
+        // Create velocity vector with power-adjusted speed
         const velocity = new Phaser.Math.Vector2(
-            direction.x * this.shootSpeed,
-            direction.y * this.shootSpeed
+            direction.x * adjustedSpeed,
+            direction.y * adjustedSpeed
         );
         
         // Remove bubble from launcher before shooting
@@ -258,6 +268,7 @@ export class ShootingSystem {
         this.scene.time.delayedCall(this.cooldownTime, () => {
             this.canShoot = true;
             this.playerLauncher.setHighlight(false);
+            this.playerLauncher.setState('ready');
             this.cooldownBarBg?.setVisible(false);
             // Load next bubble after cooldown completes (like opponent)
             this.loadNextBubble();

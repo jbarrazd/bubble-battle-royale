@@ -30,6 +30,12 @@ export class Launcher extends Phaser.GameObjects.Container {
     private queueLabel?: Phaser.GameObjects.Text;
     private glowEffect?: Phaser.GameObjects.Graphics;
     
+    // === ENHANCED UX ELEMENTS ===
+    private stateIndicator?: Phaser.GameObjects.Graphics;
+    private readyIndicator?: Phaser.GameObjects.Arc;
+    private queueContainer?: Phaser.GameObjects.Container;
+    private nextBubbleFrame?: Phaser.GameObjects.Graphics;
+    
     // === ANIMATION SYSTEMS ===
     private idleAnimation?: Phaser.Tweens.Tween;
     private chargingTween?: Phaser.Tweens.Tween;
@@ -43,6 +49,10 @@ export class Launcher extends Phaser.GameObjects.Container {
     private currentTheme: any;
     private isAiming: boolean = false;
     private isOpponent: boolean;
+    
+    // === ENHANCED STATE ===
+    private launcherState: 'idle' | 'aiming' | 'charging' | 'ready' | 'cooldown' = 'idle';
+    private powerLevel: number = 0;
     
     // === POSITIONING CONSTANTS ===
     private readonly BUBBLE_POSITION_Y: number;
@@ -72,9 +82,12 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.setDepth(Z_LAYERS.LAUNCHERS);
         scene.add.existing(this);
         
-        // Initialize with beautiful theme
+        // Initialize with accessible theme
         this.updateTheme(BubbleColor.BLUE);
-        this.startIdleAnimations();
+        this.startEnhancedIdleAnimations();
+        
+        // Add touch area for better mobile interaction
+        this.setupMobileTouchArea();
     }
 
     /**
@@ -84,14 +97,16 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Create in perfect hierarchy order
         this.createLauncherPlatform();
         this.createBubbleChamber();
-        this.createQueuePanel();  // NEW: Professional queue background
+        this.createEnhancedQueueSystem();  // ENHANCED: More visible queue system
+        this.createStateIndicators();       // NEW: Visual state feedback
         this.createEffectsLayer();
         
         // Add all components with perfect layering
         this.add([
             this.launcherPlatform!,
             this.bubbleChamber!,
-            this.queuePanel!,
+            this.queueContainer!,
+            this.stateIndicator!,
             this.effectsLayer!
         ]);
     }
@@ -117,16 +132,32 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     /**
-     * NEW: Creates professional queue panel with elegant background
+     * ENHANCED: Creates more visible and intuitive queue system
      */
-    private createQueuePanel(): void {
-        this.queuePanel = this.scene.add.container(0, this.QUEUE_POSITION_Y);
+    private createEnhancedQueueSystem(): void {
+        this.queueContainer = this.scene.add.container(0, this.QUEUE_POSITION_Y + 15); // Offset for better visibility
         
-        // Professional background panel
+        // Enhanced queue background with better visibility
         this.queueBackground = this.scene.add.graphics();
         
-        // No text label - design should be intuitive
-        this.queuePanel.add(this.queueBackground);
+        // Next bubble frame indicator
+        this.nextBubbleFrame = this.scene.add.graphics();
+        
+        this.queueContainer.add([this.queueBackground, this.nextBubbleFrame]);
+    }
+
+    /**
+     * NEW: Creates visual state indicators for better UX
+     */
+    private createStateIndicators(): void {
+        this.stateIndicator = this.scene.add.container(0, 0);
+        
+        // Ready indicator ring around chamber
+        this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28, 0x00ff00, 0);
+        this.readyIndicator.setStrokeStyle(2, 0x00ff00, 0);
+        this.readyIndicator.setVisible(false);
+        
+        this.stateIndicator.add(this.readyIndicator);
     }
 
     /**
@@ -142,7 +173,8 @@ export class Launcher extends Phaser.GameObjects.Container {
     private updateAllVisuals(): void {
         this.renderLauncherPlatform();
         this.renderBubbleChamber();
-        this.renderQueuePanel();
+        this.renderEnhancedQueue();
+        this.renderStateIndicators();
         this.renderGlowEffects();
     }
 
@@ -220,76 +252,131 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     /**
-     * NEW: Renders professional queue panel background
+     * ENHANCED: Renders improved queue system with better visibility
      */
-    private renderQueuePanel(): void {
+    private renderEnhancedQueue(): void {
         if (!this.queueBackground || !this.currentTheme) return;
         
         this.queueBackground.clear();
         
-        // Queue is now integrated into the launcher body
-        // No separate background needed - bubbles sit in the magazine slots
+        // Enhanced visible background for next bubble
+        const panelWidth = 40;
+        const panelHeight = 32;
+        const panelX = -panelWidth / 2;
+        const panelY = -panelHeight / 2;
         
-        // Render queue bubbles in the integrated magazine
-        this.renderQueueBubbles();
+        // Semi-transparent background panel
+        this.queueBackground.fillStyle(0x000000, 0.3);
+        this.queueBackground.fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 8);
+        
+        // Border for definition
+        this.queueBackground.lineStyle(1, this.currentTheme.platform.rim, 0.8);
+        this.queueBackground.strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 8);
+        
+        // "NEXT" label for clarity
+        if (this.nextBubbleColors.length > 0) {
+            // Small "NEXT" text above the bubble
+            const text = this.scene.add.text(0, -20, 'NEXT', {
+                fontSize: '8px',
+                color: '#ffffff',
+                alpha: 0.7
+            }).setOrigin(0.5);
+            
+            if (this.queueContainer) {
+                this.queueContainer.add(text);
+            }
+        }
+        
+        // Render queue bubbles
+        this.renderEnhancedQueueBubbles();
     }
 
     /**
-     * Renders queue bubbles with crystal clarity and professional polish
+     * NEW: Renders state indicators for better game feel
      */
-    private renderQueueBubbles(): void {
-        if (!this.queueBackground) return;
+    private renderStateIndicators(): void {
+        if (!this.readyIndicator || !this.currentTheme) return;
         
-        // Show only 1 next bubble for clean design
-        if (this.nextBubbleColors.length > 0) {
-            const color = this.nextBubbleColors[0];
-            
-            // Single bubble positioned in the magazine - same for both
-            const x = 0; // Centered
-            const y = 5; // Same position for both (flip handles the difference)
-            const radius = 11; // Good visible size
-            const alpha = 1.0; // Full opacity for clarity
-            
-            this.renderPremiumQueueBubble(x, y, radius, alpha, color, 0);
+        // Update ready indicator based on state
+        switch (this.launcherState) {
+            case 'ready':
+                this.readyIndicator.setVisible(true);
+                this.readyIndicator.setStrokeStyle(2, 0x00ff88, 0.8);
+                break;
+            case 'aiming':
+                this.readyIndicator.setVisible(true);
+                this.readyIndicator.setStrokeStyle(2, 0xffaa00, 0.6);
+                break;
+            case 'charging':
+                this.readyIndicator.setVisible(true);
+                this.readyIndicator.setStrokeStyle(3, 0xff4444, 0.9);
+                break;
+            default:
+                this.readyIndicator.setVisible(false);
+                break;
         }
     }
 
     /**
-     * Renders a single queue bubble with premium quality
+     * ENHANCED: Renders queue bubbles with improved visibility
      */
-    private renderPremiumQueueBubble(x: number, y: number, radius: number, alpha: number, color: BubbleColor, index: number): void {
+    private renderEnhancedQueueBubbles(): void {
+        if (!this.queueBackground) return;
+        
+        // Show next bubble with enhanced visibility
+        if (this.nextBubbleColors.length > 0) {
+            const color = this.nextBubbleColors[0];
+            
+            // Larger, more prominent bubble
+            const x = 0; // Centered
+            const y = 0; // Centered in panel
+            const radius = 12; // Slightly larger for better visibility
+            const alpha = 1.0; // Full opacity
+            
+            this.renderEnhancedQueueBubble(x, y, radius, alpha, color);
+        }
+        
+        // Optional: Show second bubble if available (smaller, to the side)
+        if (this.nextBubbleColors.length > 1) {
+            const color = this.nextBubbleColors[1];
+            const x = 20; // To the right
+            const y = 0;
+            const radius = 8; // Smaller
+            const alpha = 0.7; // Semi-transparent
+            
+            this.renderEnhancedQueueBubble(x, y, radius, alpha, color);
+        }
+    }
+
+    /**
+     * ENHANCED: Renders queue bubble with improved visual clarity
+     */
+    private renderEnhancedQueueBubble(x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
         if (!this.queueBackground) return;
         
         const bubbleTheme = this.getBubbleColors(color);
         
-        // Solid bubble base with full visibility
+        // Enhanced bubble with better contrast
         this.queueBackground.fillStyle(bubbleTheme.primary, alpha);
         this.queueBackground.fillCircle(x, y, radius);
         
-        // Strong border for clear definition
-        this.queueBackground.lineStyle(2, bubbleTheme.dark, alpha);
+        // Stronger border for mobile visibility
+        this.queueBackground.lineStyle(2.5, bubbleTheme.dark, alpha);
         this.queueBackground.strokeCircle(x, y, radius);
         
-        // Clear 3D highlight - same for both (flip handles it)
-        this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.6);
-        this.queueBackground.fillCircle(x - 2, y - 2, radius * 0.3);
+        // Enhanced 3D highlight
+        this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.8);
+        this.queueBackground.fillCircle(x - 2, y - 2, radius * 0.4);
         
-        // Inner shadow for depth
-        this.queueBackground.fillStyle(bubbleTheme.dark, alpha * 0.3);
-        this.queueBackground.fillCircle(x + 2, y + 2, radius * 0.25);
+        // Subtle inner glow for premium feel
+        this.queueBackground.fillStyle(bubbleTheme.accent, alpha * 0.2);
+        this.queueBackground.fillCircle(x, y, radius * 0.7);
         
-        // "NEXT" indicator - subtle pulsing glow
-        this.queueBackground.lineStyle(1.5, bubbleTheme.accent, alpha * 0.4);
-        this.queueBackground.strokeCircle(x, y, radius + 3);
-        
-        // Small arrow pointing to chamber - same for both (flip handles it)
-        const arrowY = y - radius - 5;
-        this.queueBackground.fillStyle(0xffffff, alpha * 0.4);
-        this.queueBackground.fillTriangle(
-            x - 3, arrowY + 2,
-            x + 3, arrowY + 2,
-            x, arrowY - 3
-        );
+        // Outer highlight ring for next bubble indicator
+        if (x === 0) { // Main next bubble
+            this.queueBackground.lineStyle(1, bubbleTheme.accent, alpha * 0.6);
+            this.queueBackground.strokeCircle(x, y, radius + 2);
+        }
     }
 
     /**
@@ -441,31 +528,93 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     /**
-     * Starts subtle idle animations for premium feel
+     * ENHANCED: Better idle animations for mobile engagement
      */
-    private startIdleAnimations(): void {
-        // Subtle breathing effect on chamber
+    private startEnhancedIdleAnimations(): void {
+        // Subtle breathing effect on chamber (reduced for mobile performance)
         this.idleAnimation = this.scene.tweens.add({
             targets: this.bubbleChamber,
-            scaleX: { from: 1, to: 1.02 },
-            scaleY: { from: 1, to: 1.02 },
-            duration: 2000,
+            scaleX: { from: 1, to: 1.015 },  // Reduced amplitude
+            scaleY: { from: 1, to: 1.015 },
+            duration: 2500,                   // Slower for smoother feel
             yoyo: true,
             repeat: -1,
             ease: 'Sine.InOut'
         });
         
-        // Queue panel subtle pulse
-        if (this.queuePanel) {
+        // Enhanced queue container pulse
+        if (this.queueContainer) {
             this.scene.tweens.add({
-                targets: this.queuePanel,
-                alpha: { from: 0.95, to: 1 },
-                duration: 3000,
+                targets: this.queueContainer,
+                alpha: { from: 0.9, to: 1 },
+                duration: 3500,
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.InOut'
             });
         }
+        
+        // Ready state indicator glow
+        if (this.readyIndicator) {
+            this.scene.tweens.add({
+                targets: this.readyIndicator,
+                alpha: { from: 0.3, to: 0.7 },
+                duration: 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.InOut',
+                paused: true  // Will be unpaused when ready
+            });
+        }
+    }
+
+    /**
+     * NEW: Setup mobile-optimized touch area
+     */
+    private setupMobileTouchArea(): void {
+        // Create invisible touch area MUCH larger than visual for easier mobile targeting
+        // Recommended touch target size is at least 44x44 points (Apple) or 48x48dp (Android)
+        const touchSize = 100; // Generous touch area for mobile
+        const touchArea = this.scene.add.rectangle(0, 0, touchSize, touchSize, 0x000000, 0);
+        touchArea.setInteractive({ useHandCursor: true });
+        
+        // Add to launcher but behind visuals
+        this.addAt(touchArea, 0);
+        
+        // Visual feedback for touch with ripple effect
+        touchArea.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            // Scale feedback
+            this.scene.tweens.add({
+                targets: this,
+                scaleX: 0.95,
+                scaleY: this.isOpponent ? -0.95 : 0.95,  // Maintain flip for opponent
+                duration: 50,
+                yoyo: true,
+                ease: 'Power2.Out'
+            });
+            
+            // Touch ripple effect for mobile
+            const ripple = this.scene.add.circle(0, 0, 10, 0xffffff, 0.3);
+            this.add(ripple);
+            
+            this.scene.tweens.add({
+                targets: ripple,
+                scale: { from: 0, to: 3 },
+                alpha: { from: 0.3, to: 0 },
+                duration: 400,
+                ease: 'Power2.Out',
+                onComplete: () => ripple.destroy()
+            });
+        });
+        
+        // Hover effect for desktop/large tablets
+        touchArea.on('pointerover', () => {
+            this.setHighlight(true);
+        });
+        
+        touchArea.on('pointerout', () => {
+            this.setHighlight(false);
+        });
     }
 
     // === PUBLIC INTERFACE - ENHANCED ===
@@ -502,10 +651,11 @@ export class Launcher extends Phaser.GameObjects.Container {
 
     public showAiming(show: boolean): void {
         this.isAiming = show;
+        this.launcherState = show ? 'aiming' : 'idle';
         
-        // Premium aiming feedback
+        // Enhanced aiming feedback
         if (show) {
-            // Charging animation
+            // Charging animation with better visual feedback
             this.chargingTween = this.scene.tweens.add({
                 targets: this.bubbleChamber,
                 scaleX: 1.08,
@@ -513,41 +663,210 @@ export class Launcher extends Phaser.GameObjects.Container {
                 duration: 200,
                 ease: 'Power2.Out'
             });
+            
+            // Add subtle chamber pulsing when aiming
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                alpha: { from: 1, to: 0.9 },
+                duration: 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.InOut'
+            });
         } else {
-            // Return to normal
+            // Return to normal with better transition
             if (this.chargingTween) {
                 this.chargingTween.stop();
             }
+            
+            // Stop pulsing
+            this.scene.tweens.killTweensOf(this.bubbleChamber);
             
             this.scene.tweens.add({
                 targets: this.bubbleChamber,
                 scaleX: 1,
                 scaleY: 1,
+                alpha: 1,
                 duration: 300,
                 ease: 'Elastic.Out'
             });
         }
         
-        // Update glow effects
+        // Update all visual feedback systems
+        this.renderStateIndicators();
         this.renderGlowEffects();
     }
 
     public animateShoot(bubbleColor?: BubbleColor): void {
-        this.createExceptionalLaunchEffects(bubbleColor);
-        this.animatePremiumLaunch();
+        this.launcherState = 'charging';
+        this.createEnhancedLaunchEffects(bubbleColor);
+        this.animateEnhancedLaunch();
+        
+        // Enter cooldown state briefly
+        setTimeout(() => {
+            this.launcherState = 'idle';
+            this.renderStateIndicators();
+        }, 500);
+    }
+
+    /**
+     * NEW: Set launcher state with visual updates
+     */
+    public setState(state: 'idle' | 'aiming' | 'charging' | 'ready' | 'cooldown'): void {
+        this.launcherState = state;
+        this.updateStateIndicator();
+        this.renderStateIndicators();
+    }
+
+    /**
+     * NEW: Update state indicator visuals
+     */
+    private updateStateIndicator(): void {
+        if (!this.stateIndicator) return;
+        
+        // Clear previous state visuals
+        this.stateIndicator.clear();
+        
+        switch (this.launcherState) {
+            case 'idle':
+                // Subtle idle glow
+                this.stateIndicator.fillStyle(0x4CAF50, 0.2);
+                this.stateIndicator.fillCircle(0, 0, 35);
+                break;
+                
+            case 'aiming':
+                // Aiming reticle effect
+                this.stateIndicator.lineStyle(2, 0xFFC107, 0.6);
+                this.stateIndicator.strokeCircle(0, 0, 40);
+                // Add crosshair
+                this.stateIndicator.lineBetween(-10, 0, 10, 0);
+                this.stateIndicator.lineBetween(0, -10, 0, 10);
+                break;
+                
+            case 'charging':
+                // Charging energy effect
+                const chargeColor = this.powerLevel < 30 ? 0xFF5722 : 
+                                   this.powerLevel < 70 ? 0xFF9800 : 0x4CAF50;
+                this.stateIndicator.fillStyle(chargeColor, 0.3 + (this.powerLevel / 200));
+                this.stateIndicator.fillCircle(0, 0, 30 + (this.powerLevel / 10));
+                break;
+                
+            case 'ready':
+                // Ready pulse effect
+                this.stateIndicator.fillStyle(0x00BCD4, 0.4);
+                this.stateIndicator.fillCircle(0, 0, 35);
+                if (this.readyIndicator) {
+                    this.readyIndicator.setVisible(true);
+                }
+                break;
+                
+            case 'cooldown':
+                // Cooldown dimmed effect
+                this.stateIndicator.fillStyle(0x9E9E9E, 0.2);
+                this.stateIndicator.fillCircle(0, 0, 30);
+                break;
+        }
+    }
+
+    /**
+     * NEW: Power charging system for better game feel
+     */
+    public startPowerCharge(): void {
+        this.launcherState = 'charging';
+        this.powerLevel = 0;
+        
+        // Visual power buildup
+        this.scene.tweens.add({
+            targets: this,
+            powerLevel: 100,
+            duration: 1500,
+            ease: 'Power2.Out',
+            onUpdate: () => {
+                this.renderPowerIndicator();
+            }
+        });
+        
+        // Chamber charging effect
+        if (this.bubbleChamber) {
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                scaleX: { from: 1, to: 1.15 },
+                scaleY: { from: 1, to: 1.15 },
+                duration: 1500,
+                ease: 'Power2.Out'
+            });
+        }
+        
+        this.renderStateIndicators();
+    }
+
+    /**
+     * NEW: Release power charge
+     */
+    public releasePowerCharge(): number {
+        const power = this.powerLevel;
+        this.powerLevel = 0;
+        
+        // Reset chamber size
+        if (this.bubbleChamber) {
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 200,
+                ease: 'Power2.Out'
+            });
+        }
+        
+        return power;
+    }
+
+    /**
+     * NEW: Render power charging indicator
+     */
+    private renderPowerIndicator(): void {
+        if (!this.stateIndicator || this.launcherState !== 'charging') return;
+        
+        // Clear previous power indicator
+        if (this.readyIndicator) {
+            const powerColor = this.powerLevel < 30 ? 0xff4444 : 
+                              this.powerLevel < 70 ? 0xffaa00 : 0x00ff88;
+            
+            const alpha = 0.3 + (this.powerLevel / 100) * 0.7;
+            this.readyIndicator.setStrokeStyle(3, powerColor, alpha);
+            this.readyIndicator.setVisible(true);
+        }
     }
 
     public setHighlight(enabled: boolean): void {
-        const scale = enabled ? 1.05 : 1.0;
         const alpha = enabled ? 1.0 : 0.95;
         
-        // Don't animate scale for the entire container - it breaks the flip
+        // Enhanced highlight with better mobile feedback
         this.scene.tweens.add({
             targets: this,
             alpha,
-            duration: 200,
+            duration: 150,  // Faster response for mobile
             ease: 'Power2.Out'
         });
+        
+        // Add subtle glow effect to chamber when highlighted
+        if (this.bubbleChamber && enabled) {
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                scaleX: 1.03,
+                scaleY: 1.03,
+                duration: 150,
+                ease: 'Power2.Out'
+            });
+        } else if (this.bubbleChamber) {
+            this.scene.tweens.add({
+                targets: this.bubbleChamber,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 150,
+                ease: 'Power2.Out'
+            });
+        }
     }
 
     public loadBubble(color: BubbleColor): void {
@@ -575,10 +894,16 @@ export class Launcher extends Phaser.GameObjects.Container {
             ease: 'Elastic.Out'
         });
         
+        // Update launcher state
+        this.launcherState = 'ready';
+        
         // Double-check flip is maintained for opponent after all updates
         if (this.isOpponent && this.scaleY !== -1) {
             this.setScale(1, -1);
         }
+        
+        // Update state indicators
+        this.renderStateIndicators();
         
         // Chamber response animation
         this.scene.tweens.add({
@@ -613,113 +938,155 @@ export class Launcher extends Phaser.GameObjects.Container {
     public updateQueueColors(colors: BubbleColor[]): void {
         this.nextBubbleColors = colors;
         
-        // Premium queue update animation
-        this.scene.tweens.add({
-            targets: this.queuePanel,
-            scaleX: { from: 1, to: 1.05, to: 1 },
-            scaleY: { from: 1, to: 1.05, to: 1 },
-            duration: 300,
-            ease: 'Back.Out',
-            onComplete: () => {
-                this.renderQueuePanel();
-            }
-        });
+        // Enhanced queue update with better visibility
+        if (this.queueContainer) {
+            this.scene.tweens.add({
+                targets: this.queueContainer,
+                scaleX: { from: 1, to: 1.1, to: 1 },
+                scaleY: { from: 1, to: 1.1, to: 1 },
+                duration: 400,
+                ease: 'Elastic.Out',
+                onComplete: () => {
+                    this.renderEnhancedQueue();
+                }
+            });
+            
+            // Flash effect to draw attention to queue update
+            this.scene.tweens.add({
+                targets: this.queueContainer,
+                alpha: { from: 1, to: 0.7, to: 1 },
+                duration: 200,
+                ease: 'Power2.InOut'
+            });
+        }
     }
 
     // === PRIVATE ANIMATION METHODS - ENHANCED ===
 
-    private animatePremiumLaunch(): void {
-        // Dramatic launch recoil
+    private animateEnhancedLaunch(): void {
+        // Enhanced launch recoil with power-based intensity
+        const recoilIntensity = 1 + (this.powerLevel / 100) * 0.5;
+        
         if (this.bubbleChamber) {
             this.scene.tweens.add({
                 targets: this.bubbleChamber,
-                scaleX: { from: 1, to: 1.15, to: 0.95, to: 1 },
-                scaleY: { from: 1, to: 1.15, to: 0.95, to: 1 },
-                duration: 400,
+                scaleX: { from: 1, to: 1.15 * recoilIntensity, to: 0.95, to: 1 },
+                scaleY: { from: 1, to: 1.15 * recoilIntensity, to: 0.95, to: 1 },
+                duration: 400 + (this.powerLevel * 2),
                 ease: 'Power3.Out'
             });
         }
         
-        // Platform shake - NO SCALE ANIMATION for these (it breaks the flip)
+        // Enhanced platform shake with haptic feel
         if (this.launcherPlatform) {
-            // Use position shake instead of scale
+            const shakeIntensity = 2 * recoilIntensity;
             this.scene.tweens.add({
                 targets: this.launcherPlatform,
-                x: { from: 0, to: -2, to: 2, to: 0 },
+                x: { from: 0, to: -shakeIntensity, to: shakeIntensity, to: 0 },
                 duration: 350,
                 ease: 'Power2.Out'
             });
         }
         
-        // Launcher recoil
+        // Power-based launcher recoil
+        const recoilDistance = 3 * recoilIntensity;
         this.scene.tweens.add({
             targets: this,
-            y: this.y - (this.isOpponent ? -3 : 3),
+            y: this.y - (this.isOpponent ? -recoilDistance : recoilDistance),
             duration: 100,
             yoyo: true,
             ease: 'Power2.Out'
         });
+        
+        // Screen shake for powerful shots
+        if (this.powerLevel > 70) {
+            this.scene.cameras.main.shake(150, 0.01);
+        }
     }
 
-    private createExceptionalLaunchEffects(bubbleColor?: BubbleColor): void {
+    private createEnhancedLaunchEffects(bubbleColor?: BubbleColor): void {
         if (!bubbleColor) return;
         
         const colors = this.getBubbleColors(bubbleColor);
-        // For opponent, the bubble exits from the bottom (positive Y in world space)
         const effectY = this.isOpponent ? 
-            this.y + Math.abs(this.BUBBLE_POSITION_Y) :  // Opponent: bubble exits from bottom
-            this.y + this.BUBBLE_POSITION_Y;              // Player: bubble exits from top
+            this.y + Math.abs(this.BUBBLE_POSITION_Y) :
+            this.y + this.BUBBLE_POSITION_Y;
         
-        // Balanced muzzle flash with proper color
-        const flash = this.scene.add.circle(this.x, effectY, 22, colors.primary, 0.9);
+        // Power-based effect intensity
+        const effectIntensity = 0.8 + (this.powerLevel / 100) * 0.4;
+        const particleCount = Math.floor(8 + (this.powerLevel / 100) * 8);
+        
+        // Enhanced muzzle flash
+        const flashSize = 22 * effectIntensity;
+        const flash = this.scene.add.circle(this.x, effectY, flashSize, colors.primary, 0.9);
         flash.setBlendMode(Phaser.BlendModes.ADD);
         
         this.scene.tweens.add({
             targets: flash,
-            scale: { from: 0.5, to: 2.2, to: 0 },
-            alpha: { from: 0.8, to: 0.4, to: 0 },
-            duration: 280,
+            scale: { from: 0.5, to: 2.2 * effectIntensity, to: 0 },
+            alpha: { from: 0.9, to: 0.4, to: 0 },
+            duration: 280 + (this.powerLevel * 2),
             ease: 'Power2.Out',
             onComplete: () => flash.destroy()
         });
         
-        // Balanced sparkle burst 
-        for (let i = 0; i < 10; i++) {
-            const angle = (Math.PI * 2 / 10) * i;
-            const distance = 10 + Math.random() * 12;
+        // Power-based sparkle burst
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 / particleCount) * i;
+            const baseDistance = 10 + Math.random() * 12;
+            const distance = baseDistance * effectIntensity;
             const sparkX = this.x + Math.cos(angle) * distance;
             const sparkY = effectY + Math.sin(angle) * distance;
             
-            // Medium-sized particles
-            const sparkle = this.scene.add.circle(sparkX, sparkY, 4.5, colors.primary, 0.95);
+            const sparkleSize = 4.5 * effectIntensity;
+            const sparkle = this.scene.add.circle(sparkX, sparkY, sparkleSize, colors.primary, 0.95);
             sparkle.setBlendMode(Phaser.BlendModes.ADD);
             
             this.scene.tweens.add({
                 targets: sparkle,
                 scale: { from: 1.1, to: 0.4, to: 0 },
                 alpha: { from: 0.9, to: 0.5, to: 0 },
-                x: sparkX + Math.cos(angle) * 28,
-                y: sparkY + Math.sin(angle) * 28,
-                duration: 450,
+                x: sparkX + Math.cos(angle) * 28 * effectIntensity,
+                y: sparkY + Math.sin(angle) * 28 * effectIntensity,
+                duration: 450 + (this.powerLevel * 3),
                 delay: i * 18,
                 ease: 'Power2.Out',
                 onComplete: () => sparkle.destroy()
             });
         }
         
-        // Balanced energy ring expansion
-        const ring = this.scene.add.circle(this.x, effectY, 19, colors.primary, 0);
-        ring.setStrokeStyle(3.5, colors.primary, 0.9);
-        ring.setBlendMode(Phaser.BlendModes.ADD);
-        
-        this.scene.tweens.add({
-            targets: ring,
-            scale: { from: 0.6, to: 2.2 },
-            alpha: { from: 0.8, to: 0 },
-            duration: 380,
-            ease: 'Power2.Out',
-            onComplete: () => ring.destroy()
-        });
+        // Enhanced energy rings for powerful shots
+        if (this.powerLevel > 50) {
+            for (let r = 0; r < 2; r++) {
+                const ring = this.scene.add.circle(this.x, effectY, 19 + r * 5, colors.primary, 0);
+                ring.setStrokeStyle(3.5 - r * 0.5, colors.primary, 0.9 - r * 0.2);
+                ring.setBlendMode(Phaser.BlendModes.ADD);
+                
+                this.scene.tweens.add({
+                    targets: ring,
+                    scale: { from: 0.6, to: (2.2 + r * 0.3) * effectIntensity },
+                    alpha: { from: 0.8, to: 0 },
+                    duration: 380 + r * 100,
+                    delay: r * 50,
+                    ease: 'Power2.Out',
+                    onComplete: () => ring.destroy()
+                });
+            }
+        } else {
+            // Standard ring for normal shots
+            const ring = this.scene.add.circle(this.x, effectY, 19, colors.primary, 0);
+            ring.setStrokeStyle(3.5, colors.primary, 0.9);
+            ring.setBlendMode(Phaser.BlendModes.ADD);
+            
+            this.scene.tweens.add({
+                targets: ring,
+                scale: { from: 0.6, to: 2.2 },
+                alpha: { from: 0.8, to: 0 },
+                duration: 380,
+                ease: 'Power2.Out',
+                onComplete: () => ring.destroy()
+            });
+        }
     }
 
     /**
