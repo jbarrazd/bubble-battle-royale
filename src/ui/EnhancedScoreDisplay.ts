@@ -44,29 +44,38 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
     }
     
     private createPlayerDisplay(): void {
-        const padding = 10;
-        const x = padding;
-        const y = this.scene.cameras.main.height - padding - 40; // Bottom left corner
+        // Mobile-safe positioning with better spacing
+        const safePadding = 20; // Increased from 10px for mobile safety
+        const bottomSafeArea = 34; // Account for home indicator
+        const containerWidth = 140; // Increased from 100px
+        const containerHeight = 56; // Increased from 40px
         
-        // Compact mobile-friendly design
+        const x = safePadding;
+        const y = this.scene.cameras.main.height - bottomSafeArea - containerHeight - safePadding;
+        
+        // Larger, more visible container with better contrast
         const playerBg = this.scene.add.graphics();
-        playerBg.fillStyle(0x000000, 0.4);
-        playerBg.fillRoundedRect(x, y - 20, 100, 40, 10);
+        playerBg.fillStyle(0x1B5E20, 0.85); // Darker green background with better opacity
+        playerBg.fillRoundedRect(x, y - 8, containerWidth, containerHeight, 16);
         
-        // Small player indicator
-        const playerDot = this.scene.add.circle(x + 15, y, 3, 0x4CAF50);
+        // Add subtle border for definition
+        playerBg.lineStyle(2, 0x00E676, 0.8); // Bright green border
+        playerBg.strokeRoundedRect(x, y - 8, containerWidth, containerHeight, 16);
         
-        // Player label - very small
-        this.playerNameText = this.scene.add.text(x + 28, y - 8, 'YOU', {
-            fontSize: '9px',
+        // Larger player indicator
+        const playerDot = this.scene.add.circle(x + 20, y + 20, 5, 0x00E676);
+        
+        // Player label - readable size
+        this.playerNameText = this.scene.add.text(x + 35, y + 5, 'YOU', {
+            fontSize: '12px', // Increased from 9px
             color: '#FFFFFF',
             fontFamily: 'Arial',
-            alpha: 0.6
+            fontStyle: 'bold'
         });
         
-        // Player score - compact
-        this.playerScoreText = this.scene.add.text(x + 28, y + 2, '0', {
-            fontSize: '16px',
+        // Player score - much larger for mobile
+        this.playerScoreText = this.scene.add.text(x + 35, y + 20, '0', {
+            fontSize: '24px', // Increased from 16px
             color: '#FFFFFF',
             fontFamily: 'Arial',
             fontStyle: 'bold'
@@ -80,30 +89,39 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
     }
     
     private createOpponentDisplay(): void {
-        const padding = 10;
-        const x = this.scene.cameras.main.width - padding - 100; // Top right corner
-        const y = padding + 30;
+        // Mobile-safe positioning with better spacing
+        const safePadding = 20; // Increased from 10px for mobile safety
+        const topSafeArea = 44; // Account for status bar/notch
+        const containerWidth = 140; // Increased from 100px
+        const containerHeight = 56; // Increased from 40px
         
-        // Compact mobile-friendly design
+        const x = this.scene.cameras.main.width - safePadding - containerWidth;
+        const y = topSafeArea + safePadding;
+        
+        // Larger, more visible container with better contrast
         const opponentBg = this.scene.add.graphics();
-        opponentBg.fillStyle(0x000000, 0.4);
-        opponentBg.fillRoundedRect(x, y - 20, 100, 40, 10);
+        opponentBg.fillStyle(0xC62828, 0.85); // Darker red background with better opacity
+        opponentBg.fillRoundedRect(x, y - 8, containerWidth, containerHeight, 16);
         
-        // Small opponent indicator
-        const opponentDot = this.scene.add.circle(x + 85, y, 3, 0xF44336);
+        // Add subtle border for definition
+        opponentBg.lineStyle(2, 0xFF5252, 0.8); // Bright red border
+        opponentBg.strokeRoundedRect(x, y - 8, containerWidth, containerHeight, 16);
         
-        // Opponent label - very small
-        this.opponentNameText = this.scene.add.text(x + 72, y - 8, 'AI', {
-            fontSize: '9px',
+        // Larger opponent indicator
+        const opponentDot = this.scene.add.circle(x + containerWidth - 20, y + 20, 5, 0xFF5252);
+        
+        // Opponent label - readable size
+        this.opponentNameText = this.scene.add.text(x + containerWidth - 55, y + 5, 'AI', {
+            fontSize: '12px', // Increased from 9px
             color: '#FFFFFF',
             fontFamily: 'Arial',
-            alpha: 0.6
+            fontStyle: 'bold'
         });
         this.opponentNameText.setOrigin(1, 0);
         
-        // Opponent score - compact
-        this.opponentScoreText = this.scene.add.text(x + 72, y + 2, '0', {
-            fontSize: '16px',
+        // Opponent score - much larger for mobile
+        this.opponentScoreText = this.scene.add.text(x + containerWidth - 55, y + 20, '0', {
+            fontSize: '24px', // Increased from 16px
             color: '#FFFFFF',
             fontFamily: 'Arial',
             fontStyle: 'bold'
@@ -267,23 +285,36 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
             this.playerWinIndicator.setVisible(false);
             this.opponentWinIndicator.setVisible(false);
             
-            // Show new leader indicator with effects
+            // Show new leader indicator with enhanced effects
             if (newLeader === 'player') {
                 this.playerWinIndicator.setVisible(true);
-                this.showLeaderEffect(this.playerWinIndicator, 0x4CAF50);
-                // Make player score glow
+                this.showLeaderEffect(this.playerWinIndicator, 0x00E676);
+                // Enhanced leader visual hierarchy
                 this.playerScoreText.setTint(0xFFD700);
+                this.playerScoreText.setScale(1.1); // Slightly larger when leading
                 this.opponentScoreText.clearTint();
+                this.opponentScoreText.setScale(1.0); // Normal size when losing
+                // Add glow effect to player container
+                this.playerNameText.setTint(0xFFD700);
             } else if (newLeader === 'opponent') {
                 this.opponentWinIndicator.setVisible(true);
-                this.showLeaderEffect(this.opponentWinIndicator, 0xF44336);
-                // Make opponent score glow
+                this.showLeaderEffect(this.opponentWinIndicator, 0xFF5252);
+                // Enhanced leader visual hierarchy
                 this.opponentScoreText.setTint(0xFFD700);
+                this.opponentScoreText.setScale(1.1); // Slightly larger when leading
                 this.playerScoreText.clearTint();
+                this.playerScoreText.setScale(1.0); // Normal size when losing
+                // Add glow effect to opponent container
+                this.opponentNameText.setTint(0xFFD700);
+                this.playerNameText.clearTint();
             } else {
                 // Tie - clear all effects
                 this.playerScoreText.clearTint();
+                this.playerScoreText.setScale(1.0);
                 this.opponentScoreText.clearTint();
+                this.opponentScoreText.setScale(1.0);
+                this.playerNameText.clearTint();
+                this.opponentNameText.clearTint();
             }
             
             this.currentLeader = newLeader;
