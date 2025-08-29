@@ -166,9 +166,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.stateIndicator = this.scene.add.graphics();
         this.add(this.stateIndicator);
         
-        // Ready indicator ring around chamber
-        this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28, 0x00ff00, 0);
-        this.readyIndicator.setStrokeStyle(2, 0x00ff00, 0);
+        // Ready indicator ring around chamber - no default color
+        this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28, 0x000000, 0);
+        this.readyIndicator.setStrokeStyle(2, 0x000000, 0);
         this.readyIndicator.setVisible(false);
         this.add(this.readyIndicator);
     }
@@ -910,6 +910,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         // Update theme to match loaded bubble
         this.updateTheme(color);
+        
+        // Update ready indicator color to match bubble
+        if (this.readyIndicator && this.currentTheme) {
+            this.readyIndicator.setStrokeStyle(2, this.currentTheme.platform.rim, 0);
+        }
         
         // Enhanced mobile loading animation with better visual feedback
         this.loadedBubble.setScale(0);

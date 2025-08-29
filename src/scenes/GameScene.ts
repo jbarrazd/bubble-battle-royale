@@ -67,84 +67,23 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Camera dimensions: ${width}x${height}`);
+        console.log(`GameScene: Creating flat background for UI refinement`);
         
-        // Try to load the forest background image
-        if (this.textures.exists('forest-background')) {
-            // Create forest background image
-            const forestBg = this.add.image(
-                width / 2,
-                height / 2,
-                'forest-background'
-            );
+        // TEMPORARY: Using flat background to focus on UI refinement
+        // Will add proper background later
+        {
             
-            // Scale to cover the entire screen
-            const scaleX = width / forestBg.width;
-            const scaleY = height / forestBg.height;
-            const scale = Math.max(scaleX, scaleY);
-            forestBg.setScale(scale);
-            
-            // Set to background layer
-            forestBg.setDepth(Z_LAYERS.BACKGROUND);
-            
-            // Optional: Add slight transparency if image is too bright
-            // forestBg.setAlpha(0.9);
-            
-            console.log('GameScene: Forest background v4 loaded successfully');
-        } else {
-            // Fallback to procedural background if image not found
-            console.log('GameScene: Forest background not found, using procedural background');
-            
-            // Create a simple visible background
+            // Create a simple flat background for UI refinement
             const bg = this.add.rectangle(
                 width / 2,
                 height / 2,
                 width,
                 height,
-                0x2c3e50
+                0x1a1a2e  // Dark blue-gray for better UI contrast
             );
             bg.setDepth(Z_LAYERS.BACKGROUND);
             
-            // Add some visual elements to verify rendering
-            const graphics = this.add.graphics();
-            graphics.setDepth(Z_LAYERS.BACKGROUND + 1);
-            
-            // Create gradient effect
-            const lighterColor = 0x34495e;
-            
-            // Create lighter center band for objective zone
-            const objectiveZone = this.cameras.main.centerY;
-            const gradientHeight = height * 0.3; // 30% of screen height
-            
-            // Top gradient (fading from top to center)
-            for (let i = 0; i < 10; i++) {
-                const alpha = 0.05 * (1 - i / 10);
-                const y = objectiveZone - gradientHeight/2 + (i * gradientHeight/20);
-                graphics.fillStyle(lighterColor, alpha);
-                graphics.fillRect(0, y, width, gradientHeight/20);
-            }
-            
-            // Center band
-            graphics.fillStyle(lighterColor, 0.3);
-            graphics.fillRect(0, objectiveZone - gradientHeight/2, width, gradientHeight);
-            
-            // Bottom gradient (fading from center to bottom)
-            for (let i = 0; i < 10; i++) {
-                const alpha = 0.05 * (1 - i / 10);
-                const y = objectiveZone + gradientHeight/2 - (i * gradientHeight/20);
-                graphics.fillStyle(lighterColor, alpha);
-                graphics.fillRect(0, y, width, gradientHeight/20);
-            }
-            
-            // Add subtle pattern
-            for (let i = 0; i < 20; i++) {
-                const x = Phaser.Math.Between(0, width);
-                const y = Phaser.Math.Between(0, height);
-                const radius = Phaser.Math.Between(20, 40);
-                
-                graphics.fillStyle(0xffffff, 0.02);
-                graphics.fillCircle(x, y, radius);
-            }
+            // That's it - clean flat background to focus on UI
         }
     }
 
