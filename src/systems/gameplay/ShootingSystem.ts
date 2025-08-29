@@ -4,7 +4,7 @@ import { Launcher } from '@/gameObjects/Launcher';
 import { BubbleColor } from '@/types/ArenaTypes';
 import { InputManager } from '@/systems/input/InputManager';
 import { TrajectoryPreview } from './TrajectoryPreview';
-import { BubbleQueue } from './BubbleQueue';
+// BubbleQueue removed - integrated into Launcher
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleGrid } from './BubbleGrid';
 import { ARENA_CONFIG, Z_LAYERS, BUBBLE_CONFIG } from '@/config/ArenaConfig';
@@ -24,7 +24,14 @@ export class ShootingSystem {
     // Shooting mechanics
     private projectiles: IProjectile[] = [];
     private currentBubble: Bubble | null = null;
-    private bubbleQueue: BubbleQueue;
+    private nextBubbleColors: BubbleColor[] = []; // Store next 2-3 colors for launcher rings
+    private availableColors: BubbleColor[] = [
+        BubbleColor.RED,
+        BubbleColor.BLUE, 
+        BubbleColor.GREEN,
+        BubbleColor.YELLOW,
+        BubbleColor.PURPLE
+    ];
     private canShoot: boolean = true;
     private cooldownTime: number = 1000; // 1 second in milliseconds
     private shootSpeed: number = 600; // pixels per second
@@ -67,8 +74,8 @@ export class ShootingSystem {
         // Initialize trajectory preview
         this.trajectoryPreview = new TrajectoryPreview(scene, playerLauncher);
         
-        // Initialize bubble queue
-        this.bubbleQueue = new BubbleQueue(scene, playerLauncher.x, playerLauncher.y);
+        // Initialize next bubble colors for integrated queue
+        this.generateNextBubbleColors();
         
         this.setupShooting();
     }
@@ -86,6 +93,9 @@ export class ShootingSystem {
         
         // Initialize bubble queue
         this.loadNextBubble();
+        
+        // Initialize launcher rings with queue colors
+        this.playerLauncher.updateQueueColors(this.nextBubbleColors);
     }
     
     public setOpponentLauncher(launcher: Launcher): void {
@@ -153,28 +163,44 @@ export class ShootingSystem {
         });
     }
     
-    private loadNextBubble(): void {
-        // Get next bubble from queue
-        this.currentBubble = this.bubbleQueue.getNextBubble();
-        
-        if (this.currentBubble) {
-            console.log('ShootingSystem: Loaded bubble color:', this.currentBubble.getColor());
-            
-            // Position bubble in launcher
-            this.currentBubble.setPosition(
-                this.playerLauncher.x,
-                this.playerLauncher.y - 25  // Slightly closer to launcher
-            );
-            // Set depth ABOVE launcher so bubble is visible
-            this.currentBubble.setDepth(Z_LAYERS.LAUNCHERS + 1);
-            this.currentBubble.setScale(0.9); // Slightly smaller than full size but visible
-            
-            // Make sure it's visible
-            this.currentBubble.setVisible(true);
-            this.currentBubble.setAlpha(1);
-        } else {
-            console.warn('ShootingSystem: No bubble available from queue!');
+    /**
+     * Generates next bubble colors for the integrated queue system
+     */
+    private generateNextBubbleColors(): void {
+        // Generate 3 colors: current + next 2
+        this.nextBubbleColors = [];
+        for (let i = 0; i < 3; i++) {
+            const randomColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+            this.nextBubbleColors.push(randomColor);
         }
+        
+        console.log('ShootingSystem: Generated next bubble colors:', this.nextBubbleColors);
+    }
+    
+    /**
+     * Loads next bubble using integrated queue system
+     */
+    private loadNextBubble(): void {
+        // Get current color (first in queue)
+        const currentColor = this.nextBubbleColors[0] || BubbleColor.BLUE;
+        
+        console.log('ShootingSystem: Loading bubble color:', currentColor);
+        
+        // Load bubble into launcher
+        this.playerLauncher.loadBubble(currentColor);
+        
+        // Get the loaded bubble from the launcher
+        this.currentBubble = this.playerLauncher.getLoadedBubble();
+        
+        // Shift queue and add new color
+        this.nextBubbleColors.shift(); // Remove current color
+        const newColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+        this.nextBubbleColors.push(newColor); // Add new color at end
+        
+        // Update launcher queue rings with new colors
+        this.playerLauncher.updateQueueColors(this.nextBubbleColors);
+        
+        console.log('ShootingSystem: Updated queue colors:', this.nextBubbleColors);
     }
     
     private onShoot(): void {
@@ -195,6 +221,15 @@ export class ShootingSystem {
             direction.y * this.shootSpeed
         );
         
+        // Remove bubble from launcher before shooting
+        this.playerLauncher.clearLoadedBubble();
+        
+        // Position bubble at launcher's world position for shooting
+        this.currentBubble.setPosition(
+            this.playerLauncher.x,
+            this.playerLauncher.y - 35 // Match bubble position in launcher
+        );
+        
         // Set bubble to normal size and mark as player shot
         this.currentBubble.setScale(1);
         this.currentBubble.setShooter('player');
@@ -211,8 +246,9 @@ export class ShootingSystem {
         // Emit shooting started event
         this.scene.events.emit('shooting-started');
         
-        // Play launcher animation
-        this.playerLauncher.animateShoot();
+        // Play launcher animation with the color of the bubble being shot
+        const shotBubbleColor = this.currentBubble.getColor();
+        this.playerLauncher.animateShoot(shotBubbleColor);
         
         // Start cooldown with visual indicator
         this.canShoot = false;
@@ -252,7 +288,7 @@ export class ShootingSystem {
             aiBubble = new Bubble(
                 this.scene,
                 this.opponentLauncher.x,
-                this.opponentLauncher.y + 30,
+                this.opponentLauncher.y + 35, // Match bubble position (inverted for opponent)
                 data.color
             );
             aiBubble.setShooter('ai');
@@ -490,8 +526,7 @@ export class ShootingSystem {
             this.currentBubble.destroy();
         }
         
-        // Clean up bubble queue
-        this.bubbleQueue?.destroy();
+        // Queue is now integrated into launcher - no separate cleanup needed
         
         // Clean up cooldown indicator
         this.cooldownBar?.destroy();

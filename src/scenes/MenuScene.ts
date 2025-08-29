@@ -45,7 +45,8 @@ export class MenuScene extends Scene {
 
     public override update(_time: number, _delta: number): void {
         // Update FPS display once per second instead of every frame
-        if (this.fpsText && this.time.now % 1000 < 16) {
+        // Check that time exists before accessing it
+        if (this.fpsText && this.time && this.time.now % 1000 < 16) {
             const fps = Math.round(this.game.loop.actualFps);
             this.fpsText.setText(`FPS: ${fps}`);
             

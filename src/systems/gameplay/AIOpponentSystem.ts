@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { Launcher } from '@/gameObjects/Launcher';
-import { BubbleQueue } from './BubbleQueue';
+// BubbleQueue removed - integrated into Launcher
 import { Bubble } from '@/gameObjects/Bubble';
 import { BubbleColor } from '@/types/ArenaTypes';
 import { BUBBLE_CONFIG, ARENA_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
@@ -24,8 +24,15 @@ interface IShootTarget {
 export class AIOpponentSystem {
     private scene: Phaser.Scene;
     private launcher: Launcher;
-    private bubbleQueue: BubbleQueue;
     private currentBubble: Bubble | null = null; // Track loaded bubble
+    private nextBubbleColors: BubbleColor[] = []; // Store next 2-3 colors for launcher rings
+    private availableColors: BubbleColor[] = [
+        BubbleColor.RED,
+        BubbleColor.BLUE, 
+        BubbleColor.GREEN,
+        BubbleColor.YELLOW,
+        BubbleColor.PURPLE
+    ];
     private isActive: boolean = false;
     private shootTimer?: Phaser.Time.TimerEvent;
     private difficulty: AIDifficulty = AIDifficulty.HARD;
@@ -37,8 +44,8 @@ export class AIOpponentSystem {
         this.scene = scene;
         this.launcher = launcher;
         
-        // Create bubble queue at opponent position (with isOpponent flag)
-        this.bubbleQueue = new BubbleQueue(scene, launcher.x, launcher.y + 30, true);
+        // Initialize next bubble colors for integrated queue
+        this.generateNextBubbleColors();
         
         // Listen for shooting complete to know when we can shoot again
         this.scene.events.on('shooting-complete', this.onShootingComplete, this);
@@ -71,32 +78,44 @@ export class AIOpponentSystem {
         }
     }
     
-    private loadNextBubble(): void {
-        // Get next bubble from queue
-        this.currentBubble = this.bubbleQueue.getNextBubble();
-        
-        if (this.currentBubble) {
-            const color = this.currentBubble.getColor();
-            const bubbleId = this.currentBubble.getData('bubbleId');
-            console.log(`AI loadNextBubble: Got bubble ID=${bubbleId} color=${color} hex=0x${color.toString(16)}`);
-            
-            // Position bubble in opponent launcher
-            this.currentBubble.setPosition(
-                this.launcher.x,
-                this.launcher.y + 25  // Below launcher for opponent
-            );
-            // Set depth ABOVE launcher so bubble is visible
-            this.currentBubble.setDepth(Z_LAYERS.LAUNCHERS + 1);
-            this.currentBubble.setScale(0.9); // Same as player
-            
-            // Make sure it's visible
-            this.currentBubble.setVisible(true);
-            this.currentBubble.setAlpha(1);
-            
-            console.log(`AI loadNextBubble: Bubble ID=${bubbleId} positioned and visible at`, this.currentBubble.x, this.currentBubble.y);
-        } else {
-            console.warn('AI loadNextBubble: No bubble available from queue!');
+    /**
+     * Generates next bubble colors for the integrated queue system
+     */
+    private generateNextBubbleColors(): void {
+        // Generate 3 colors: current + next 2
+        this.nextBubbleColors = [];
+        for (let i = 0; i < 3; i++) {
+            const randomColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+            this.nextBubbleColors.push(randomColor);
         }
+        
+        console.log('AI: Generated next bubble colors:', this.nextBubbleColors);
+    }
+    
+    /**
+     * Loads next bubble using integrated queue system
+     */
+    private loadNextBubble(): void {
+        // Get current color (first in queue)
+        const currentColor = this.nextBubbleColors[0] || BubbleColor.BLUE;
+        
+        console.log(`AI loadNextBubble: Loading bubble color ${currentColor} hex=0x${currentColor.toString(16)}`);
+        
+        // Load bubble into launcher
+        this.launcher.loadBubble(currentColor);
+        
+        // Get the loaded bubble from the launcher
+        this.currentBubble = this.launcher.getLoadedBubble();
+        
+        // Shift queue and add new color
+        this.nextBubbleColors.shift(); // Remove current color
+        const newColor = this.availableColors[Math.floor(Math.random() * this.availableColors.length)];
+        this.nextBubbleColors.push(newColor); // Add new color at end
+        
+        // Update launcher queue rings with new colors
+        this.launcher.updateQueueColors(this.nextBubbleColors);
+        
+        console.log('AI: Updated queue colors:', this.nextBubbleColors);
     }
     
     private scheduleNextShot(): void {
@@ -140,6 +159,15 @@ export class AIOpponentSystem {
         // Store the bubble for shooting (don't destroy it yet!)
         const bubbleToShoot = this.currentBubble;
         this.currentBubble = null;
+        
+        // Remove bubble from launcher before shooting
+        this.launcher.clearLoadedBubble();
+        
+        // Position bubble at launcher's world position for shooting
+        bubbleToShoot.setPosition(
+            this.launcher.x,
+            this.launcher.y + 30  // Opponent shoots from below
+        );
         
         // Reset bubble for shooting
         bubbleToShoot.setScale(1);
@@ -650,7 +678,7 @@ export class AIOpponentSystem {
     
     public destroy(): void {
         this.stop();
-        this.bubbleQueue.destroy();
+        // Queue is now integrated into launcher - no separate cleanup needed
         this.scene.events.off('shooting-complete', this.onShootingComplete);
     }
 }

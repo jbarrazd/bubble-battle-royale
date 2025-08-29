@@ -21,6 +21,9 @@ export class GameScene extends Scene {
     public preload(): void {
         // Load forest background image v4
         this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
+        
+        // Cannon sprite loading disabled - using procedural graphics
+        // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
     }
 
     public init(_data: ISceneData): void {

@@ -15,10 +15,10 @@ export class TrajectoryPreview {
     
     // Preview settings
     private readonly DOT_COUNT = 20;
-    private readonly DOT_SIZE = 4;
+    private readonly DOT_SIZE = 6; // Increased for better visibility
     private readonly DOT_SPACING = 25;
-    private readonly PREVIEW_PERCENTAGE = 0.4; // 40% of trajectory
-    private readonly MAX_PREVIEW_DISTANCE = 400;
+    private readonly PREVIEW_PERCENTAGE = 0.5; // Show 50% for better preview
+    private readonly MAX_PREVIEW_DISTANCE = 500; // Extended preview distance
     private readonly SHOOT_SPEED = 600;
     
     // Animation
@@ -79,10 +79,12 @@ export class TrajectoryPreview {
         
         // Starting position
         let x = this.launcher.x;
-        let y = this.launcher.y - 30;
+        let y = this.launcher.y - 35; // Match bubble position in launcher
         
         // Calculate velocity from angle
-        const radians = Phaser.Math.DegToRad(angle - 90);
+        // The launcher's getAimDirection uses the angle directly
+        // In world coordinates: 0° = right, 90° = down, 180° = left, 270° = up
+        const radians = Phaser.Math.DegToRad(angle);
         let vx = Math.cos(radians) * this.SHOOT_SPEED;
         let vy = Math.sin(radians) * this.SHOOT_SPEED;
         
@@ -129,11 +131,11 @@ export class TrajectoryPreview {
                 dot.setVisible(true);
                 
                 // Calculate fade based on distance
-                const fadeStart = 0.7;
-                const fadeEnd = 1.0;
+                const fadeStart = 0.3; // Start more visible
+                const fadeEnd = 0.8; // End still visible
                 const fadeProgress = dotIndex / maxDots;
                 const fadeFactor = fadeStart + (fadeEnd - fadeStart) * fadeProgress;
-                const targetAlpha = 0.6 * (1 - fadeFactor);
+                const targetAlpha = 0.9 * (1 - fadeFactor); // Higher base alpha
                 
                 this.dots.push({ dot, targetAlpha });
                 dotIndex++;
@@ -153,22 +155,27 @@ export class TrajectoryPreview {
         
         this.dots.forEach(({ dot, targetAlpha }, index) => {
             // Create moving wave effect
-            const waveOffset = index * 0.2;
+            const waveOffset = index * 0.15;
             const wave = Math.sin(this.animationTime * animSpeed + waveOffset);
-            const animatedAlpha = targetAlpha * (0.5 + wave * 0.5);
+            const animatedAlpha = targetAlpha * (0.7 + wave * 0.3); // Less variation, higher base
             
-            // Pulsing size effect
-            const sizeWave = 1 + wave * 0.2;
+            // Pulsing size effect - more pronounced
+            const sizeWave = 1 + wave * 0.3;
             dot.setScale(sizeWave);
             
             // Apply alpha
             dot.setAlpha(animatedAlpha);
             
-            // Color gradient (white to green)
+            // Bright yellow to orange gradient for better visibility
             const colorProgress = index / this.dots.length;
-            const green = Math.floor(255 * (1 - colorProgress * 0.3));
-            const color = Phaser.Display.Color.GetColor(green, 255, green);
+            const red = 255;
+            const green = Math.floor(255 - (100 * colorProgress)); // Yellow to orange
+            const blue = Math.floor(100 * (1 - colorProgress)); // Slight warmth
+            const color = Phaser.Display.Color.GetColor(red, green, blue);
             dot.setFillStyle(color);
+            
+            // Add stroke for extra visibility
+            dot.setStrokeStyle(1, 0xFFFFFF, 0.3);
         });
     }
     

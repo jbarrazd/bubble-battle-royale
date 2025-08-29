@@ -8,7 +8,6 @@ export class BubbleQueue {
     private queue: Bubble[] = [];
     private visualBubbles: Phaser.GameObjects.Container[] = []; // Visual representations
     private container: Phaser.GameObjects.Container;
-    private background: Phaser.GameObjects.Rectangle;
     private isOpponent: boolean = false;
     
     // Queue settings
@@ -43,25 +42,33 @@ export class BubbleQueue {
             this.container.setRotation(Math.PI); // 180 degrees
         }
         
-        // Create horizontal background panel
-        this.background = scene.add.rectangle(
-            0, 0,
-            100, // Compact width for 2 bubbles
-            40,  // Compact height
-            0x2c3e50,
-            0.7
-        );
-        this.background.setStrokeStyle(2, 0x34495e);
-        this.container.add(this.background);
+        // Create sleek integrated background panel
+        const bgGraphics = scene.add.graphics();
         
-        // Add "NEXT" label above the bubbles
-        const label = this.scene.add.text(0, -25, 'NEXT', {
-            fontFamily: 'Arial',
-            fontSize: '11px',
+        // Hexagonal-inspired background to match launcher
+        bgGraphics.fillGradientStyle(
+            0x1a1a2e, // Dark blue top
+            0x16213e, // Medium blue
+            0x0f3460, // Darker blue
+            0x0f3460  // Dark blue bottom
+        );
+        bgGraphics.fillRoundedRect(-55, -20, 110, 40, 10);
+        
+        // Add border with glow effect
+        bgGraphics.lineStyle(2, 0x00CCFF, 0.5);
+        bgGraphics.strokeRoundedRect(-55, -20, 110, 40, 10);
+        
+        this.container.add(bgGraphics);
+        
+        // Add stylized "NEXT" label with better font
+        const label = this.scene.add.text(0, -30, 'NEXT', {
+            fontFamily: 'Arial Black',
+            fontSize: '10px',
             fontStyle: 'bold',
-            color: '#ffffff'
+            color: '#00CCFF'
         }).setOrigin(0.5);
-        label.setAlpha(0.9);
+        label.setAlpha(0.8);
+        label.setShadow(0, 1, '#000000', 2);
         this.container.add(label);
         
         // Initialize queue
@@ -129,16 +136,7 @@ export class BubbleQueue {
             const alpha = index === 0 ? 1 : 0.7;
             visualContainer.setAlpha(alpha);
             
-            // Add "CURRENT" indicator arrow for first bubble
-            if (index === 0) {
-                // Small arrow pointing to launcher (up for player, down for opponent due to rotation)
-                const arrowY = this.isOpponent ? 22 : -22;
-                const arrow = this.scene.add.triangle(0, arrowY, -4, 4, 4, 4, 0, -4, 0xffffff, 0.6);
-                if (this.isOpponent) {
-                    arrow.setRotation(Math.PI); // Flip arrow for opponent
-                }
-                visualContainer.add(arrow);
-            }
+            // No arrow indicator - keep it clean and simple
             
             // Add to main container
             this.container.add(visualContainer);
@@ -205,8 +203,8 @@ export class BubbleQueue {
         // Update display immediately to show the new queue state
         this.updateDisplay();
         
-        // Then animate the shift for smooth transition
-        this.animateQueueShift();
+        // No animation - just update instantly
+        // this.animateQueueShift(); // Commented out to remove transition
         
         return bubble;
     }
