@@ -17,7 +17,7 @@ export class TrajectoryPreview {
     
     // Preview settings
     private readonly DOT_COUNT = 20;
-    private readonly DOT_SIZE = 6; // Increased for better visibility
+    private readonly DOT_SIZE = 4; // Thinner dots for cleaner look
     private readonly DOT_SPACING = 25;
     private readonly PREVIEW_PERCENTAGE = 0.5; // Show 50% for better preview
     private readonly MAX_PREVIEW_DISTANCE = 500; // Extended preview distance
@@ -167,8 +167,8 @@ export class TrajectoryPreview {
             const wave = Math.sin(this.animationTime * animSpeed + waveOffset);
             const animatedAlpha = targetAlpha * (0.7 + wave * 0.3); // Less variation, higher base
             
-            // Pulsing size effect - more pronounced
-            const sizeWave = 1 + wave * 0.3;
+            // Pulsing size effect - subtle for thinner dots
+            const sizeWave = 1 + wave * 0.2;
             dot.setScale(sizeWave);
             
             // Apply alpha
