@@ -127,17 +127,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Professional background panel
         this.queueBackground = this.scene.add.graphics();
         
-        // Elegant "NEXT" label
-        this.queueLabel = this.scene.add.text(0, -15, 'NEXT', {
-            fontSize: '14px',
-            fontFamily: 'Arial Black',
-            color: '#FFFFFF',
-            align: 'center',
-            stroke: '#000000',
-            strokeThickness: 2
-        }).setOrigin(0.5).setAlpha(0.9);
-        
-        this.queuePanel.add([this.queueBackground, this.queueLabel]);
+        // No text label - design should be intuitive
+        this.queuePanel.add(this.queueBackground);
     }
 
     /**
@@ -267,8 +258,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         for (let i = 0; i < maxBubbles; i++) {
             const color = this.nextBubbleColors[i];
-            const x = startX + i * spacing;
-            const y = 5;
+            // For opponent, reverse the order (rightmost is next from their perspective)
+            const xIndex = this.isOpponent ? (maxBubbles - 1 - i) : i;
+            const x = startX + xIndex * spacing;
+            // Fix: Invert Y position for opponent queue bubbles
+            const y = this.isOpponent ? -5 : 5;
             const radius = 13 - i * 1; // More noticeable size difference for 2 bubbles
             const alpha = 1.0 - i * 0.15; // More noticeable transparency difference
             
@@ -296,9 +290,10 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.queueBackground.lineStyle(2, bubbleTheme.dark, alpha);
         this.queueBackground.strokeCircle(x, y, radius);
         
-        // Premium 3D highlight
+        // Premium 3D highlight - adjust for opponent orientation
         this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.7);
-        this.queueBackground.fillCircle(x - 2, y - 2, radius * 0.4);
+        const highlightY = this.isOpponent ? y + 2 : y - 2;
+        this.queueBackground.fillCircle(x - 2, highlightY, radius * 0.4);
         
         // Subtle position glow
         if (index === 0) {
