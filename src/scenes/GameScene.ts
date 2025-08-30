@@ -183,6 +183,10 @@ export class GameScene extends Scene {
         this.input.keyboard?.on('keydown-T', () => {
             console.log('Testing audio system...');
             this.soundSystem?.testAudio();
+            
+            // Also log sound system state
+            const stats = this.soundSystem?.getSystemInfo();
+            console.log('Sound System Stats:', stats);
         });
         
         // M key to toggle mute

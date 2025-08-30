@@ -199,5 +199,11 @@ export const AUDIO_CONFIG = {
         MAX_VOICES: 12,  // Reduced for cleaner sound
         CLEANUP_THRESHOLD: 8,
         MIN_TIME_BETWEEN_SOUNDS: 30  // ms between same sound
+    },
+
+    // Performance settings
+    PERFORMANCE: {
+        MAX_CONCURRENT_SOUNDS: 10,
+        CLEANUP_INTERVAL: 1000
     }
 };
