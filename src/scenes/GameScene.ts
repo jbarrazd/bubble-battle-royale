@@ -3,14 +3,14 @@ import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
-import { SoundSystem } from '@/systems/audio/SoundSystem';
+import { SimpleSoundSystem } from '@/systems/audio/SimpleSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
-    private soundSystem!: SoundSystem;
+    private soundSystem!: SimpleSoundSystem;
     // fpsText removed for clean production UI
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
@@ -70,7 +70,7 @@ export class GameScene extends Scene {
 
     private createSoundSystem(): void {
         try {
-            this.soundSystem = new SoundSystem(this);
+            this.soundSystem = new SimpleSoundSystem(this);
             console.log('GameScene: Sound system initialized successfully');
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
@@ -106,11 +106,57 @@ export class GameScene extends Scene {
             // Setup single player mode with AI difficulty
             this.arenaSystem.setupArena(true, AIDifficulty.EASY);
             
+            // Connect sound system to game events
+            this.setupSoundEvents();
+            
             console.log('GameScene: Arena created successfully with AI opponent');
         } catch (error) {
             console.error('GameScene: Error creating arena:', error);
             throw error;
         }
+    }
+    
+    private setupSoundEvents(): void {
+        if (!this.soundSystem) return;
+        
+        // Bubble shoot event
+        this.events.on('bubble-shoot', () => {
+            this.soundSystem.playShootSound();
+        });
+        
+        // Bubble attach event
+        this.events.on('bubble-attached', () => {
+            this.soundSystem.playAttachSound();
+        });
+        
+        // Match found event
+        this.events.on('match-found', (data: any) => {
+            if (data && data.matchSize) {
+                this.soundSystem.playMatchSound(data.matchSize);
+            }
+        });
+        
+        // Power-up activated event
+        this.events.on('power-up-activated', () => {
+            this.soundSystem.playPowerUpSound();
+        });
+        
+        // UI click event
+        this.events.on('ui-click', () => {
+            this.soundSystem.playClickSound();
+        });
+        
+        // Victory event
+        this.events.on('victory', () => {
+            this.soundSystem.playVictorySound();
+        });
+        
+        // Defeat event
+        this.events.on('defeat', () => {
+            this.soundSystem.playDefeatSound();
+        });
+        
+        console.log('GameScene: Sound events connected');
     }
 
     private createUI(): void {
@@ -177,10 +223,10 @@ export class GameScene extends Scene {
         // T key to test audio system
         this.input.keyboard?.on('keydown-T', () => {
             console.log('Testing audio system...');
-            this.soundSystem?.testAudio();
+            this.soundSystem?.testAllSounds();
             
             // Also log sound system state
-            const stats = this.soundSystem?.getSystemInfo();
+            const stats = this.soundSystem?.getInfo();
             console.log('Sound System Stats:', stats);
         });
         
