@@ -41,6 +41,13 @@ export class MenuScene extends Scene {
         this.createVersionInfo();
         this.createFPSDisplay();
         this.addAnimations();
+        
+        // AUTO START GAME FOR TESTING - REMOVE THIS LATER
+        console.log('AUTO STARTING GAME IN 1 SECOND FOR TESTING');
+        setTimeout(() => {
+            console.log('AUTO START: Calling startGame()');
+            this.startGame();
+        }, 1000);
     }
 
     public override update(_time: number, _delta: number): void {

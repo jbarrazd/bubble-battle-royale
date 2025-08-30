@@ -38,6 +38,24 @@ export class GameScene extends Scene {
     }
 
     public create(): void {
+        console.log('=== GAMESCENE CREATE CALLED ===');
+        window.console.log('GameScene create() method running!');
+        
+        // Add a visible indicator that the scene is running
+        const debugText = this.add.text(10, 10, 'GameScene Active - Press T for audio test', {
+            fontSize: '16px',
+            color: '#00ff00'
+        });
+        debugText.setDepth(10000);
+        
+        // Test direct keyboard input
+        this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+            console.log('Key pressed:', event.key);
+            if (event.key === 't' || event.key === 'T') {
+                console.log('T key detected!');
+            }
+        });
+        
         try {
             // Set a visible background color first
             this.cameras.main.setBackgroundColor('#3498db');
