@@ -112,7 +112,9 @@ export class Objective extends Phaser.GameObjects.Container {
             }
         });
         
-        // 2. Orbital particles (common in AAA games)
+        // 2. Orbital particles REMOVED - was causing floating particles issue
+        // Commented out to fix visual clutter
+        /*
         for (let i = 0; i < 3; i++) {
             const orbitRadius = config.size * 0.7;
             const orbiter = scene.add.circle(
@@ -142,6 +144,7 @@ export class Objective extends Phaser.GameObjects.Container {
                 delay: i * 300
             });
         }
+        */
         
         // 3. Shimmer waves (used in Zelda, God of War, etc.)
         scene.time.addEvent({
