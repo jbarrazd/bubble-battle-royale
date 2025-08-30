@@ -93,17 +93,20 @@ export class SoundGenerator {
      * Generate bubble shooting sound with pitch variation
      */
     public generateBubbleShoot(pitchVariation: number = 0): string {
+        console.log('generateBubbleShoot called');
         const config = AUDIO_CONFIG.EFFECTS.BUBBLE_SHOOT;
         // Softer pitch variation for more pleasant sound
         const frequency = config.frequency * (1 + pitchVariation * 0.15);
         
-        return this.createToneWithEnvelope({
+        const result = this.createToneWithEnvelope({
             frequency,
             type: config.type as OscillatorType,
             envelope: config.envelope,
             duration: config.duration,
             volume: config.volume
         });
+        console.log('generateBubbleShoot result:', result);
+        return result;
     }
 
     /**
@@ -377,7 +380,16 @@ export class SoundGenerator {
         duration: number;
         volume: number;
     }): string {
-        if (this.muted || !this.canPlaySound()) {
+        console.log('createToneWithEnvelope - muted:', this.muted, 'canPlay:', this.canPlaySound());
+        console.log('Audio context state:', this.audioContext.state);
+        
+        if (this.muted) {
+            console.log('Sound is muted');
+            return '';
+        }
+        
+        if (!this.canPlaySound()) {
+            console.log('Cannot play sound');
             return '';
         }
 

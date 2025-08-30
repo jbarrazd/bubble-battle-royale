@@ -276,7 +276,9 @@ export class ShootingSystem {
         this.scene.events.emit('shooting-started');
         
         // Emit bubble shoot event for sound system
+        console.log('ShootingSystem: Emitting bubble-shoot event');
         this.scene.events.emit('bubble-shoot');
+        console.log('ShootingSystem: Event emitted');
         
         // Play launcher animation with the color of the bubble being shot
         const shotBubbleColor = this.currentBubble.getColor();

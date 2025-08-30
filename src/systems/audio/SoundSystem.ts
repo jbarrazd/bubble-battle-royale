@@ -72,6 +72,7 @@ export class SoundSystem {
             
             this.initialized = true;
             console.log('SoundSystem: Initialized successfully');
+            console.log('SoundSystem: Listening for events...');
             
             // Log capabilities
             const stats = this.getSystemInfo();
@@ -158,6 +159,7 @@ export class SoundSystem {
     // === GAME EVENT HANDLERS ===
 
     private onBubbleShoot(): void {
+        console.log('Bubble shoot event received!');
         this.playEffect('bubble-shoot');
         this.hapticManager.bubbleShoot();
         this.trackEvent('bubble-shoot');
@@ -334,10 +336,15 @@ export class SoundSystem {
      * Play a specific sound effect
      */
     public playEffect(type: SoundEventType, data?: any): void {
-        if (this.settings.muted) return;
+        console.log(`playEffect called: ${type}, muted: ${this.settings.muted}`);
+        if (this.settings.muted) {
+            console.log('Sound is muted, returning');
+            return;
+        }
         
         switch (type) {
             case 'bubble-shoot':
+                console.log('Calling generateBubbleShoot');
                 this.soundGenerator.generateBubbleShoot();
                 break;
             case 'bubble-attach':
@@ -501,11 +508,25 @@ export class SoundSystem {
      */
     public testAudio(): void {
         console.log('SoundSystem: Running audio test...');
+        console.log('SoundSystem: Current muted state:', this.settings.muted);
+        console.log('SoundSystem: Audio context state:', this.soundGenerator.getStats().audioContextState);
         
-        setTimeout(() => this.playEffect('ui-click'), 0);
-        setTimeout(() => this.playEffect('bubble-shoot'), 200);
-        setTimeout(() => this.playEffect('bubble-attach'), 400);
-        setTimeout(() => this.playEffect('match-found', { matchSize: 4 }), 600);
+        setTimeout(() => {
+            console.log('Playing ui-click');
+            this.playEffect('ui-click');
+        }, 0);
+        setTimeout(() => {
+            console.log('Playing bubble-shoot');
+            this.playEffect('bubble-shoot');
+        }, 200);
+        setTimeout(() => {
+            console.log('Playing bubble-attach');
+            this.playEffect('bubble-attach');
+        }, 400);
+        setTimeout(() => {
+            console.log('Playing match-found');
+            this.playEffect('match-found', { matchSize: 4 });
+        }, 600);
         setTimeout(() => this.hapticManager.testHaptic(), 800);
         
         console.log('SoundSystem: Audio test sequence started');
