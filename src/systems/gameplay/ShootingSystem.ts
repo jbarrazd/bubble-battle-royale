@@ -83,6 +83,7 @@ export class ShootingSystem {
     private setupShooting(): void {
         // Listen for pointer events
         this.scene.input.on('pointerdown', this.onPointerDown, this);
+        this.scene.input.on('pointermove', this.onPointerMove, this);
         this.scene.input.on('pointerup', this.onShoot, this);
         
         // Listen for AI shoot events
@@ -103,11 +104,37 @@ export class ShootingSystem {
     }
     
     private onPointerDown(): void {
-        if (this.canShoot && this.currentBubble) {
-            // Show trajectory preview when aiming with current bubble color
-            const angle = this.playerLauncher.getAimAngle();
-            const bubbleColor = this.currentBubble.getColor();
-            this.trajectoryPreview.show(angle, bubbleColor);
+        // Always show trajectory preview when pressing, regardless of bubble state
+        const angle = this.playerLauncher.getAimAngle();
+        
+        // Use current bubble color if available, otherwise use next bubble color
+        let bubbleColor = 0xFFFFFF; // Default white
+        if (this.currentBubble) {
+            bubbleColor = this.currentBubble.getColor();
+        } else if (this.nextBubbleColors.length > 0) {
+            // Use the next bubble color that will be loaded
+            bubbleColor = this.nextBubbleColors[0];
+        }
+        
+        this.trajectoryPreview.show(angle, bubbleColor);
+        
+        // Visual feedback on launcher
+        this.playerLauncher.showAiming(true);
+    }
+    
+    private onPointerMove(pointer: Phaser.Input.Pointer): void {
+        // Only update if pointer is down (dragging)
+        if (pointer.isDown && this.trajectoryPreview) {
+            // Update launcher aim angle based on pointer position
+            const dx = pointer.x - this.playerLauncher.x;
+            const dy = pointer.y - this.playerLauncher.y;
+            const angle = Math.atan2(dy, dx);
+            const degrees = Phaser.Math.RadToDeg(angle);
+            
+            // Update launcher aim
+            this.playerLauncher.setAimAngle(degrees);
+            
+            // The trajectory preview will be updated in the update method
         }
     }
     
@@ -205,8 +232,9 @@ export class ShootingSystem {
     }
     
     private onShoot(): void {
-        // Hide trajectory preview
+        // Hide trajectory preview and aiming state
         this.trajectoryPreview.hide();
+        this.playerLauncher.showAiming(false);
         
         if (!this.canShoot || !this.currentBubble) return;
         
@@ -522,6 +550,7 @@ export class ShootingSystem {
     
     public destroy(): void {
         this.scene.input.off('pointerdown', this.onPointerDown, this);
+        this.scene.input.off('pointermove', this.onPointerMove, this);
         this.scene.input.off('pointerup', this.onShoot, this);
         
         // Clean up trajectory preview

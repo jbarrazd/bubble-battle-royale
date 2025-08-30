@@ -17,9 +17,9 @@ export class TrajectoryPreview {
     
     // Preview settings
     private readonly DOT_COUNT = 20;
-    private readonly DOT_SIZE = 4; // Thinner dots for cleaner look
+    private readonly DOT_SIZE = 5; // Slightly larger dots for better visibility
     private readonly DOT_SPACING = 25;
-    private readonly PREVIEW_PERCENTAGE = 0.5; // Show 50% for better preview
+    private readonly PREVIEW_PERCENTAGE = 0.6; // Show 60% for better preview
     private readonly MAX_PREVIEW_DISTANCE = 500; // Extended preview distance
     private readonly SHOOT_SPEED = 600;
     
@@ -135,11 +135,11 @@ export class TrajectoryPreview {
                 dot.setPosition(x, y);
                 dot.setVisible(true);
                 // Calculate fade based on distance
-                const fadeStart = 0.3; // Start more visible
-                const fadeEnd = 0.8; // End still visible
+                const fadeStart = 0.2; // Start even more visible
+                const fadeEnd = 0.7; // End more visible too
                 const fadeProgress = dotIndex / maxDots;
                 const fadeFactor = fadeStart + (fadeEnd - fadeStart) * fadeProgress;
-                const targetAlpha = 0.9 * (1 - fadeFactor); // Higher base alpha
+                const targetAlpha = 0.95 * (1 - fadeFactor); // Higher base alpha for better visibility
                 
                 this.dots.push({ dot, targetAlpha });
                 dotIndex++;
@@ -165,7 +165,7 @@ export class TrajectoryPreview {
             // Create moving wave effect
             const waveOffset = index * 0.15;
             const wave = Math.sin(this.animationTime * animSpeed + waveOffset);
-            const animatedAlpha = targetAlpha * (0.7 + wave * 0.3); // Less variation, higher base
+            const animatedAlpha = targetAlpha * (0.8 + wave * 0.2); // Even less variation, higher base for visibility
             
             // Pulsing size effect - subtle for thinner dots
             const sizeWave = 1 + wave * 0.2;
