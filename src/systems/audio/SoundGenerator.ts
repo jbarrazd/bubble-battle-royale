@@ -386,52 +386,69 @@ export class SoundGenerator {
         duration: number;
         volume: number;
     }): string {
-        if (this.muted || !this.canPlaySound()) {
+        console.log('createToneWithEnvelope called with:', params);
+        
+        if (this.muted) {
+            console.log('Sound is muted, returning');
+            return '';
+        }
+        
+        if (!this.canPlaySound()) {
+            console.log('Cannot play sound (limit reached), returning');
             return '';
         }
 
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        const voiceId = this.generateVoiceId();
-        
-        // Configure oscillator
-        oscillator.type = params.type;
-        oscillator.frequency.value = params.frequency;
-        
-        // Configure ADSR envelope
-        const now = this.audioContext.currentTime;
-        const { attack, decay, sustain, release } = params.envelope;
-        const sustainLevel = params.volume * sustain;
-        
-        gainNode.gain.setValueAtTime(0, now);
-        gainNode.gain.linearRampToValueAtTime(params.volume, now + attack);
-        gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attack + decay);
-        gainNode.gain.setValueAtTime(sustainLevel, now + params.duration - release);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, now + params.duration);
-        
-        // Connect and start
-        oscillator.connect(gainNode);
-        gainNode.connect(this.masterGainNode);
-        
-        oscillator.start(now);
-        oscillator.stop(now + params.duration);
-        
-        // Track voice
-        this.activeVoices.set(voiceId, {
-            oscillator,
-            gainNode,
-            startTime: now,
-            isActive: true,
-            id: voiceId
-        });
-        
-        // Cleanup when ended
-        oscillator.onended = () => {
-            this.cleanupVoice(voiceId);
-        };
-        
-        this.soundCount++;
-        return voiceId;
+        try {
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            console.log('Created oscillator and gain node');
+            
+            const voiceId = this.generateVoiceId();
+            
+            // Configure oscillator
+            oscillator.type = params.type;
+            oscillator.frequency.value = params.frequency;
+            
+            // Configure ADSR envelope
+            const now = this.audioContext.currentTime;
+            const { attack, decay, sustain, release } = params.envelope;
+            const sustainLevel = params.volume * sustain;
+            
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(params.volume, now + attack);
+            gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attack + decay);
+            gainNode.gain.setValueAtTime(sustainLevel, now + params.duration - release);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + params.duration);
+            
+            // Connect and start
+            oscillator.connect(gainNode);
+            gainNode.connect(this.masterGainNode);
+            
+            oscillator.start(now);
+            oscillator.stop(now + params.duration);
+            
+            console.log('Sound started successfully');
+            
+            // Track voice
+            this.activeVoices.set(voiceId, {
+                oscillator,
+                gainNode,
+                startTime: now,
+                isActive: true,
+                id: voiceId
+            });
+            
+            // Cleanup when ended
+            oscillator.onended = () => {
+                this.cleanupVoice(voiceId);
+            };
+            
+            this.soundCount++;
+            return voiceId;
+        } catch (error) {
+            console.error('Error creating tone:', error);
+            return '';
+        }
     }
 
     /**

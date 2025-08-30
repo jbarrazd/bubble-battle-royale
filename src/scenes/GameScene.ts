@@ -69,9 +69,17 @@ export class GameScene extends Scene {
     }
 
     private createSoundSystem(): void {
+        console.log('GameScene: About to create SoundSystem...');
         try {
             this.soundSystem = new SoundSystem(this);
             console.log('GameScene: Sound system initialized successfully');
+            console.log('GameScene: SoundSystem instance:', this.soundSystem);
+            
+            // Test immediate sound after creation
+            setTimeout(() => {
+                console.log('GameScene: Testing sound after 1 second...');
+                this.soundSystem?.playEffect('ui-click');
+            }, 1000);
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
             // Continue without sound system - game should still be playable
@@ -177,9 +185,34 @@ export class GameScene extends Scene {
         // T key to test audio system
         this.input.keyboard?.on('keydown-T', () => {
             console.log('Testing audio system...');
+            
+            // Direct Web Audio API test
+            try {
+                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                console.log('AudioContext state:', audioContext.state);
+                
+                // Create a simple beep
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 440; // A4 note
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+                
+                console.log('Direct audio test played');
+            } catch (error) {
+                console.error('Direct audio test failed:', error);
+            }
+            
+            // Also test the sound system
             this.soundSystem?.testAudio();
             
-            // Also log sound system state
+            // Log sound system state
             const stats = this.soundSystem?.getSystemInfo();
             console.log('Sound System Stats:', stats);
         });
