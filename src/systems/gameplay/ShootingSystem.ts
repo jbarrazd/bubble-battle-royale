@@ -247,6 +247,9 @@ export class ShootingSystem {
         // Emit shooting started event
         this.scene.events.emit('shooting-started');
         
+        // Emit bubble shoot event for sound system
+        this.scene.events.emit('bubble-shoot');
+        
         // Play launcher animation with the color of the bubble being shot
         const shotBubbleColor = this.currentBubble.getColor();
         this.playerLauncher.animateShoot(shotBubbleColor);
@@ -318,6 +321,9 @@ export class ShootingSystem {
         
         // Emit shooting started event
         this.scene.events.emit('shooting-started', { isAI: true });
+        
+        // Emit AI bubble shoot event for sound system
+        this.scene.events.emit('bubble-shoot', { isAI: true });
         
         // Visual feedback on opponent launcher
         this.opponentLauncher.setHighlight(true);
@@ -469,6 +475,9 @@ export class ShootingSystem {
                         proj1.velocity.y += (Math.random() - 0.5) * 20;
                         proj2.velocity.x += (Math.random() - 0.5) * 20;
                         proj2.velocity.y += (Math.random() - 0.5) * 20;
+                        
+                        // Emit projectile collision event for sound/haptics
+                        this.scene.events.emit('projectile-collision');
                     }
                 }
             }
@@ -483,12 +492,14 @@ export class ShootingSystem {
         if (bubble.x - radius <= this.bounds.left) {
             bubble.x = this.bounds.left + radius;
             projectile.velocity.x = Math.abs(projectile.velocity.x); // Bounce right
+            this.scene.events.emit('wall-bounce');
         }
         
         // Right wall
         if (bubble.x + radius >= this.bounds.right) {
             bubble.x = this.bounds.right - radius;
             projectile.velocity.x = -Math.abs(projectile.velocity.x); // Bounce left
+            this.scene.events.emit('wall-bounce');
         }
         
         // Top wall - bubble explodes when reaching opponent side

@@ -77,6 +77,9 @@ export class PowerUpActivationSystem {
         this.activeEffect = effect;
         effect.activate(this.context);
         
+        // Emit power-up activation event for sound system
+        this.scene.events.emit('power-up-activated', { type });
+        
         // Visual feedback
         this.showActivationFeedback(type);
     }

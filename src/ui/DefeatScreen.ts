@@ -217,6 +217,9 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
         bg.on('pointerdown', () => {
             console.log(`💆 DefeatScreen button clicked: ${text}`);
             
+            // Emit UI click event for sound system
+            scene.events.emit('ui-click');
+            
             // Execute callback IMMEDIATELY without waiting for tween
             console.log(`🚀 Executing callback for: ${text}`);
             

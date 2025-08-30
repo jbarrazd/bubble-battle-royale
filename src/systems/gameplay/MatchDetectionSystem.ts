@@ -82,6 +82,16 @@ export class MatchDetectionSystem {
             const score = this.calculateScore(matches);
             this.totalScore += score;
             
+            // Emit match found event for sound system
+            this.scene.events.emit('match-found', {
+                matchSize: matches.size,
+                combo: this.combo,
+                isAI: isAIMatch,
+                x: avgX,
+                y: avgY,
+                bubbleColor: bubbleColor
+            });
+            
             // Emit score update event BEFORE removal animations
             this.scene.events.emit('score-update', {
                 score: this.totalScore,
@@ -111,6 +121,12 @@ export class MatchDetectionSystem {
                     positions: positions,  // All individual positions
                     color: bubbleColor,
                     comboMultiplier: matches.size
+                });
+                
+                // Emit audio event for pleasant pop sounds
+                this.scene.events.emit('bubbles-popped', {
+                    color: bubbleColor,
+                    count: matches.size
                 });
             }
             
@@ -435,6 +451,13 @@ export class MatchDetectionSystem {
                 
                 // DISABLED: Visual feedback now handled by UnifiedFeedbackSystem
                 // this.showOrphanBonus(avgX, avgY, allDisconnected.length, totalOrphanBonus);
+                
+                // Emit floating bubbles drop event for sound system
+                this.scene.events.emit('floating-bubbles-drop', {
+                    count: allDisconnected.length,
+                    x: avgX,
+                    y: avgY
+                });
                 
                 // Emit score update for orphan bonus with adjusted Y position
                 // Determine shooter based on which side had more bubbles

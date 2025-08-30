@@ -861,8 +861,12 @@ export class ArenaSystem {
         this.aiOpponent?.stop();
         this.shootingSystem?.destroy();
         
-        // Play victory/defeat sound (if implemented)
-        // this.scene.sound.play(playerWins ? 'victory' : 'defeat');
+        // Emit game over events for sound system
+        if (playerWins) {
+            this.scene.events.emit('victory');
+        } else {
+            this.scene.events.emit('defeat');
+        }
         
         // Show appropriate screen
         if (playerWins) {
@@ -1088,6 +1092,9 @@ export class ArenaSystem {
         if (!dangerLine || this.dangerWarningActive) return;
         
         this.dangerWarningActive = true;
+        
+        // Emit danger warning event for sound system
+        this.scene.events.emit('danger-warning', { isPlayer });
         
         // Pulse animation for danger line
         this.scene.tweens.add({

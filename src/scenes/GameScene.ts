@@ -3,12 +3,14 @@ import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
+import { SoundSystem } from '@/systems/audio/SoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
+    private soundSystem!: SoundSystem;
     // fpsText removed for clean production UI
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
@@ -43,6 +45,9 @@ export class GameScene extends Scene {
             console.log('GameScene: Creating background...');
             this.createBackground();
             
+            console.log('GameScene: Initializing sound system...');
+            this.createSoundSystem();
+            
             console.log('GameScene: Creating arena...');
             this.createArena();
             
@@ -60,6 +65,16 @@ export class GameScene extends Scene {
             console.log('GameScene: Arena setup complete');
         } catch (error) {
             console.error('GameScene: Error during creation:', error);
+        }
+    }
+
+    private createSoundSystem(): void {
+        try {
+            this.soundSystem = new SoundSystem(this);
+            console.log('GameScene: Sound system initialized successfully');
+        } catch (error) {
+            console.error('GameScene: Failed to initialize sound system:', error);
+            // Continue without sound system - game should still be playable
         }
     }
 
@@ -164,6 +179,18 @@ export class GameScene extends Scene {
             this.testBubblePop();
         });
         
+        // T key to test audio system
+        this.input.keyboard?.on('keydown-T', () => {
+            console.log('Testing audio system...');
+            this.soundSystem?.testAudio();
+        });
+        
+        // M key to toggle mute
+        this.input.keyboard?.on('keydown-M', () => {
+            const muted = this.soundSystem?.toggleMute();
+            console.log(`Audio ${muted ? 'muted' : 'unmuted'}`);
+        });
+        
     }
 
     private testBubblePop(): void {
@@ -238,6 +265,7 @@ export class GameScene extends Scene {
 
     private returnToMenu(): void {
         this.arenaSystem?.destroy();
+        this.soundSystem?.destroy();
         this.sceneManager.transitionTo(SceneKeys.MENU);
     }
 
@@ -254,6 +282,7 @@ export class GameScene extends Scene {
 
     public shutdown(): void {
         this.arenaSystem?.destroy();
+        this.soundSystem?.destroy();
         this.performanceMonitor?.reset();
     }
 }
