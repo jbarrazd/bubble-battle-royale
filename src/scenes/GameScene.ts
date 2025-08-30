@@ -102,16 +102,22 @@ export class GameScene extends Scene {
             
             // Find the appropriate color based on position
             for (let j = 0; j < gradientColors.length - 1; j++) {
-                if (ratio >= gradientColors[j].pos && ratio <= gradientColors[j + 1].pos) {
-                    const localRatio = (ratio - gradientColors[j].pos) / 
-                                     (gradientColors[j + 1].pos - gradientColors[j].pos);
-                    color = Phaser.Display.Color.Interpolate.ColorWithColor(
-                        Phaser.Display.Color.IntegerToColor(gradientColors[j].color),
-                        Phaser.Display.Color.IntegerToColor(gradientColors[j + 1].color),
+                const current = gradientColors[j];
+                const next = gradientColors[j + 1];
+                
+                if (current && next && ratio >= current.pos && ratio <= next.pos) {
+                    const localRatio = (ratio - current.pos) / (next.pos - current.pos);
+                    const colorObj = Phaser.Display.Color.Interpolate.ColorWithColor(
+                        Phaser.Display.Color.IntegerToColor(current.color),
+                        Phaser.Display.Color.IntegerToColor(next.color),
                         1,
                         localRatio
                     );
-                    color = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
+                    
+                    // colorObj is a ColorObject with r, g, b properties
+                    if (typeof colorObj === 'object' && 'r' in colorObj && 'g' in colorObj && 'b' in colorObj) {
+                        color = Phaser.Display.Color.GetColor(colorObj.r, colorObj.g, colorObj.b);
+                    }
                     break;
                 }
             }
