@@ -82,23 +82,126 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Creating flat background for UI refinement`);
+        console.log(`GameScene: Creating animated background`);
         
-        // TEMPORARY: Using flat background to focus on UI refinement
-        // Will add proper background later
-        {
+        // Create gradient background
+        const graphics = this.add.graphics();
+        
+        // Draw gradient from top to bottom
+        const gradientColors = [
+            { pos: 0, color: 0x0a0e27 },     // Very dark blue at top
+            { pos: 0.3, color: 0x1a1a3e },   // Dark purple-blue
+            { pos: 0.6, color: 0x16213e },   // Deep blue
+            { pos: 1, color: 0x0f1b2e }      // Dark blue-gray at bottom
+        ];
+        
+        // Create gradient effect
+        for (let i = 0; i < height; i++) {
+            const ratio = i / height;
+            let color = 0x0a0e27; // default
             
-            // Create a simple flat background for UI refinement
-            const bg = this.add.rectangle(
-                width / 2,
-                height / 2,
-                width,
-                height,
-                0x1a1a2e  // Dark blue-gray for better UI contrast
+            // Find the appropriate color based on position
+            for (let j = 0; j < gradientColors.length - 1; j++) {
+                if (ratio >= gradientColors[j].pos && ratio <= gradientColors[j + 1].pos) {
+                    const localRatio = (ratio - gradientColors[j].pos) / 
+                                     (gradientColors[j + 1].pos - gradientColors[j].pos);
+                    color = Phaser.Display.Color.Interpolate.ColorWithColor(
+                        Phaser.Display.Color.IntegerToColor(gradientColors[j].color),
+                        Phaser.Display.Color.IntegerToColor(gradientColors[j + 1].color),
+                        1,
+                        localRatio
+                    );
+                    color = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
+                    break;
+                }
+            }
+            
+            graphics.fillStyle(color, 1);
+            graphics.fillRect(0, i, width, 1);
+        }
+        
+        graphics.setDepth(Z_LAYERS.BACKGROUND);
+        
+        // Add animated floating particles for depth
+        this.createBackgroundParticles();
+        
+        // Add subtle animated light rays
+        this.createLightRays();
+    }
+    
+    private createBackgroundParticles(): void {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        // Create multiple floating particles
+        for (let i = 0; i < 20; i++) {
+            const particle = this.add.circle(
+                Math.random() * width,
+                Math.random() * height,
+                Math.random() * 3 + 1,
+                0xffffff,
+                Math.random() * 0.1 + 0.05
             );
-            bg.setDepth(Z_LAYERS.BACKGROUND);
             
-            // That's it - clean flat background to focus on UI
+            particle.setDepth(Z_LAYERS.BACKGROUND + 1);
+            
+            // Animate particles floating upward
+            this.tweens.add({
+                targets: particle,
+                y: -10,
+                duration: Math.random() * 20000 + 30000,
+                repeat: -1,
+                onRepeat: () => {
+                    particle.x = Math.random() * width;
+                    particle.y = height + 10;
+                }
+            });
+            
+            // Add subtle horizontal drift
+            this.tweens.add({
+                targets: particle,
+                x: particle.x + (Math.random() * 100 - 50),
+                duration: Math.random() * 10000 + 15000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+    }
+    
+    private createLightRays(): void {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        // Create subtle light rays from top
+        for (let i = 0; i < 3; i++) {
+            const rayGraphics = this.add.graphics();
+            rayGraphics.setDepth(Z_LAYERS.BACKGROUND + 1);
+            
+            const startX = width * (0.2 + i * 0.3);
+            const endX = startX + (Math.random() * 200 - 100);
+            
+            // Draw light ray with gradient
+            rayGraphics.fillGradientStyle(
+                0x4a69bd, 0x4a69bd, 0x4a69bd, 0x4a69bd,
+                0.0, 0.02, 0.02, 0.0
+            );
+            
+            rayGraphics.fillTriangle(
+                startX - 20, 0,
+                startX + 20, 0,
+                endX, height
+            );
+            
+            // Animate opacity for pulsing effect
+            this.tweens.add({
+                targets: rayGraphics,
+                alpha: 0.03,
+                duration: Math.random() * 3000 + 4000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
         }
     }
 
