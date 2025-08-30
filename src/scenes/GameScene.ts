@@ -82,57 +82,33 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Creating animated background`);
+        console.log(`GameScene: Creating forest background v4`);
         
-        // Create gradient background
-        const graphics = this.add.graphics();
+        // Add the forest background image
+        const background = this.add.image(width / 2, height / 2, 'forest-background');
         
-        // Draw gradient from top to bottom
-        const gradientColors = [
-            { pos: 0, color: 0x0a0e27 },     // Very dark blue at top
-            { pos: 0.3, color: 0x1a1a3e },   // Dark purple-blue
-            { pos: 0.6, color: 0x16213e },   // Deep blue
-            { pos: 1, color: 0x0f1b2e }      // Dark blue-gray at bottom
-        ];
+        // Scale to cover the entire screen
+        const scaleX = width / background.width;
+        const scaleY = height / background.height;
+        const scale = Math.max(scaleX, scaleY);
+        background.setScale(scale);
         
-        // Create gradient effect
-        for (let i = 0; i < height; i++) {
-            const ratio = i / height;
-            let color = 0x0a0e27; // default
-            
-            // Find the appropriate color based on position
-            for (let j = 0; j < gradientColors.length - 1; j++) {
-                const current = gradientColors[j];
-                const next = gradientColors[j + 1];
-                
-                if (current && next && ratio >= current.pos && ratio <= next.pos) {
-                    const localRatio = (ratio - current.pos) / (next.pos - current.pos);
-                    const colorObj = Phaser.Display.Color.Interpolate.ColorWithColor(
-                        Phaser.Display.Color.IntegerToColor(current.color),
-                        Phaser.Display.Color.IntegerToColor(next.color),
-                        1,
-                        localRatio
-                    );
-                    
-                    // colorObj is a ColorObject with r, g, b properties
-                    if (typeof colorObj === 'object' && 'r' in colorObj && 'g' in colorObj && 'b' in colorObj) {
-                        color = Phaser.Display.Color.GetColor(colorObj.r, colorObj.g, colorObj.b);
-                    }
-                    break;
-                }
-            }
-            
-            graphics.fillStyle(color, 1);
-            graphics.fillRect(0, i, width, 1);
-        }
+        // Set depth to be behind everything
+        background.setDepth(Z_LAYERS.BACKGROUND);
         
-        graphics.setDepth(Z_LAYERS.BACKGROUND);
+        // Add a subtle dark overlay for better contrast with game elements
+        const overlay = this.add.rectangle(
+            width / 2, 
+            height / 2, 
+            width, 
+            height, 
+            0x000000, 
+            0.2  // 20% opacity for subtle darkening
+        );
+        overlay.setDepth(Z_LAYERS.BACKGROUND + 1);
         
-        // Add animated floating particles for depth
+        // Add animated floating particles for extra depth
         this.createBackgroundParticles();
-        
-        // Add subtle animated light rays
-        this.createLightRays();
     }
     
     private createBackgroundParticles(): void {
@@ -168,42 +144,6 @@ export class GameScene extends Scene {
                 targets: particle,
                 x: particle.x + (Math.random() * 100 - 50),
                 duration: Math.random() * 10000 + 15000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-        }
-    }
-    
-    private createLightRays(): void {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-        
-        // Create subtle light rays from top
-        for (let i = 0; i < 3; i++) {
-            const rayGraphics = this.add.graphics();
-            rayGraphics.setDepth(Z_LAYERS.BACKGROUND + 1);
-            
-            const startX = width * (0.2 + i * 0.3);
-            const endX = startX + (Math.random() * 200 - 100);
-            
-            // Draw light ray with gradient
-            rayGraphics.fillGradientStyle(
-                0x4a69bd, 0x4a69bd, 0x4a69bd, 0x4a69bd,
-                0.0, 0.02, 0.02, 0.0
-            );
-            
-            rayGraphics.fillTriangle(
-                startX - 20, 0,
-                startX + 20, 0,
-                endX, height
-            );
-            
-            // Animate opacity for pulsing effect
-            this.tweens.add({
-                targets: rayGraphics,
-                alpha: 0.03,
-                duration: Math.random() * 3000 + 4000,
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.easeInOut'
