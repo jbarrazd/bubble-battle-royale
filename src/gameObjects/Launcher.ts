@@ -95,16 +95,16 @@ export class Launcher extends Phaser.GameObjects.Container {
     
     // === ARSENAL POSITIONING ===
     private readonly ARSENAL_POSITIONS_PLAYER = [
-        { x: 70, y: -35 },     // Right side horizontal, slot 1
-        { x: 110, y: -35 },    // Right side horizontal, slot 2
-        { x: 150, y: -35 }     // Right side horizontal, slot 3
+        { x: 80, y: -35 },     // Right side horizontal, slot 1
+        { x: 125, y: -35 },    // Right side horizontal, slot 2
+        { x: 170, y: -35 }     // Right side horizontal, slot 3
     ];
     private readonly ARSENAL_POSITIONS_OPPONENT = [
         { x: -70, y: -35 },    // Left side horizontal, slot 1
         { x: -110, y: -35 },   // Left side horizontal, slot 2
         { x: -150, y: -35 }    // Left side horizontal, slot 3
     ];
-    private readonly SLOT_SIZE = 32;
+    private readonly SLOT_SIZE = 36;
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
