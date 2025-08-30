@@ -21,8 +21,8 @@ export class GameScene extends Scene {
     }
 
     public preload(): void {
-        // Load forest background image v4
-        this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
+        // Background loading disabled - using flat color for performance
+        // this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
         
         // Cannon sprite loading disabled - using procedural graphics
         // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
@@ -82,73 +82,19 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Creating forest background v4`);
+        console.log(`GameScene: Creating simple flat background`);
         
-        // Add the forest background image
-        const background = this.add.image(width / 2, height / 2, 'forest-background');
-        
-        // Scale to cover the entire screen
-        const scaleX = width / background.width;
-        const scaleY = height / background.height;
-        const scale = Math.max(scaleX, scaleY);
-        background.setScale(scale);
-        
-        // Set depth to be behind everything
-        background.setDepth(Z_LAYERS.BACKGROUND);
-        
-        // Add a subtle dark overlay for better contrast with game elements
-        const overlay = this.add.rectangle(
-            width / 2, 
-            height / 2, 
-            width, 
-            height, 
-            0x000000, 
-            0.2  // 20% opacity for subtle darkening
+        // Simple flat background for performance and focus on gameplay
+        const bg = this.add.rectangle(
+            width / 2,
+            height / 2,
+            width,
+            height,
+            0x1a1a2e  // Dark blue-gray for good contrast
         );
-        overlay.setDepth(Z_LAYERS.BACKGROUND + 1);
+        bg.setDepth(Z_LAYERS.BACKGROUND);
         
-        // Add animated floating particles for extra depth
-        this.createBackgroundParticles();
-    }
-    
-    private createBackgroundParticles(): void {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
-        
-        // Create multiple floating particles
-        for (let i = 0; i < 20; i++) {
-            const particle = this.add.circle(
-                Math.random() * width,
-                Math.random() * height,
-                Math.random() * 3 + 1,
-                0xffffff,
-                Math.random() * 0.1 + 0.05
-            );
-            
-            particle.setDepth(Z_LAYERS.BACKGROUND + 1);
-            
-            // Animate particles floating upward
-            this.tweens.add({
-                targets: particle,
-                y: -10,
-                duration: Math.random() * 20000 + 30000,
-                repeat: -1,
-                onRepeat: () => {
-                    particle.x = Math.random() * width;
-                    particle.y = height + 10;
-                }
-            });
-            
-            // Add subtle horizontal drift
-            this.tweens.add({
-                targets: particle,
-                x: particle.x + (Math.random() * 100 - 50),
-                duration: Math.random() * 10000 + 15000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-        }
+        // Background disabled - using flat color for performance
     }
 
     private createArena(): void {
