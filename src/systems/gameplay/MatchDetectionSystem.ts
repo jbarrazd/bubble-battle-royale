@@ -95,10 +95,20 @@ export class MatchDetectionSystem {
             });
             
             // Emit bubble explosion event for visual effects
+            // Create splatters at each bubble position for more realistic effect
             if (bubbleColor !== undefined) {
+                // Collect all bubble positions
+                const positions: { x: number, y: number }[] = [];
+                matches.forEach(bubble => {
+                    const worldPos = bubble.getWorldTransformMatrix();
+                    positions.push({ x: worldPos.tx, y: worldPos.ty });
+                });
+                
+                // Emit event with all positions
                 this.scene.events.emit('bubble-exploded', {
-                    x: avgX,
+                    x: avgX,  // Keep center for compatibility
                     y: avgY,
+                    positions: positions,  // All individual positions
                     color: bubbleColor,
                     comboMultiplier: matches.size
                 });

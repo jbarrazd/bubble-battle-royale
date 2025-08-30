@@ -151,9 +151,34 @@ export class ArenaSystem {
         this.scoreEventManager = new ScoreEventManager(this.scene);
         this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
         
-        // Initialize visual effects systems
-        this.paintSplatterSystem = new PaintSplatterSystem(this.scene);
-        console.log('ArenaSystem: Paint splatter system initialized');
+        // Initialize visual effects systems with custom config
+        this.paintSplatterSystem = new PaintSplatterSystem(this.scene, {
+            // Quick persistence - splatters stay for 1.5 seconds, fade over 1 second
+            fadeStartDelay: 1500,
+            fadeDuration: 1000,
+            
+            // Balanced splatters - not too much, not too little
+            initialAlpha: 0.5,  // Slightly more visible
+            minDropletSize: 1.5,  // Slightly bigger minimum
+            maxDropletSize: 5,  // Slightly bigger maximum
+            
+            // Balanced droplet count
+            minDroplets: 3,
+            maxDroplets: 8,
+            
+            // Balanced spread area
+            minSpread: 10,
+            maxSpread: 30,
+            
+            // Performance tuning
+            maxSplatters: 150,
+            
+            // Balanced scaling with combos
+            scaleWithCombo: true,
+            comboScaleFactor: 0.25,  // 25% increase per combo
+            maxComboScale: 2.0  // Max 2x for huge combos
+        });
+        console.log('ArenaSystem: Paint splatter system initialized with enhanced settings');
         
         // Initialize power-up systems
         // Arsenal is now integrated directly into the Launcher for both players
@@ -1121,5 +1146,23 @@ export class ArenaSystem {
         this.scene.events.off('score-update', this.onScoreUpdate, this);
         this.scene.events.off('bubble-attached', this.checkVictoryCondition, this);
         this.scene.events.off('bubble-position-update', this.checkChestHit, this);
+    }
+    
+    /**
+     * Get paint splatter system for configuration or monitoring
+     */
+    public getPaintSplatterSystem(): PaintSplatterSystem | undefined {
+        return this.paintSplatterSystem;
+    }
+    
+    /**
+     * Set graphics quality preset (affects paint splatters and other visual effects)
+     */
+    public setGraphicsQuality(quality: 'low' | 'medium' | 'high' | 'ultra'): void {
+        // Update paint splatter quality
+        this.paintSplatterSystem?.setQualityPreset(quality);
+        
+        // Could update other visual systems here in the future
+        console.log(`Graphics quality set to: ${quality}`);
     }
 }
