@@ -16,11 +16,11 @@ export class TrajectoryPreview {
     private currentBubbleColor: number = 0xFFFFFF;
     
     // Preview settings
-    private readonly DOT_COUNT = 20;
+    private readonly DOT_COUNT = 16; // One more dot for slightly longer preview
     private readonly DOT_SIZE = 4; // Thinner dots for cleaner look
-    private readonly DOT_SPACING = 25;
-    private readonly PREVIEW_PERCENTAGE = 0.5; // Show 50% for better preview
-    private readonly MAX_PREVIEW_DISTANCE = 500; // Extended preview distance
+    private readonly DOT_SPACING = 21; // Slightly increased for longer preview
+    private readonly PREVIEW_PERCENTAGE = 0.38; // Slightly increased for longer preview
+    private readonly MAX_PREVIEW_DISTANCE = 380; // Slightly increased for longer preview
     private readonly SHOOT_SPEED = 600;
     
     // Animation
@@ -139,7 +139,7 @@ export class TrajectoryPreview {
                 const fadeEnd = 0.8; // End still visible
                 const fadeProgress = dotIndex / maxDots;
                 const fadeFactor = fadeStart + (fadeEnd - fadeStart) * fadeProgress;
-                const targetAlpha = 0.9 * (1 - fadeFactor); // Higher base alpha
+                const targetAlpha = 0.95 * (1 - fadeFactor); // Slightly higher visibility
                 
                 this.dots.push({ dot, targetAlpha });
                 dotIndex++;
@@ -165,7 +165,7 @@ export class TrajectoryPreview {
             // Create moving wave effect
             const waveOffset = index * 0.15;
             const wave = Math.sin(this.animationTime * animSpeed + waveOffset);
-            const animatedAlpha = targetAlpha * (0.7 + wave * 0.3); // Less variation, higher base
+            const animatedAlpha = targetAlpha * (0.75 + wave * 0.25); // Slightly more visible
             
             // Pulsing size effect - subtle for thinner dots
             const sizeWave = 1 + wave * 0.2;
@@ -189,7 +189,7 @@ export class TrajectoryPreview {
             dot.setFillStyle(color);
             
             // Add stroke with bubble color for extra visibility
-            dot.setStrokeStyle(1, this.currentBubbleColor, 0.3);
+            dot.setStrokeStyle(1, this.currentBubbleColor, 0.4); // Slightly more visible stroke
         });
     }
     
