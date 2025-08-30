@@ -41,12 +41,10 @@ export class SoundGenerator {
     constructor() {
         // Initialize Web Audio Context with fallback
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        console.log('SoundGenerator: Audio context created, state:', this.audioContext.state);
         
         // Create master gain node
         this.masterGainNode = this.audioContext.createGain();
         this.masterGainNode.gain.value = this.volume;
-        console.log('SoundGenerator: Master gain set to:', this.volume);
         
         // Create compressor for dynamic range control
         this.compressorNode = this.audioContext.createDynamicsCompressor();
@@ -95,24 +93,17 @@ export class SoundGenerator {
      * Generate bubble shooting sound with pitch variation
      */
     public generateBubbleShoot(pitchVariation: number = 0): string {
-        console.log('SoundGenerator: generateBubbleShoot called');
-        console.log('Audio context state:', this.audioContext.state);
-        console.log('Muted:', this.muted);
-        
         const config = AUDIO_CONFIG.EFFECTS.BUBBLE_SHOOT;
         // Softer pitch variation for more pleasant sound
         const frequency = config.frequency * (1 + pitchVariation * 0.15);
         
-        const voiceId = this.createToneWithEnvelope({
+        return this.createToneWithEnvelope({
             frequency,
             type: config.type as OscillatorType,
             envelope: config.envelope,
             duration: config.duration,
             volume: config.volume
         });
-        
-        console.log('Created voice:', voiceId);
-        return voiceId;
     }
 
     /**
@@ -386,22 +377,13 @@ export class SoundGenerator {
         duration: number;
         volume: number;
     }): string {
-        console.log('createToneWithEnvelope called with:', params);
-        
-        if (this.muted) {
-            console.log('Sound is muted, returning');
-            return '';
-        }
-        
-        if (!this.canPlaySound()) {
-            console.log('Cannot play sound (limit reached), returning');
+        if (this.muted || !this.canPlaySound()) {
             return '';
         }
 
         try {
             const oscillator = this.audioContext.createOscillator();
             const gainNode = this.audioContext.createGain();
-            console.log('Created oscillator and gain node');
             
             const voiceId = this.generateVoiceId();
             
@@ -426,8 +408,6 @@ export class SoundGenerator {
             
             oscillator.start(now);
             oscillator.stop(now + params.duration);
-            
-            console.log('Sound started successfully');
             
             // Track voice
             this.activeVoices.set(voiceId, {

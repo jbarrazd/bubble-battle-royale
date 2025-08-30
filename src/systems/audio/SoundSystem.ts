@@ -52,12 +52,10 @@ export class SoundSystem {
     private lastEventTime: number = 0;
 
     constructor(scene: Scene) {
-        console.log('SoundSystem: Constructor called');
         this.scene = scene;
         this.soundGenerator = new SoundGenerator();
         this.hapticManager = new HapticManager();
         
-        console.log('SoundSystem: About to initialize...');
         this.initialize();
     }
 
@@ -145,17 +143,9 @@ export class SoundSystem {
         if (this.userInteractionReceived) return;
         
         this.userInteractionReceived = true;
-        console.log('SoundSystem: First user interaction detected');
         
         try {
             await this.soundGenerator.ensureContextRunning();
-            console.log('SoundSystem: Audio context activated after user interaction');
-            
-            // Test sound to confirm audio is working
-            setTimeout(() => {
-                console.log('SoundSystem: Playing test sound after user interaction');
-                this.playEffect('ui-click');
-            }, 100);
         } catch (error) {
             console.warn('SoundSystem: Failed to activate audio context:', error);
         }
@@ -168,7 +158,6 @@ export class SoundSystem {
     // === GAME EVENT HANDLERS ===
 
     private onBubbleShoot(): void {
-        console.log('SoundSystem: bubble-shoot event received');
         this.playEffect('bubble-shoot');
         this.hapticManager.bubbleShoot();
         this.trackEvent('bubble-shoot');
@@ -345,7 +334,6 @@ export class SoundSystem {
      * Play a specific sound effect
      */
     public playEffect(type: SoundEventType, data?: any): void {
-        console.log(`SoundSystem: playEffect called - type: ${type}, muted: ${this.settings.muted}`);
         if (this.settings.muted) return;
         
         switch (type) {
