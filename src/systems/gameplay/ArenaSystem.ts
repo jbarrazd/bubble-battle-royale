@@ -20,6 +20,7 @@ import { UnifiedFeedbackSystem } from '@/systems/scoring/UnifiedFeedbackSystem';
 import { PowerUpInventoryUI } from '@/ui/PowerUpInventoryUI';
 import { PowerUpActivationSystem } from '@/systems/powerups/PowerUpActivationSystem';
 import { AimingModeSystem } from '@/systems/powerups/AimingModeSystem';
+import { PaintSplatterSystem } from '@/systems/visual/PaintSplatterSystem';
 
 export { AIDifficulty };
 
@@ -58,6 +59,7 @@ export class ArenaSystem {
     private playerDangerLine?: Phaser.GameObjects.Graphics;
     private opponentDangerLine?: Phaser.GameObjects.Graphics;
     private dangerWarningActive: boolean = false;
+    private paintSplatterSystem?: PaintSplatterSystem;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -148,6 +150,10 @@ export class ArenaSystem {
         // Initialize new unified scoring system
         this.scoreEventManager = new ScoreEventManager(this.scene);
         this.unifiedFeedbackSystem = new UnifiedFeedbackSystem(this.scene);
+        
+        // Initialize visual effects systems
+        this.paintSplatterSystem = new PaintSplatterSystem(this.scene);
+        console.log('ArenaSystem: Paint splatter system initialized');
         
         // Initialize power-up systems
         // Arsenal is now integrated directly into the Launcher for both players
@@ -1105,6 +1111,7 @@ export class ArenaSystem {
         this.comboManager?.reset();
         this.scoreEventManager?.destroy();
         this.unifiedFeedbackSystem?.destroy();
+        this.paintSplatterSystem?.destroy();
         this.victoryScreen?.destroy();
         this.defeatScreen?.destroy();
         // this.playerPowerUpInventory?.destroy(); // Arsenal now integrated in Launcher

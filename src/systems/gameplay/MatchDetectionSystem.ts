@@ -51,11 +51,14 @@ export class MatchDetectionSystem {
         if (matches.size >= this.minimumMatchSize) {
             
             // Calculate center position BEFORE any animations or removal
+            // Use world positions to account for any container transformations
             let avgX = 0, avgY = 0;
             let bubbleColor: BubbleColor | undefined;
             matches.forEach(bubble => {
-                avgX += bubble.x;
-                avgY += bubble.y;
+                // Get world position of each bubble
+                const worldPos = bubble.getWorldTransformMatrix();
+                avgX += worldPos.tx;
+                avgY += worldPos.ty;
                 if (!bubbleColor) {
                     bubbleColor = bubble.getColor();
                 }
@@ -90,6 +93,16 @@ export class MatchDetectionSystem {
                 y: avgY,
                 bubbleColor: bubbleColor
             });
+            
+            // Emit bubble explosion event for visual effects
+            if (bubbleColor !== undefined) {
+                this.scene.events.emit('bubble-exploded', {
+                    x: avgX,
+                    y: avgY,
+                    color: bubbleColor,
+                    comboMultiplier: matches.size
+                });
+            }
             
             // Remove matched bubbles (Mystery bubbles will activate their power-ups when destroyed)
             // Pass !isAIMatch to indicate if it was a player shot

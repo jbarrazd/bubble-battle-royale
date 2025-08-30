@@ -163,6 +163,7 @@ export class GameScene extends Scene {
             console.log('Space pressed - shooting not yet implemented');
             this.testBubblePop();
         });
+        
     }
 
     private testBubblePop(): void {
