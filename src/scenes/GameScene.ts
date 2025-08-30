@@ -3,14 +3,14 @@ import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
-import { ModernSoundSystem } from '@/systems/audio/ModernSoundSystem';
+import { BubbleSoundSystem } from '@/systems/audio/BubbleSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
-    private soundSystem!: ModernSoundSystem;
+    private soundSystem!: BubbleSoundSystem;
     // fpsText removed for clean production UI
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
@@ -70,7 +70,7 @@ export class GameScene extends Scene {
 
     private createSoundSystem(): void {
         try {
-            this.soundSystem = new ModernSoundSystem(this);
+            this.soundSystem = new BubbleSoundSystem(this);
             console.log('GameScene: Sound system initialized successfully');
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
