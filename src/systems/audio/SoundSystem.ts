@@ -52,10 +52,13 @@ export class SoundSystem {
     private lastEventTime: number = 0;
 
     constructor(scene: Scene) {
+        console.log('SoundSystem constructor called');
         this.scene = scene;
+        console.log('Creating SoundGenerator...');
         this.soundGenerator = new SoundGenerator();
+        console.log('Creating HapticManager...');
         this.hapticManager = new HapticManager();
-        
+        console.log('Calling initialize...');
         this.initialize();
     }
 

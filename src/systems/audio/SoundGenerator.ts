@@ -39,12 +39,20 @@ export class SoundGenerator {
     private isAmbientPlaying: boolean = false;
 
     constructor() {
+        console.log('SoundGenerator constructor called');
         // Initialize Web Audio Context with fallback
-        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        try {
+            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            console.log('AudioContext created, state:', this.audioContext.state);
+        } catch (error) {
+            console.error('Failed to create AudioContext:', error);
+            throw error;
+        }
         
         // Create master gain node
         this.masterGainNode = this.audioContext.createGain();
         this.masterGainNode.gain.value = this.volume;
+        console.log('SoundGenerator initialized');
         
         // Create compressor for dynamic range control
         this.compressorNode = this.audioContext.createDynamicsCompressor();

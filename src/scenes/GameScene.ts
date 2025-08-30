@@ -47,6 +47,7 @@ export class GameScene extends Scene {
             
             console.log('GameScene: Initializing sound system...');
             this.createSoundSystem();
+            console.log('GameScene: After createSoundSystem, soundSystem is:', this.soundSystem);
             
             console.log('GameScene: Creating arena...');
             this.createArena();
@@ -69,8 +70,11 @@ export class GameScene extends Scene {
     }
 
     private createSoundSystem(): void {
+        console.log('createSoundSystem method called');
         try {
+            console.log('About to create new SoundSystem...');
             this.soundSystem = new SoundSystem(this);
+            console.log('SoundSystem created:', this.soundSystem);
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
             // Continue without sound system - game should still be playable
