@@ -103,12 +103,18 @@ export class ShootingSystem {
     }
     
     private onPointerDown(): void {
-        if (this.canShoot && this.currentBubble) {
-            // Show trajectory preview when aiming with current bubble color
-            const angle = this.playerLauncher.getAimAngle();
-            const bubbleColor = this.currentBubble.getColor();
-            this.trajectoryPreview.show(angle, bubbleColor);
+        // Always show trajectory preview when pressing
+        const angle = this.playerLauncher.getAimAngle();
+        
+        // Get bubble color - use current if available, otherwise use next
+        let bubbleColor = 0xFFFFFF; // Default white
+        if (this.currentBubble) {
+            bubbleColor = this.currentBubble.getColor();
+        } else if (this.nextBubbleColors.length > 0) {
+            bubbleColor = this.nextBubbleColors[0];
         }
+        
+        this.trajectoryPreview.show(angle, bubbleColor);
     }
     
     private createCooldownIndicator(): void {
@@ -334,9 +340,17 @@ export class ShootingSystem {
     
     public update(delta: number): void {
         // Update trajectory preview if aiming
-        if (this.canShoot && this.inputManager.isPointerActive() && this.currentBubble) {
+        if (this.inputManager.isPointerActive()) {
             const angle = this.playerLauncher.getAimAngle();
-            const bubbleColor = this.currentBubble.getColor();
+            
+            // Get bubble color - use current if available, otherwise use next
+            let bubbleColor = 0xFFFFFF; // Default white
+            if (this.currentBubble) {
+                bubbleColor = this.currentBubble.getColor();
+            } else if (this.nextBubbleColors.length > 0) {
+                bubbleColor = this.nextBubbleColors[0];
+            }
+            
             this.trajectoryPreview.update(angle, delta, bubbleColor);
         }
         
