@@ -37,8 +37,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             }
         },
         fps: {
-            // iOS WKWebView is often capped at 60 FPS, desktop can do 120
-            target: (isCapacitor || isIOS) ? 60 : 120,
+            target: 120,  // Target 120 FPS on all platforms
             forceSetTimeOut: false  // Use RAF for better performance
         },
         render: {

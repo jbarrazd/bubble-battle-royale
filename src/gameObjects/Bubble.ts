@@ -4,8 +4,6 @@ import { HD_SCALE } from '@/config/GameConfig';
 
 export class Bubble extends Phaser.GameObjects.Container {
     private bubbleSprite: Phaser.GameObjects.Arc;
-    private highlightSprite: Phaser.GameObjects.Arc;
-    private patternSprite?: Phaser.GameObjects.Graphics;
     private gridPosition: IHexPosition | null = null;
     private color: BubbleColor;
     private isSpecial: boolean = false;
@@ -17,36 +15,13 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         this.color = color;
         
-        // Create main bubble sprite with optimized thin border
+        // ULTRA SIMPLE: Just one circle for maximum performance
         this.bubbleSprite = scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2, color);
-        // Thin border for better visual definition without too much performance impact
-        this.bubbleSprite.setStrokeStyle(1.5, this.getDarkerColor(color), 0.8);
+        // NO BORDER for absolute maximum performance
+        // this.bubbleSprite.setStrokeStyle(1, this.getDarkerColor(color), 0.6);
         
-        // Create highlight for 3D effect with better quality
-        this.highlightSprite = scene.add.circle(
-            -BUBBLE_CONFIG.SIZE / 5,
-            -BUBBLE_CONFIG.SIZE / 5,
-            BUBBLE_CONFIG.SIZE / 3.5,  // Slightly larger highlight
-            0xffffff,
-            0.5  // More visible for better 3D effect
-        );
-        
-        // Add subtle inner shadow for depth
-        const innerShadow = scene.add.circle(
-            BUBBLE_CONFIG.SIZE / 8,
-            BUBBLE_CONFIG.SIZE / 8,
-            BUBBLE_CONFIG.SIZE / 2.5,
-            0x000000,
-            0.15
-        );
-        
-        // OPTIMIZATION: Disable colorblind patterns for performance on iOS
-        // These patterns cause significant performance issues with many bubbles
-        // this.patternSprite = scene.add.graphics();
-        // this.addColorblindPattern(color);
-        
-        // Add all visual elements in correct order
-        this.add([this.bubbleSprite, innerShadow, this.highlightSprite]);
+        // Only add the main sprite - no shadows, no highlights
+        this.add([this.bubbleSprite]);
         
         this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
         this.setDepth(Z_LAYERS.BUBBLES);  // Use regular bubble layer, not front
@@ -78,10 +53,8 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.color = color;
         // Update visual sprite to match
         this.bubbleSprite.setFillStyle(color);
-        // Optimized thin border
-        this.bubbleSprite.setStrokeStyle(1.5, this.getDarkerColor(color), 0.8);
-        // OPTIMIZATION: Pattern disabled for performance
-        // this.addColorblindPattern(color);
+        // Simple thin border
+        this.bubbleSprite.setStrokeStyle(1, this.getDarkerColor(color), 0.6);
     }
 
     public setTint(tint: number): void {
