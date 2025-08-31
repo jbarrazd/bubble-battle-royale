@@ -22,8 +22,8 @@ export class GameScene extends Scene {
     }
 
     public preload(): void {
-        // Background loading disabled - using flat color for performance
-        // this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
+        // Load forest background v4
+        this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
         
         // Cannon sprite loading disabled - using procedural graphics
         // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
@@ -126,19 +126,18 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Creating simple flat background`);
+        console.log(`GameScene: Creating forest background v4`);
         
-        // Simple flat background for performance and focus on gameplay
-        const bg = this.add.rectangle(
-            width / 2,
-            height / 2,
-            width,
-            height,
-            0x1a1a2e  // Dark blue-gray for good contrast
-        );
+        // Use the forest background v4 image
+        const bg = this.add.image(width / 2, height / 2, 'forest-background');
+        
+        // Scale to cover the screen
+        const scaleX = width / bg.width;
+        const scaleY = height / bg.height;
+        const scale = Math.max(scaleX, scaleY);
+        bg.setScale(scale);
+        
         bg.setDepth(Z_LAYERS.BACKGROUND);
-        
-        // Background disabled - using flat color for performance
     }
 
     private createArena(): void {

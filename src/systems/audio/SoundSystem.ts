@@ -227,16 +227,23 @@ export class SoundSystem {
     }
     
     private onBubblesPopped(data: { color: number; count: number }): void {
-        if (this.muted) return;
+        if (this.settings.muted) return;
         
-        // Play pleasant pop sounds with slight delays for organic feel
-        const popCount = Math.min(data.count, 5); // Limit to prevent audio overload
-        
-        for (let i = 0; i < popCount; i++) {
-            setTimeout(() => {
-                this.soundGenerator.generateBubblePop(data.color);
-            }, i * 30); // 30ms between pops
-        }
+        // Ensure audio context is running
+        this.soundGenerator.ensureContextRunning().then(() => {
+            // Play pop sounds based on count
+            const popCount = Math.min(data.count, 5); // Allow more pops
+            
+            for (let i = 0; i < popCount; i++) {
+                setTimeout(() => {
+                    try {
+                        this.soundGenerator.generateBubblePop(data.color);
+                    } catch (error) {
+                        console.error('SoundSystem: Error generating pop sound:', error);
+                    }
+                }, i * 20); // 20ms stagger for cascade effect
+            }
+        });
         
         this.trackEvent('bubbles-popped');
     }

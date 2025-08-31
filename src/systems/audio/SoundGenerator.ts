@@ -131,33 +131,76 @@ export class SoundGenerator {
     }
 
     /**
-     * Generate pleasant bubble pop sound based on color
+     * Generate simple, pleasant bubble pop sound
      */
     public generateBubblePop(color?: BubbleColor): string {
-        // Map colors to pleasant musical notes
-        const colorFrequencies: { [key: number]: number } = {
-            [BubbleColor.RED]: 440,      // A4
-            [BubbleColor.BLUE]: 523.25,   // C5
-            [BubbleColor.GREEN]: 587.33,  // D5
-            [BubbleColor.YELLOW]: 659.25, // E5
-            [BubbleColor.PURPLE]: 698.46  // F5
-        };
+        if (this.muted) return 'muted';
         
-        const frequency = color ? (colorFrequencies[color] || 440) : 440;
+        // Create a unique voice ID
+        const voiceId = `pop_${this.voiceIdCounter++}`;
         
-        // Pleasant pop sound with soft envelope
-        return this.createToneWithEnvelope({
-            frequency,
-            type: 'sine' as OscillatorType,
-            envelope: {
-                attack: 0.002,
-                decay: 0.03,
-                sustain: 0.1,
-                release: 0.15
-            },
-            duration: 0.2,
-            volume: 0.15
-        });
+        try {
+            // Simple frequency mapping for different colors
+            const colorFrequencies: { [key: number]: number } = {
+                [BubbleColor.RED]: 600,      // Lower frequencies for warmer feel
+                [BubbleColor.BLUE]: 800,   
+                [BubbleColor.GREEN]: 1000,  
+                [BubbleColor.YELLOW]: 1200, 
+                [BubbleColor.PURPLE]: 1400  
+            };
+            
+            const baseFrequency = color ? (colorFrequencies[color] || 800) : 800;
+            // Add slight random variation
+            const frequency = baseFrequency * (0.9 + Math.random() * 0.2);
+            
+            const currentTime = this.audioContext.currentTime;
+            
+            // Simple sine wave pop
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frequency * 1.5, currentTime);
+            // Quick pitch drop for pop effect
+            oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.5, currentTime + 0.04);
+            
+            // Simple envelope - quick attack, quick decay
+            gainNode.gain.setValueAtTime(0, currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.15, currentTime + 0.002); // 2ms attack
+            gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.05); // 50ms total
+            gainNode.gain.linearRampToValueAtTime(0, currentTime + 0.06);
+            
+            // Connect
+            oscillator.connect(gainNode);
+            gainNode.connect(this.masterGainNode);
+            
+            // Play
+            oscillator.start(currentTime);
+            oscillator.stop(currentTime + 0.06);
+            
+            // Cleanup
+            oscillator.onended = () => {
+                oscillator.disconnect();
+                gainNode.disconnect();
+                this.activeVoices.delete(voiceId);
+            };
+            
+            // Store reference
+            const voice: IAudioVoice = {
+                oscillator: oscillator,
+                gainNode: gainNode,
+                startTime: currentTime,
+                isActive: true,
+                id: voiceId
+            };
+            this.activeVoices.set(voiceId, voice);
+            
+            return voiceId;
+            
+        } catch (error) {
+            console.error('SoundGenerator: Failed to create pop sound:', error);
+            return 'error';
+        }
     }
     
     /**

@@ -71,31 +71,42 @@ class FloatingTextEffect implements IPoolableEffect {
         this.text.setText(text);
         this.text.setTint(color);
         
-        // Adjust font size based on text content for better mobile UX
-        if (text.includes('PERFECT') || text.includes('AMAZING')) {
-            this.text.setFontSize('22px');  // +2px
-        } else if (text.includes('GREAT') || text.includes('GOOD')) {
-            this.text.setFontSize('21px');  // +2px
+        // Adjust font size based on text content - balanced for HD visibility
+        if (text.includes('PERFECT')) {
+            this.text.setFontSize(`${18 * HD_SCALE}px`);  // Largest combo
+        } else if (text.includes('AMAZING')) {
+            this.text.setFontSize(`${17 * HD_SCALE}px`);  // Large combo
+        } else if (text.includes('GREAT')) {
+            this.text.setFontSize(`${17 * HD_SCALE}px`);  // Large combo
+        } else if (text.includes('GOOD')) {
+            this.text.setFontSize(`${16 * HD_SCALE}px`);  // Medium combo
+        } else if (text.includes('CHAIN')) {
+            this.text.setFontSize(`${17 * HD_SCALE}px`);  // Large combo
         } else if (text.includes('DROP')) {
-            this.text.setFontSize('19px');  // +2px
+            this.text.setFontSize(`${16 * HD_SCALE}px`);  // Medium size
         } else {
-            this.text.setFontSize('18px'); // +2px for points
+            this.text.setFontSize(`${16 * HD_SCALE}px`); // Same as medium - visible for points
         }
         
         // Animate
         this.gameObject.setScale(0);
         
-        // Pop in - slightly smaller for mobile
+        // Pop in - balanced impact
+        const isCombo = text.includes('PERFECT') || text.includes('AMAZING') || 
+                        text.includes('GREAT') || text.includes('GOOD') || 
+                        text.includes('CHAIN');
+        const targetScale = isCombo ? 1.1 : 1.0;
+        
         this.scene.tweens.add({
             targets: this.gameObject,
-            scale: { from: 0, to: 1.0 },  // Reduced from 1.2
-            duration: 200,
+            scale: { from: 0, to: targetScale },
+            duration: 250,
             ease: 'Back.easeOut',
             onComplete: () => {
-                // Settle
+                // Settle to final size
                 this.scene.tweens.add({
                     targets: this.gameObject,
-                    scale: 0.95,  // Slightly smaller final size
+                    scale: 1.0,
                     duration: 100,
                     ease: 'Sine.easeInOut'
                 });
