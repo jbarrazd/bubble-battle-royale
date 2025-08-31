@@ -8,6 +8,7 @@ import { TrajectoryPreview } from './TrajectoryPreview';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleGrid } from './BubbleGrid';
 import { ARENA_CONFIG, Z_LAYERS, BUBBLE_CONFIG } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 
 export interface IProjectile {
     bubble: Bubble;
@@ -34,7 +35,7 @@ export class ShootingSystem {
     ];
     private canShoot: boolean = true;
     private cooldownTime: number = 1000; // 1 second in milliseconds
-    private shootSpeed: number = 600; // pixels per second
+    private shootSpeed: number = 600 * HD_SCALE; // Scaled speed
     
     // Arena boundaries for bouncing
     private bounds: Phaser.Geom.Rectangle;

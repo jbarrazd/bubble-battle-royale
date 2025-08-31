@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 import { BubbleColor } from '@/types/ArenaTypes';
 
 interface ITrajectoryDot {
@@ -17,11 +18,11 @@ export class TrajectoryPreview {
     
     // Preview settings
     private readonly DOT_COUNT = 16; // One more dot for slightly longer preview
-    private readonly DOT_SIZE = 4; // Thinner dots for cleaner look
-    private readonly DOT_SPACING = 21; // Slightly increased for longer preview
-    private readonly PREVIEW_PERCENTAGE = 0.38; // Slightly increased for longer preview
-    private readonly MAX_PREVIEW_DISTANCE = 380; // Slightly increased for longer preview
-    private readonly SHOOT_SPEED = 600;
+    private readonly DOT_SIZE = 4 * HD_SCALE;
+    private readonly DOT_SPACING = 21 * HD_SCALE;
+    private readonly PREVIEW_PERCENTAGE = 0.38;
+    private readonly MAX_PREVIEW_DISTANCE = 380 * HD_SCALE;
+    private readonly SHOOT_SPEED = 600 * HD_SCALE;
     
     // Animation
     private animationTime: number = 0;
@@ -84,7 +85,7 @@ export class TrajectoryPreview {
         
         // Starting position
         let x = this.launcher.x;
-        let y = this.launcher.y - 35; // Match bubble position in launcher
+        let y = this.launcher.y - (35 * HD_SCALE); // Scaled bubble position
         
         // Calculate velocity from angle
         // The launcher's getAimDirection uses the angle directly

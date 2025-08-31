@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { HD_SCALE } from '@/config/GameConfig';
 
 export interface FloatingTextConfig {
     text: string;
@@ -25,17 +26,17 @@ export class FloatingTextSystem {
         // Pre-create text objects for performance
         for (let i = 0; i < 20; i++) {
             const text = this.scene.add.text(0, 0, '', {
-                fontSize: '20px', // Smaller for mobile
+                fontSize: `${20 * HD_SCALE}px`,
                 color: '#FFFFFF',
                 fontFamily: 'Arial Black',
                 fontStyle: 'bold',
                 stroke: '#000000',
-                strokeThickness: 3
+                strokeThickness: 3 * HD_SCALE
             });
             text.setOrigin(0.5);
             text.setVisible(false);
             text.setDepth(1200);
-            text.setShadow(1, 1, '#000000', 2, true, true);
+            text.setShadow(1 * HD_SCALE, 1 * HD_SCALE, '#000000', 2 * HD_SCALE, true, true);
             this.textPool.push(text);
         }
     }
@@ -46,9 +47,9 @@ export class FloatingTextSystem {
             x,
             y,
             color = '#FFD700',
-            fontSize = '20px', // Smaller default for mobile
+            fontSize = `${20 * HD_SCALE}px`,
             duration = 1200,
-            distance = 40, // Less movement for mobile
+            distance = 40 * HD_SCALE,
             easeType = 'Power2'
         } = config;
         
@@ -104,9 +105,9 @@ export class FloatingTextSystem {
             x,
             y,
             color: isCombo ? '#FF4500' : '#FFD700',
-            fontSize: isCombo ? '24px' : '20px', // Smaller for mobile
+            fontSize: isCombo ? `${24 * HD_SCALE}px` : `${20 * HD_SCALE}px`,
             duration: isCombo ? 1500 : 1200,
-            distance: isCombo ? 50 : 40
+            distance: isCombo ? 50 * HD_SCALE : 40 * HD_SCALE
         };
         
         this.showFloatingText(config);
@@ -160,7 +161,7 @@ export class FloatingTextSystem {
         });
         text.setOrigin(0.5);
         text.setDepth(1200);
-        text.setShadow(1, 1, '#000000', 2, true, true);
+        text.setShadow(2, 2, '#000000', 4, true, true);  // Better shadow for HD
         this.textPool.push(text);
         
         return text;

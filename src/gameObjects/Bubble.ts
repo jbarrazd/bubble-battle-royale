@@ -16,17 +16,17 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         this.color = color;
         
-        // Create main bubble sprite with gradient effect
+        // Create main bubble sprite with HD quality gradient effect
         this.bubbleSprite = scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2, color);
-        this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+        this.bubbleSprite.setStrokeStyle(4, this.getDarkerColor(color), 1);  // HD stroke thickness
         
-        // Create highlight for 3D effect
+        // Create highlight for 3D effect with better quality
         this.highlightSprite = scene.add.circle(
             -BUBBLE_CONFIG.SIZE / 6,
             -BUBBLE_CONFIG.SIZE / 6,
-            BUBBLE_CONFIG.SIZE / 5,
+            BUBBLE_CONFIG.SIZE / 4,  // HD highlight size
             0xffffff,
-            0.4
+            0.45  // Slightly more visible
         );
         
         // Create pattern for colorblind accessibility
@@ -65,7 +65,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.color = color;
         // Update visual sprite to match
         this.bubbleSprite.setFillStyle(color);
-        this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
+        this.bubbleSprite.setStrokeStyle(4, this.getDarkerColor(color), 1);  // HD stroke
         // Update pattern for colorblind accessibility
         this.addColorblindPattern(color);
     }

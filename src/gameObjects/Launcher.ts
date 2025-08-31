@@ -1,5 +1,6 @@
 import { ArenaZone, BubbleColor } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 import { Bubble } from './Bubble';
 import { PowerUpType } from '@/systems/powerups/PowerUpManager';
 
@@ -95,16 +96,16 @@ export class Launcher extends Phaser.GameObjects.Container {
     
     // === ARSENAL POSITIONING ===
     private readonly ARSENAL_POSITIONS_PLAYER = [
-        { x: 80, y: -35 },     // Right side horizontal, slot 1
-        { x: 125, y: -35 },    // Right side horizontal, slot 2
-        { x: 170, y: -35 }     // Right side horizontal, slot 3
+        { x: 80 * HD_SCALE, y: -35 * HD_SCALE },     // Scaled positions
+        { x: 125 * HD_SCALE, y: -35 * HD_SCALE },
+        { x: 170 * HD_SCALE, y: -35 * HD_SCALE }
     ];
     private readonly ARSENAL_POSITIONS_OPPONENT = [
-        { x: -70, y: -35 },    // Left side horizontal, slot 1
-        { x: -110, y: -35 },   // Left side horizontal, slot 2
-        { x: -150, y: -35 }    // Left side horizontal, slot 3
+        { x: -80 * HD_SCALE, y: -35 * HD_SCALE },    // Scaled positions
+        { x: -125 * HD_SCALE, y: -35 * HD_SCALE },
+        { x: -170 * HD_SCALE, y: -35 * HD_SCALE }
     ];
-    private readonly SLOT_SIZE = 36;
+    private readonly SLOT_SIZE = 36 * HD_SCALE;  // Scaled slot size
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
@@ -125,8 +126,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.isOpponent = (zone === ArenaZone.OPPONENT);
         
         // MOBILE-FIRST POSITIONING: Optimized for 375x667px mobile screens
-        this.BUBBLE_POSITION_Y = -35;  // Main chamber: loaded bubble ready to shoot
-        this.QUEUE_POSITION_Y = 5;     // Queue chamber: integrated next bubble preview
+        this.BUBBLE_POSITION_Y = -35 * HD_SCALE;  // Scaled position
+        this.QUEUE_POSITION_Y = 5 * HD_SCALE;     // Scaled position
         
         if (this.isOpponent) {
             this.currentAngle = 90;
@@ -221,8 +222,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.add(this.stateIndicator);
         
         // Ready indicator ring around chamber - no default color
-        this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28, 0x000000, 0);
-        this.readyIndicator.setStrokeStyle(2, 0x000000, 0);
+        this.readyIndicator = this.scene.add.circle(0, this.BUBBLE_POSITION_Y, 28 * HD_SCALE, 0x000000, 0);
+        this.readyIndicator.setStrokeStyle(2 * HD_SCALE, 0x000000, 0);
         this.readyIndicator.setVisible(false);
         this.add(this.readyIndicator);
     }
@@ -253,12 +254,12 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.platformGraphics.clear();
         
-        // Mobile-optimized launcher body - integrated design with visual connection
-        const bodyWidth = 48; // Slightly wider for better mobile presence
-        const bodyHeight = 46; // Taller to better integrate with queue
-        const bodyY = this.QUEUE_POSITION_Y; // Use proper positioning constant
+        // Create a unified launcher body
+        const bodyWidth = 56 * HD_SCALE;
+        const bodyHeight = Math.abs(this.BUBBLE_POSITION_Y - this.QUEUE_POSITION_Y) + (48 * HD_SCALE);
+        const centerY = (this.BUBBLE_POSITION_Y + this.QUEUE_POSITION_Y) / 2;
         
-        // Main launcher body with gradient
+        // Main launcher body - capsule shape
         this.platformGraphics.fillGradientStyle(
             this.currentTheme.platform.top,
             this.currentTheme.platform.top,
@@ -266,19 +267,15 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.currentTheme.platform.bottom,
             1, 1, 0.95, 0.95
         );
-        this.platformGraphics.fillRoundedRect(-bodyWidth/2, bodyY - bodyHeight/2, bodyWidth, bodyHeight, 10);
+        this.platformGraphics.fillRoundedRect(-bodyWidth/2, centerY - bodyHeight/2, bodyWidth, bodyHeight, 28 * HD_SCALE);
         
-        // Strong border for definition
-        this.platformGraphics.lineStyle(2, this.currentTheme.platform.rim, 1);
-        this.platformGraphics.strokeRoundedRect(-bodyWidth/2, bodyY - bodyHeight/2, bodyWidth, bodyHeight, 10);
+        // Outer rim
+        this.platformGraphics.lineStyle(4 * HD_SCALE, this.currentTheme.platform.rim, 0.9);
+        this.platformGraphics.strokeRoundedRect(-bodyWidth/2, centerY - bodyHeight/2, bodyWidth, bodyHeight, 28 * HD_SCALE);
         
-        // Inner magazine channel for single bubble
+        // Inner chamber track
         this.platformGraphics.fillStyle(0x0a0a0a, 0.5);
-        this.platformGraphics.fillRoundedRect(-14, bodyY - 18, 28, 36, 6);
-        
-        // Mobile-friendly magazine slot with better visibility
-        this.platformGraphics.lineStyle(1.5, this.currentTheme.platform.highlight, 0.5);
-        this.platformGraphics.strokeCircle(0, this.QUEUE_POSITION_Y, 12);
+        this.platformGraphics.fillRoundedRect(-20 * HD_SCALE, centerY - bodyHeight/2 + (8 * HD_SCALE), 40 * HD_SCALE, bodyHeight - (16 * HD_SCALE), 16 * HD_SCALE);
     }
 
     /**
@@ -289,33 +286,29 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.chamberGraphics.clear();
         
-        // Main firing chamber - top of the integrated launcher
-        this.chamberGraphics.fillGradientStyle(
-            this.currentTheme.chamber.outerTop, this.currentTheme.chamber.outerTop,
-            this.currentTheme.chamber.outerBottom, this.currentTheme.chamber.outerBottom,
-            1, 1, 0.95, 0.95
-        );
-        this.chamberGraphics.fillCircle(0, 0, 26);
+        // Chamber that sits on top of the launcher body
+        const chamberRadius = 26 * HD_SCALE;
+        const innerRadius = 18 * HD_SCALE;
         
-        // Strong outer rim
-        this.chamberGraphics.lineStyle(3, this.currentTheme.chamber.rim, 1);
-        this.chamberGraphics.strokeCircle(0, 0, 26);
+        // Outer ring
+        this.chamberGraphics.fillStyle(this.currentTheme.chamber.outerTop, 0.8);
+        this.chamberGraphics.fillCircle(0, 0, chamberRadius);
         
-        // Inner chamber where bubble sits
-        this.chamberGraphics.fillStyle(0x0a0a0a, 0.7);
-        this.chamberGraphics.fillCircle(0, 0, 20);
+        // Main rim
+        this.chamberGraphics.lineStyle(3 * HD_SCALE, this.currentTheme.chamber.rim, 1);
+        this.chamberGraphics.strokeCircle(0, 0, chamberRadius);
         
-        // Inner rim
-        this.chamberGraphics.lineStyle(2, this.currentTheme.chamber.innerRim, 0.9);
-        this.chamberGraphics.strokeCircle(0, 0, 20);
+        // Inner chamber where bubble sits - darker
+        this.chamberGraphics.fillStyle(0x0a0a0a, 0.8);
+        this.chamberGraphics.fillCircle(0, 0, innerRadius);
         
-        // Power indicator ring
-        this.chamberGraphics.lineStyle(1, this.currentTheme.chamber.highlight, 0.6);
-        this.chamberGraphics.strokeCircle(0, 0, 23);
+        // Inner rim accent
+        this.chamberGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.chamber.innerRim, 0.6);
+        this.chamberGraphics.strokeCircle(0, 0, innerRadius);
         
-        // Central highlight
+        // Highlight dot
         this.chamberGraphics.fillStyle(this.currentTheme.chamber.highlight, 0.4);
-        this.chamberGraphics.fillCircle(-5, -5, 4);
+        this.chamberGraphics.fillCircle(-6 * HD_SCALE, -6 * HD_SCALE, 3 * HD_SCALE);
     }
 
     /**
@@ -326,31 +319,25 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.queueBackground.clear();
         
-        // Mobile-optimized integrated design - seamlessly connected to launcher body
-        const bubbleRadius = 12; // Larger for mobile visibility (was 10)
-        const frameRadius = 16; // Clear frame around bubble
+        // Queue chamber that sits at bottom of launcher body
+        const queueRadius = 26 * HD_SCALE;
+        const innerRadius = 18 * HD_SCALE;
         
-        // Integrated chamber design that connects to main launcher
-        this.queueBackground.fillGradientStyle(
-            this.currentTheme.platform.top,
-            this.currentTheme.platform.top,
-            this.currentTheme.platform.bottom,
-            this.currentTheme.platform.bottom,
-            1, 1, 0.8, 0.8
-        );
-        this.queueBackground.fillCircle(0, 0, frameRadius);
+        // Outer ring
+        this.queueBackground.fillStyle(this.currentTheme.platform.top, 0.8);
+        this.queueBackground.fillCircle(0, 0, queueRadius);
         
-        // Strong border to match main launcher
-        this.queueBackground.lineStyle(2, this.currentTheme.platform.rim, 0.9);
-        this.queueBackground.strokeCircle(0, 0, frameRadius);
+        // Main rim
+        this.queueBackground.lineStyle(3 * HD_SCALE, this.currentTheme.platform.rim, 1);
+        this.queueBackground.strokeCircle(0, 0, queueRadius);
         
-        // Inner chamber for bubble
-        this.queueBackground.fillStyle(0x0a0a0a, 0.6);
-        this.queueBackground.fillCircle(0, 0, bubbleRadius + 1);
+        // Inner chamber for bubble - darker
+        this.queueBackground.fillStyle(0x0a0a0a, 0.8);
+        this.queueBackground.fillCircle(0, 0, innerRadius);
         
-        // Mobile-friendly visual indicator (no text needed)
-        this.queueBackground.lineStyle(1, this.currentTheme.platform.highlight, 0.4);
-        this.queueBackground.strokeCircle(0, 0, frameRadius - 2);
+        // Inner accent
+        this.queueBackground.lineStyle(2 * HD_SCALE, this.currentTheme.platform.highlight, 0.6);
+        this.queueBackground.strokeCircle(0, 0, innerRadius);
         
         // Render queue bubbles with enhanced mobile sizing
         this.renderEnhancedQueueBubbles();
@@ -426,24 +413,24 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.queueBackground.fillCircle(x, y, radius);
         
         // Strong border for mobile definition - thicker for better visibility
-        this.queueBackground.lineStyle(2, bubbleTheme.dark, alpha * 0.9);
+        this.queueBackground.lineStyle(4 * HD_SCALE, bubbleTheme.dark, alpha * 0.9);  // HD line width
         this.queueBackground.strokeCircle(x, y, radius);
         
         // Enhanced 3D highlight - more prominent for mobile
         this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.9);
-        this.queueBackground.fillCircle(x - 2.5, y - 2.5, radius * 0.35);
+        this.queueBackground.fillCircle(x - (2.5 * HD_SCALE), y - (2.5 * HD_SCALE), radius * 0.35);
         
         // Premium inner glow - more visible on mobile
         this.queueBackground.fillStyle(bubbleTheme.accent, alpha * 0.3);
         this.queueBackground.fillCircle(x, y, radius * 0.6);
         
         // Clear "NEXT" indicator ring - mobile-friendly
-        this.queueBackground.lineStyle(1.5, bubbleTheme.accent, alpha * 0.8);
-        this.queueBackground.strokeCircle(x, y, radius + 3);
+        this.queueBackground.lineStyle(3 * HD_SCALE, bubbleTheme.accent, alpha * 0.8);  // HD line width
+        this.queueBackground.strokeCircle(x, y, radius + (3 * HD_SCALE));
         
         // Additional mobile clarity ring
-        this.queueBackground.lineStyle(0.5, 0xffffff, alpha * 0.3);
-        this.queueBackground.strokeCircle(x, y, radius + 1);
+        this.queueBackground.lineStyle(0.5 * HD_SCALE, 0xffffff, alpha * 0.3);
+        this.queueBackground.strokeCircle(x, y, radius + (1 * HD_SCALE));
     }
 
     /**
@@ -457,17 +444,17 @@ export class Launcher extends Phaser.GameObjects.Container {
         if (this.isAiming) {
             // Aiming glow effect
             this.glowEffect.fillStyle(this.currentTheme.glow.aiming, 0.3);
-            this.glowEffect.fillCircle(0, 0, 30);
+            this.glowEffect.fillCircle(0, 0, 30 * HD_SCALE);
             
             // Pulsing outer glow
             this.glowEffect.fillStyle(this.currentTheme.glow.pulse, 0.1);
-            this.glowEffect.fillCircle(0, 0, 35);
+            this.glowEffect.fillCircle(0, 0, 35 * HD_SCALE);
         }
         
         if (this.loadedBubble) {
             // Loaded bubble ambient glow
             this.glowEffect.fillStyle(this.currentTheme.glow.loaded, 0.2);
-            this.glowEffect.fillCircle(0, 0, 25);
+            this.glowEffect.fillCircle(0, 0, 25 * HD_SCALE);
         }
     }
 
@@ -672,7 +659,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             });
             
             // Premium mobile ripple effect with better visibility
-            const ripple = this.scene.add.circle(0, 0, 12, 0xffffff, 0.4);
+            const ripple = this.scene.add.circle(0, 0, 12 * HD_SCALE, 0xffffff, 0.4);
             this.add(ripple);
             
             this.scene.tweens.add({
@@ -820,16 +807,16 @@ export class Launcher extends Phaser.GameObjects.Container {
             case 'idle':
                 // Subtle idle glow
                 this.stateIndicator.fillStyle(0x4CAF50, 0.2);
-                this.stateIndicator.fillCircle(0, 0, 35);
+                this.stateIndicator.fillCircle(0, 0, 35 * HD_SCALE);
                 break;
                 
             case 'aiming':
                 // Aiming reticle effect
-                this.stateIndicator.lineStyle(2, 0xFFC107, 0.6);
-                this.stateIndicator.strokeCircle(0, 0, 40);
+                this.stateIndicator.lineStyle(4 * HD_SCALE, 0xFFC107, 0.6);  // HD line width
+                this.stateIndicator.strokeCircle(0, 0, 40 * HD_SCALE);
                 // Add crosshair
-                this.stateIndicator.lineBetween(-10, 0, 10, 0);
-                this.stateIndicator.lineBetween(0, -10, 0, 10);
+                this.stateIndicator.lineBetween(-10 * HD_SCALE, 0, 10 * HD_SCALE, 0);
+                this.stateIndicator.lineBetween(0, -10 * HD_SCALE, 0, 10 * HD_SCALE);
                 break;
                 
             case 'charging':
@@ -837,13 +824,13 @@ export class Launcher extends Phaser.GameObjects.Container {
                 const chargeColor = this.powerLevel < 30 ? 0xFF5722 : 
                                    this.powerLevel < 70 ? 0xFF9800 : 0x4CAF50;
                 this.stateIndicator.fillStyle(chargeColor, 0.3 + (this.powerLevel / 200));
-                this.stateIndicator.fillCircle(0, 0, 30 + (this.powerLevel / 10));
+                this.stateIndicator.fillCircle(0, 0, (30 * HD_SCALE) + (this.powerLevel / 10));
                 break;
                 
             case 'ready':
                 // Ready pulse effect
                 this.stateIndicator.fillStyle(0x00BCD4, 0.4);
-                this.stateIndicator.fillCircle(0, 0, 35);
+                this.stateIndicator.fillCircle(0, 0, 35 * HD_SCALE);
                 if (this.readyIndicator) {
                     this.readyIndicator.setVisible(true);
                 }
@@ -852,7 +839,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             case 'cooldown':
                 // Cooldown dimmed effect
                 this.stateIndicator.fillStyle(0x9E9E9E, 0.2);
-                this.stateIndicator.fillCircle(0, 0, 30);
+                this.stateIndicator.fillCircle(0, 0, 30 * HD_SCALE);
                 break;
         }
     }
@@ -1261,7 +1248,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         // Create power-up icon
         const icon = this.scene.add.text(0, 0, '', {
-            fontSize: '20px',
+            fontSize: `${20 * HD_SCALE}px`,
             fontFamily: 'Arial'
         });
         icon.setOrigin(0.5);
@@ -1273,11 +1260,11 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.SLOT_SIZE/2 - 2,
             '',
             {
-                fontSize: '9px',
+                fontSize: `${9 * HD_SCALE}px`,
                 fontFamily: 'Arial Black',
                 color: '#FFFFFF',
                 stroke: '#000000',
-                strokeThickness: 2
+                strokeThickness: 2 * HD_SCALE
             }
         );
         countText.setOrigin(1, 1);
@@ -1362,20 +1349,20 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         // Background matching launcher style
         graphics.fillStyle(0x000000, 0.4);
-        graphics.fillRoundedRect(-halfSize - 2, -halfSize - 2, size + 4, size + 4, 8);
+        graphics.fillRoundedRect(-halfSize - (2 * HD_SCALE), -halfSize - (2 * HD_SCALE), size + (4 * HD_SCALE), size + (4 * HD_SCALE), 8 * HD_SCALE);
         
         // Inner background with theme color
         graphics.fillStyle(colors.secondary, 0.3);
-        graphics.fillRoundedRect(-halfSize, -halfSize, size, size, 6);
+        graphics.fillRoundedRect(-halfSize, -halfSize, size, size, 6 * HD_SCALE);
         
         // Border matching launcher theme
-        graphics.lineStyle(2, isActive ? 0xFFD700 : colors.rim, isActive ? 1 : 0.8);
-        graphics.strokeRoundedRect(-halfSize, -halfSize, size, size, 6);
+        graphics.lineStyle(4 * HD_SCALE, isActive ? 0xFFD700 : colors.rim, isActive ? 1 : 0.8);  // HD line width
+        graphics.strokeRoundedRect(-halfSize, -halfSize, size, size, 6 * HD_SCALE);
         
         // Inner glow effect
         if (isActive) {
-            graphics.lineStyle(1, 0xFFFFFF, 0.4);
-            graphics.strokeRoundedRect(-halfSize + 2, -halfSize + 2, size - 4, size - 4, 4);
+            graphics.lineStyle(2 * HD_SCALE, 0xFFFFFF, 0.4);  // HD line width
+            graphics.strokeRoundedRect(-halfSize + (2 * HD_SCALE), -halfSize + (2 * HD_SCALE), size - (4 * HD_SCALE), size - (4 * HD_SCALE), 4 * HD_SCALE);
         }
     }
     
@@ -1385,11 +1372,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Use theme color for badge
         const badgeColor = this.currentTheme?.glow?.pulse || 0xFFD700;
         
-        const bg = this.scene.add.circle(0, 0, 7, badgeColor, 0.9);
-        bg.setStrokeStyle(1, 0x000000, 1);
+        const bg = this.scene.add.circle(0, 0, 7 * HD_SCALE, badgeColor, 0.9);
+        bg.setStrokeStyle(1 * HD_SCALE, 0x000000, 1);
         
         const text = this.scene.add.text(0, 0, `${key}`, {
-            fontSize: '9px',
+            fontSize: `${9 * HD_SCALE}px`,
             fontFamily: 'Arial Black',
             color: '#000000'
         });
@@ -1533,7 +1520,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         const endY = this.BUBBLE_POSITION_Y;
         
         // Animated energy beam
-        this.energyConduits.lineStyle(3, 0xFFD700, 0.8);
+        this.energyConduits.lineStyle(6 * HD_SCALE, 0xFFD700, 0.8);  // HD line width
         this.energyConduits.lineBetween(startX, startY, endX, endY);
         
         // Create energy particles along the beam
@@ -1542,7 +1529,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             const px = startX + (endX - startX) * t;
             const py = startY + (endY - startY) * t;
             
-            const particle = this.scene.add.circle(px, py, 2, 0xFFD700);
+            const particle = this.scene.add.circle(px, py, 2 * HD_SCALE, 0xFFD700);
             this.arsenalContainer?.add(particle);
             
             this.scene.tweens.add({
@@ -1631,9 +1618,9 @@ export class Launcher extends Phaser.GameObjects.Container {
             onUpdate: (tween) => {
                 const progress = tween.getValue();
                 progressArc.clear();
-                progressArc.lineStyle(3, 0x4ECDC4, 0.8);
+                progressArc.lineStyle(6 * HD_SCALE, 0x4ECDC4, 0.8);  // HD line width
                 progressArc.beginPath();
-                progressArc.arc(0, 0, this.SLOT_SIZE/2 - 2, -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress), false);
+                progressArc.arc(0, 0, this.SLOT_SIZE/2 - (2 * HD_SCALE), -Math.PI/2, -Math.PI/2 + (Math.PI * 2 * progress), false);
                 progressArc.strokePath();
             },
             onComplete: () => {

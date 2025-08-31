@@ -90,20 +90,20 @@ export class DeviceDetection {
     }
 
     public getOptimalResolution(): { width: number; height: number } {
-        const baseWidth = 375;
-        const baseHeight = 667;
-        const maxWidth = 414;
-        const maxHeight = 896;
+        const HD_SCALE = 2;  // HD scaling factor
+        const baseWidth = 375 * HD_SCALE;  // 750 HD
+        const baseHeight = 667 * HD_SCALE;  // 1334 HD
+        const maxWidth = 414 * HD_SCALE;    // 828 HD
+        const maxHeight = 896 * HD_SCALE;   // 1792 HD
         
         const { screenWidth, screenHeight, pixelRatio } = this.capabilities;
         
         let width = Math.min(screenWidth, maxWidth);
         let height = Math.min(screenHeight, maxHeight);
         
-        if (pixelRatio > 2) {
-            width = Math.min(width, baseWidth * 1.2);
-            height = Math.min(height, baseHeight * 1.2);
-        }
+        // Use HD resolution for all devices
+        width = Math.min(width * HD_SCALE, maxWidth);
+        height = Math.min(height * HD_SCALE, maxHeight);
         
         return { width: Math.floor(width), height: Math.floor(height) };
     }

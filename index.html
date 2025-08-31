@@ -49,6 +49,9 @@
         canvas {
             display: block;
             margin: 0 auto;
+            image-rendering: auto;  /* Let browser handle HD rendering */
+            image-rendering: high-quality;  /* Fallback for better quality */
+            image-rendering: -webkit-optimize-contrast;  /* Safari/Chrome */
         }
 
         #loading {

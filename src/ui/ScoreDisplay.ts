@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { HD_SCALE } from '@/config/GameConfig';
 
 export class ScoreDisplay extends Phaser.GameObjects.Container {
     private scoreText: Phaser.GameObjects.Text;
@@ -15,9 +16,9 @@ export class ScoreDisplay extends Phaser.GameObjects.Container {
         
         // Player: bottom-left, Opponent: top-right (mirrored)
         const x = isOpponent ? 
-            screenWidth - 60 : // Opponent: right side
-            60; // Player: left side
-        const y = isOpponent ? 25 : screenHeight - 25;
+            screenWidth - (60 * HD_SCALE) : // Scaled position
+            60 * HD_SCALE; // Scaled position
+        const y = isOpponent ? 25 * HD_SCALE : screenHeight - (25 * HD_SCALE);  // Scaled positions
         
         super(scene, x, y);
         this.isOpponent = isOpponent;
@@ -25,29 +26,29 @@ export class ScoreDisplay extends Phaser.GameObjects.Container {
         // Compact background panel
         const bg = scene.add.graphics();
         bg.fillStyle(0x000000, 0.5);
-        bg.fillRoundedRect(-40, -30, 80, 60, 10);
-        bg.lineStyle(2, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
-        bg.strokeRoundedRect(-40, -30, 80, 60, 10);
+        bg.fillRoundedRect(-40 * HD_SCALE, -30 * HD_SCALE, 80 * HD_SCALE, 60 * HD_SCALE, 10 * HD_SCALE);
+        bg.lineStyle(2 * HD_SCALE, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
+        bg.strokeRoundedRect(-40 * HD_SCALE, -30 * HD_SCALE, 80 * HD_SCALE, 60 * HD_SCALE, 10 * HD_SCALE);
         
         // Score label
-        const label = scene.add.text(0, -15, this.isOpponent ? 'ENEMY' : 'SCORE', {
-            fontSize: '10px',
+        const label = scene.add.text(0, -15 * HD_SCALE, this.isOpponent ? 'ENEMY' : 'SCORE', {
+            fontSize: `${10 * HD_SCALE}px`,
             color: '#FFFFFF',
             fontFamily: 'Arial Black',
             stroke: this.isOpponent ? '#8B0000' : '#00008B',
-            strokeThickness: 2
+            strokeThickness: 2 * HD_SCALE
         }).setOrigin(0.5);
         
         // Score value
-        this.scoreText = scene.add.text(0, 5, '0', {
-            fontSize: '20px',
+        this.scoreText = scene.add.text(0, 5 * HD_SCALE, '0', {
+            fontSize: `${20 * HD_SCALE}px`,
             color: '#FFFFFF',
             fontFamily: 'Arial Black'
         }).setOrigin(0.5);
         
         // Combo text (hidden by default) - positioned outside the compact box
-        this.comboText = scene.add.text(0, 35, '', {
-            fontSize: '10px',
+        this.comboText = scene.add.text(0, 35 * HD_SCALE, '', {
+            fontSize: `${10 * HD_SCALE}px`,
             color: '#FFA500',
             fontFamily: 'Arial',
             fontStyle: 'bold'

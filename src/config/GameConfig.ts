@@ -16,7 +16,8 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
             width: resolution.width,
-            height: resolution.height
+            height: resolution.height,
+            resolution: window.devicePixelRatio || 1  // Use device pixel ratio for HD
         },
         physics: {
             default: 'arcade',
@@ -30,9 +31,9 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             forceSetTimeOut: false  // Use RAF for better performance
         },
         render: {
-            antialias: false,
+            antialias: true,  // Enable for better quality
             pixelArt: false,
-            roundPixels: false,
+            roundPixels: true,  // Better pixel alignment
             transparent: false,
             clearBeforeRender: true,
             preserveDrawingBuffer: false,
@@ -40,6 +41,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             failIfMajorPerformanceCaveat: false,
             powerPreference: 'high-performance',  // Request high-performance GPU
             batchSize: 4096,
+            resolution: window.devicePixelRatio || 1,  // High DPI support
             maxLights: 10,
             maxTextures: -1,
             mipmapFilter: 'LINEAR',
@@ -49,15 +51,19 @@ export function createGameConfig(scenes: any[]): IGameConfig {
     };
 }
 
+// HD_SCALE: Factor to scale everything for HD quality
+export const HD_SCALE = 2;
+
 export const GAME_CONSTANTS = {
-    BASE_WIDTH: 375,
-    BASE_HEIGHT: 667,
-    MAX_WIDTH: 414,
-    MAX_HEIGHT: 896,
+    BASE_WIDTH: 375 * HD_SCALE,  // 750 for HD
+    BASE_HEIGHT: 667 * HD_SCALE,  // 1334 for HD
+    MAX_WIDTH: 414 * HD_SCALE,    // 828 for HD
+    MAX_HEIGHT: 896 * HD_SCALE,   // 1792 for HD
     TARGET_FPS: 120,
+    HD_SCALE: HD_SCALE,  // Export scale factor
     
-    BUBBLE_SIZE: 32,
-    BUBBLE_SPEED: 800,
+    BUBBLE_SIZE: 32 * HD_SCALE,  // 64 for HD
+    BUBBLE_SPEED: 800 * HD_SCALE,  // 1600 for HD
     GRID_ROWS: 12,
     GRID_COLS: 11,
     
