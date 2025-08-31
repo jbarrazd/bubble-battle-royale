@@ -12,7 +12,9 @@ export class GameScene extends Scene {
     private arenaSystem!: ArenaSystem;
     private soundSystem!: PremiumBubbleSound;
     private backgroundMusic: Phaser.Sound.BaseSound | undefined;
-    // fpsText removed for clean production UI
+    private fpsText!: Phaser.GameObjects.Text;
+    private frameCount: number = 0;
+    private lastFPSUpdate: number = 0;
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
     private isPaused: boolean = false;
@@ -22,8 +24,7 @@ export class GameScene extends Scene {
     }
 
     public preload(): void {
-        // Load forest background v4
-        this.load.image('forest-background', 'assets/backgrounds/background_forestv4.png');
+        // No background image loading needed - using procedural graphics
         
         // Cannon sprite loading disabled - using procedural graphics
         // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
@@ -126,18 +127,111 @@ export class GameScene extends Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         
-        console.log(`GameScene: Creating forest background v4`);
+        console.log(`GameScene: Creating elegant procedural background`);
         
-        // Use the forest background v4 image
-        const bg = this.add.image(width / 2, height / 2, 'forest-background');
+        // Create vertical gradient background using fillGradientStyle
+        const bgGraphics = this.add.graphics();
         
-        // Scale to cover the screen
-        const scaleX = width / bg.width;
-        const scaleY = height / bg.height;
-        const scale = Math.max(scaleX, scaleY);
-        bg.setScale(scale);
+        // Create gradient from dark blue to deeper blue
+        // fillGradientStyle(topLeftColor, topRightColor, bottomLeftColor, bottomRightColor, alpha)
+        bgGraphics.fillGradientStyle(
+            0x1a1a2e, 0x1a1a2e,  // Top: base dark blue
+            0x0d2854, 0x0d2854,  // Bottom: deeper blue
+            1                     // Full opacity
+        );
+        bgGraphics.fillRect(0, 0, width, height);
+        bgGraphics.setDepth(Z_LAYERS.BACKGROUND);
         
-        bg.setDepth(Z_LAYERS.BACKGROUND);
+        // Add subtle geometric pattern overlay
+        this.createGeometricPattern(width, height);
+        
+        // Add subtle particle effect
+        this.createAmbientParticles(width, height);
+    }
+    
+    private createGeometricPattern(width: number, height: number): void {
+        const patternGraphics = this.add.graphics();
+        
+        // Create subtle hexagonal pattern
+        const hexSize = 40;
+        const hexColor = 0x1e3a5f;
+        const hexAlpha = 0.1;
+        
+        patternGraphics.lineStyle(1, hexColor, hexAlpha);
+        
+        // Draw hexagonal grid pattern
+        const hexWidth = hexSize * Math.sqrt(3);
+        const hexHeight = hexSize * 2;
+        const vertSpacing = hexHeight * 0.75;
+        
+        for (let row = 0; row < Math.ceil(height / vertSpacing) + 2; row++) {
+            for (let col = 0; col < Math.ceil(width / hexWidth) + 2; col++) {
+                const x = col * hexWidth + (row % 2) * (hexWidth / 2) - hexWidth;
+                const y = row * vertSpacing - vertSpacing;
+                
+                if (x < width + hexSize && y < height + hexSize) {
+                    this.drawHexagon(patternGraphics, x, y, hexSize);
+                }
+            }
+        }
+        
+        patternGraphics.setDepth(Z_LAYERS.BACKGROUND + 1);
+    }
+    
+    private drawHexagon(graphics: Phaser.GameObjects.Graphics, x: number, y: number, size: number): void {
+        const points: number[] = [];
+        
+        for (let i = 0; i < 6; i++) {
+            const angle = (i * 60) * Math.PI / 180;
+            points.push(x + size * Math.cos(angle));
+            points.push(y + size * Math.sin(angle));
+        }
+        
+        graphics.strokePoints(points, true);
+    }
+    
+    private createAmbientParticles(width: number, height: number): void {
+        // Create subtle floating particles for atmosphere
+        const particleCount = Math.min(25, Math.floor((width * height) / 15000));
+        
+        for (let i = 0; i < particleCount; i++) {
+            const particle = this.add.graphics();
+            const size = Phaser.Math.Between(1, 3);
+            const alpha = Phaser.Math.FloatBetween(0.1, 0.3);
+            const color = Phaser.Math.RND.pick([0x2a4d6b, 0x3e6b8a, 0x4a7ba7]);
+            
+            particle.fillStyle(color, alpha);
+            particle.fillCircle(0, 0, size);
+            
+            // Random starting position
+            const startX = Phaser.Math.Between(-50, width + 50);
+            const startY = Phaser.Math.Between(-50, height + 50);
+            particle.setPosition(startX, startY);
+            particle.setDepth(Z_LAYERS.BACKGROUND + 2);
+            
+            // Gentle floating animation
+            const duration = Phaser.Math.Between(8000, 15000);
+            const endX = startX + Phaser.Math.Between(-100, 100);
+            const endY = startY + Phaser.Math.Between(-100, 100);
+            
+            this.tweens.add({
+                targets: particle,
+                x: endX,
+                y: endY,
+                alpha: { from: alpha, to: 0 },
+                duration: duration,
+                ease: 'Sine.easeInOut',
+                repeat: -1,
+                yoyo: true,
+                onRepeat: () => {
+                    // Randomize position on repeat for variety
+                    particle.setPosition(
+                        Phaser.Math.Between(-50, width + 50),
+                        Phaser.Math.Between(-50, height + 50)
+                    );
+                }
+            });
+        }
     }
 
     private createArena(): void {
@@ -145,9 +239,9 @@ export class GameScene extends Scene {
             console.log('GameScene: Instantiating ArenaSystem...');
             this.arenaSystem = new ArenaSystem(this);
             
-            console.log('GameScene: Setting up arena with AI opponent (EASY)...');
-            // Setup single player mode with AI difficulty
-            this.arenaSystem.setupArena(true, AIDifficulty.EASY);
+            console.log('GameScene: Setting up arena with AI opponent (HARD)...');
+            // Setup single player mode with AI difficulty - Always HARD
+            this.arenaSystem.setupArena(true, AIDifficulty.HARD);
             
             // Connect sound system to game events
             this.setupSoundEvents();
@@ -202,8 +296,32 @@ export class GameScene extends Scene {
         console.log('GameScene: Sound events connected');
     }
 
+    private createFPSDisplay(): void {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        
+        // Create FPS text in bottom right corner - more visible on mobile
+        this.fpsText = this.add.text(width - 100, height - 100, 'FPS: 0', {
+            fontSize: '20px',
+            color: '#00FF00',
+            fontFamily: 'Arial, sans-serif',
+            fontStyle: 'bold',
+            backgroundColor: '#000000CC',
+            padding: { x: 10, y: 6 }
+        });
+        
+        this.fpsText.setDepth(Z_LAYERS.UI + 1000); // Make sure it's on top
+        this.fpsText.setScrollFactor(0);
+        this.fpsText.setOrigin(0.5, 0.5);
+        
+        // Initialize FPS tracking
+        this.frameCount = 0;
+        this.lastFPSUpdate = performance.now();
+    }
+
     private createUI(): void {
-        // FPS Display removed for clean production UI
+        // Add FPS counter in bottom right corner
+        this.createFPSDisplay();
         
         // Debug text removed for clean production UI
         
@@ -379,14 +497,41 @@ export class GameScene extends Scene {
     public override update(time: number, delta: number): void {
         if (this.isPaused) return;
         
-        // FPS display update removed
+        // Update FPS counter
+        this.updateFPSDisplay();
         
         // Update arena system
         this.arenaSystem?.update(time, delta);
-        
-        // Debug info update removed
     }
-
+    
+    private updateFPSDisplay(): void {
+        if (!this.fpsText) return;
+        
+        this.frameCount++;
+        const now = performance.now();
+        const elapsed = now - this.lastFPSUpdate;
+        
+        // Update FPS every 500ms for stability
+        if (elapsed >= 500) {
+            const fps = Math.round((this.frameCount * 1000) / elapsed);
+            this.fpsText.setText(`FPS: ${fps}`);
+            
+            // Color code based on performance
+            if (fps >= 100) {
+                this.fpsText.setColor('#00FF00'); // Green for excellent
+            } else if (fps >= 60) {
+                this.fpsText.setColor('#FFFF00'); // Yellow for good  
+            } else if (fps >= 30) {
+                this.fpsText.setColor('#FFA500'); // Orange for okay
+            } else {
+                this.fpsText.setColor('#FF0000'); // Red for poor
+            }
+            
+            this.frameCount = 0;
+            this.lastFPSUpdate = now;
+        }
+    }
+    
     public shutdown(): void {
         // Properly cleanup background music
         if (this.backgroundMusic) {

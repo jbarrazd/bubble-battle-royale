@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Enable GPU acceleration -->
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    
+    <!-- Allow high refresh rates -->
+    <key>UIRequiresFullScreen</key>
+    <true/>
+    
+    <!-- Disable iOS 15+ prewarming that can cause performance issues -->
+    <key>UIApplicationSupportsIndirectInputEvents</key>
+    <false/>
+    
+    <!-- Performance settings -->
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
+    
+    <!-- Enable Metal performance shaders -->
+    <key>PrefersOpenGL</key>
+    <false/>
+    
+    <!-- Disable automatic graphics switching -->
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <false/>
+</dict>
+</plist>

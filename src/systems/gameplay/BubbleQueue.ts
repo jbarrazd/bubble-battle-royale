@@ -95,7 +95,7 @@ export class BubbleQueue {
             this.queue.push(bubble);
             
             const owner = this.isOpponent ? 'AI' : 'Player';
-            console.log(`BubbleQueue (${owner}): Created bubble ID=${id} color=${randomColor} hex=0x${randomColor.toString(16)}`);
+            // console.log(`BubbleQueue (${owner}): Created bubble ID=${id} color=${randomColor} hex=0x${randomColor.toString(16)}`);
         }
     }
     
@@ -167,8 +167,8 @@ export class BubbleQueue {
         // Debug: log what color we're giving
         const owner = this.isOpponent ? 'AI' : 'Player';
         const bubbleId = bubble.getData('bubbleId');
-        console.log(`BubbleQueue (${owner}): Giving bubble ID=${bubbleId} color:`, bubble.getColor(), 'hex:', bubble.getColor().toString(16));
-        console.log(`BubbleQueue (${owner}): Next 2 colors in queue:`, this.queue.slice(0, 2).map(b => `${b.getColor()} (0x${b.getColor().toString(16)})`));
+        // console.log(`BubbleQueue (${owner}): Giving bubble ID=${bubbleId} color:`, bubble.getColor(), 'hex:', bubble.getColor().toString(16));
+        // console.log(`BubbleQueue (${owner}): Next 2 colors in queue:`, this.queue.slice(0, 2).map(b => `${b.getColor()} (0x${b.getColor().toString(16)})`));
         
         // Reset bubble properties for gameplay
         bubble.setScale(1);
@@ -196,7 +196,7 @@ export class BubbleQueue {
                 this.queue.push(newBubble);
                 
                 const owner = this.isOpponent ? 'AI' : 'Player';
-                console.log(`BubbleQueue (${owner}): Added new bubble ID=${id} color:`, randomColor, 'hex:', randomColor.toString(16));
+                // console.log(`BubbleQueue (${owner}): Added new bubble ID=${id} color:`, randomColor, 'hex:', randomColor.toString(16));
             }
         }
         

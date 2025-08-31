@@ -17,11 +17,11 @@ export class TrajectoryPreview {
     private currentBubbleColor: number = 0xFFFFFF;
     
     // Preview settings
-    private readonly DOT_COUNT = 16; // One more dot for slightly longer preview
+    private readonly DOT_COUNT = 22; // More dots for longer preview
     private readonly DOT_SIZE = 4 * HD_SCALE;
-    private readonly DOT_SPACING = 21 * HD_SCALE;
-    private readonly PREVIEW_PERCENTAGE = 0.38;
-    private readonly MAX_PREVIEW_DISTANCE = 380 * HD_SCALE;
+    private readonly DOT_SPACING = 25 * HD_SCALE; // Slightly more spacing
+    private readonly PREVIEW_PERCENTAGE = 0.45; // Show more of the trajectory
+    private readonly MAX_PREVIEW_DISTANCE = 550 * HD_SCALE; // Much longer preview
     private readonly SHOOT_SPEED = 600 * HD_SCALE;
     
     // Animation

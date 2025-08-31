@@ -99,8 +99,8 @@ export class GridAttachmentSystem {
             return null;
         }
         
-        console.log('Hit bubble at hex:', hitHexPos, 'pixel:', { x: hitBubble.x, y: hitBubble.y });
-        console.log('Projectile at:', { x: projectile.x, y: projectile.y });
+        // console.log('Hit bubble at hex:', hitHexPos, 'pixel:', { x: hitBubble.x, y: hitBubble.y });
+        // console.log('Projectile at:', { x: projectile.x, y: projectile.y });
         
         // Calculate impact angle
         const dx = projectile.x - hitBubble.x;
@@ -108,7 +108,7 @@ export class GridAttachmentSystem {
         const angle = Math.atan2(dy, dx);
         const angleDeg = (angle * 180 / Math.PI + 360) % 360;
         
-        console.log('Impact angle:', angleDeg.toFixed(1), 'degrees');
+        // console.log('Impact angle:', angleDeg.toFixed(1), 'degrees');
         
         // For offset grid, we need to consider the row offset when getting neighbors
         // In an offset grid, odd rows have different neighbor offsets
@@ -153,7 +153,7 @@ export class GridAttachmentSystem {
             
             // Skip if position is occupied
             if (this.isPositionOccupied(neighbor)) {
-                console.log('Position occupied:', neighbor);
+                // console.log('Position occupied:', neighbor);
                 continue;
             }
             
@@ -161,7 +161,7 @@ export class GridAttachmentSystem {
             let angleDiff = Math.abs(angleDeg - offset.angle);
             if (angleDiff > 180) angleDiff = 360 - angleDiff;
             
-            console.log('Checking neighbor:', neighbor, 'angle:', offset.angle, 'diff:', angleDiff.toFixed(1));
+            // console.log('Checking neighbor:', neighbor, 'angle:', offset.angle, 'diff:', angleDiff.toFixed(1));
             
             // Choose the neighbor with the closest angle match
             if (angleDiff < minAngleDiff) {
@@ -172,7 +172,7 @@ export class GridAttachmentSystem {
         
         if (bestNeighbor) {
             const pixelPos = this.bubbleGrid.hexToPixel(bestNeighbor);
-            console.log('Best attachment position - hex:', bestNeighbor, 'pixel:', pixelPos);
+            // console.log('Best attachment position - hex:', bestNeighbor, 'pixel:', pixelPos);
         } else {
             console.warn('No valid attachment position found');
         }
@@ -189,7 +189,7 @@ export class GridAttachmentSystem {
             return targetHex;
         }
         
-        console.log('Target position occupied or invalid, searching alternatives');
+        // console.log('Target position occupied or invalid, searching alternatives');
         
         // Search in expanding rings for available position
         for (let ring = 1; ring <= 3; ring++) {
@@ -215,7 +215,7 @@ export class GridAttachmentSystem {
             }
             
             if (bestPos) {
-                console.log(`Found available position at ring ${ring}:`, bestPos);
+                // console.log(`Found available position at ring ${ring}:`, bestPos);
                 return bestPos;
             }
         }
@@ -267,7 +267,7 @@ export class GridAttachmentSystem {
      */
     public attachToGrid(bubble: Bubble, hexPos: IHexPosition, onComplete?: () => void): void {
         if (this.attachmentInProgress) {
-            console.warn('Attachment already in progress, queueing bubble');
+            // console.warn('Attachment already in progress, queueing bubble');
             // Queue this attachment for later
             this.attachmentQueue.push({ bubble, hexPos, onComplete });
             return;
@@ -288,7 +288,7 @@ export class GridAttachmentSystem {
         // Get exact pixel position for this hex coordinate
         const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
         
-        console.log('Attaching bubble to hex:', hexPos, 'pixel:', pixelPos);
+        // console.log('Attaching bubble to hex:', hexPos, 'pixel:', pixelPos);
         
         // Clean up any existing bubbles that might be misaligned at this position
         this.cleanupMisalignedBubbles(hexPos, bubble);
@@ -329,18 +329,18 @@ export class GridAttachmentSystem {
         
         // Delay slightly before checking matches to ensure position is settled
         this.scene.time.delayedCall(duration + 100, async () => {
-            console.log('Attachment complete, checking for matches...');
+            // console.log('Attachment complete, checking for matches...');
             
             // Verify bubble is properly positioned
             const finalPixelPos = this.bubbleGrid.hexToPixel(hexPos);
             if (Phaser.Math.Distance.Between(bubble.x, bubble.y, finalPixelPos.x, finalPixelPos.y) > 5) {
-                console.warn('Bubble not properly positioned, correcting...');
+                // console.warn('Bubble not properly positioned, correcting...');
                 bubble.setPosition(finalPixelPos.x, finalPixelPos.y);
             }
             
             // Check for matches FIRST
             if (this.matchDetectionSystem) {
-                console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
+                // console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
                 await this.matchDetectionSystem.checkForMatches(bubble);
             } else {
                 console.warn('MatchDetectionSystem not available!');
@@ -397,7 +397,7 @@ export class GridAttachmentSystem {
             );
             
             if (distance < threshold) {
-                console.warn('Found overlapping bubble, removing it:', bubble.getGridPosition());
+                // console.warn('Found overlapping bubble, removing it:', bubble.getGridPosition());
                 toRemove.push(bubble);
             }
         });
@@ -460,7 +460,7 @@ export class GridAttachmentSystem {
         
         // If no anchors (no bubbles near objective), all bubbles are disconnected
         if (anchors.length === 0) {
-            console.log('No anchors found - all bubbles are floating!');
+            // console.log('No anchors found - all bubbles are floating!');
             this.gridBubbles.forEach(bubble => {
                 if (bubble.visible) {
                     const zone = this.getZoneForBubble(bubble);
@@ -470,14 +470,14 @@ export class GridAttachmentSystem {
             return disconnected;
         }
         
-        console.log(`Found ${anchors.length} anchor bubbles near objective`);
+        // console.log(`Found ${anchors.length} anchor bubbles near objective`);
         
         // Flood fill from each anchor to find connected bubbles
         anchors.forEach(anchor => {
             this.floodFill(anchor, visited, connected);
         });
         
-        console.log(`${connected.size} bubbles are connected to objective`);
+        // console.log(`${connected.size} bubbles are connected to objective`);
         
         // Any unvisited bubbles are disconnected and should fall
         this.gridBubbles.forEach(bubble => {
@@ -490,7 +490,7 @@ export class GridAttachmentSystem {
         // Log disconnected counts
         disconnected.forEach((bubbles, zone) => {
             if (bubbles.length > 0) {
-                console.log(`${bubbles.length} disconnected bubbles in ${zone} zone`);
+                // console.log(`${bubbles.length} disconnected bubbles in ${zone} zone`);
             }
         });
         
@@ -569,12 +569,12 @@ export class GridAttachmentSystem {
         
         // Animate each group with appropriate direction
         if (fallingUp.length > 0) {
-            console.log(`${fallingUp.length} bubbles falling UP (above center)`);
+            // console.log(`${fallingUp.length} bubbles falling UP (above center)`);
             this.animateFallingBubbles(fallingUp, 'up');
         }
         
         if (fallingDown.length > 0) {
-            console.log(`${fallingDown.length} bubbles falling DOWN (below center)`);
+            // console.log(`${fallingDown.length} bubbles falling DOWN (below center)`);
             this.animateFallingBubbles(fallingDown, 'down');
         }
     }

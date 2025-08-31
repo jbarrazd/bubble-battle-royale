@@ -25,6 +25,9 @@ import { PaintSplatterSystem } from '@/systems/visual/PaintSplatterSystem';
 export { AIDifficulty };
 
 export class ArenaSystem {
+    // Static variable to persist difficulty between restarts
+    private static currentDifficulty: AIDifficulty = AIDifficulty.HARD;
+    
     private scene: Scene;
     private config: IArenaConfig;
     private bubbleGrid: BubbleGrid;
@@ -135,8 +138,14 @@ export class ArenaSystem {
         }
     }
 
-    public setupArena(singlePlayer: boolean = true, difficulty: AIDifficulty = AIDifficulty.EASY): void {
+    public setupArena(singlePlayer: boolean = true, difficulty?: AIDifficulty): void {
         this.isSinglePlayer = singlePlayer;
+        
+        // Use persisted difficulty if not specified
+        if (difficulty !== undefined) {
+            ArenaSystem.currentDifficulty = difficulty;
+        }
+        const actualDifficulty = ArenaSystem.currentDifficulty;
         
         this.createLaunchers();
         this.createObjective();
@@ -233,9 +242,9 @@ export class ArenaSystem {
                 this.scene,
                 this.opponentLauncher
             );
-            this.aiOpponent.setDifficulty(difficulty);
+            this.aiOpponent.setDifficulty(actualDifficulty);
             
-            console.log(`ArenaSystem: AI opponent initialized with ${difficulty} difficulty`);
+            console.log(`ArenaSystem: AI opponent initialized with ${actualDifficulty} difficulty`);
             
             // Start AI after a short delay
             this.scene.time.delayedCall(2000, () => {
@@ -625,7 +634,10 @@ export class ArenaSystem {
     private changeAIDifficulty(difficulty: AIDifficulty): void {
         if (!this.aiOpponent) return;
         
-        console.log(`=== Changing AI Difficulty to ${difficulty} ===`);
+        // console.log(`=== Changing AI Difficulty to ${difficulty} ===`);
+        
+        // Update the static variable to persist difficulty
+        ArenaSystem.currentDifficulty = difficulty;
         
         // Stop current AI
         this.aiOpponent.stop();
@@ -635,7 +647,7 @@ export class ArenaSystem {
         
         // Restart AI
         this.scene.time.delayedCall(500, () => {
-            console.log(`=== Restarting AI with ${difficulty} ===`);
+            // console.log(`=== Restarting AI with ${difficulty} ===`);
             this.aiOpponent?.start();
         });
         
@@ -771,8 +783,8 @@ export class ArenaSystem {
             const shooter = bubble.getShooter();
             const playerWins = shooter === 'player';
             
-            console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
-            console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
+            // console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
+            // console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
             
             // Mark game as over immediately to prevent multiple triggers
             this.gameOver = true;
@@ -808,8 +820,8 @@ export class ArenaSystem {
         
         // Check if any bubble crossed player's danger line (player loses)
         if (bubble.y > playerDangerY) {
-            console.log('💀 Bubble crossed PLAYER danger line! Player loses!');
-            console.log(`Bubble Y: ${bubble.y}, Danger Line: ${playerDangerY}`);
+            // console.log('💀 Bubble crossed PLAYER danger line! Player loses!');
+            // console.log(`Bubble Y: ${bubble.y}, Danger Line: ${playerDangerY}`);
             this.triggerGameOver(false); // Player loses
             return;
         }

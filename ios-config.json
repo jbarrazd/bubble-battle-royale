@@ -1,0 +1,43 @@
+{
+  "NSAppTransportSecurity": {
+    "NSAllowsArbitraryLoads": true
+  },
+  "UIRequiresFullScreen": true,
+  "UIStatusBarHidden": true,
+  "UIViewControllerBasedStatusBarAppearance": false,
+  "UISupportedInterfaceOrientations": [
+    "UIInterfaceOrientationPortrait"
+  ],
+  "UISupportedInterfaceOrientations~ipad": [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationPortraitUpsideDown"
+  ],
+  "UILaunchStoryboardName": "LaunchScreen",
+  "CADisableMinimumFrameDurationOnPhone": true,
+  "UISupportsDocumentBrowser": false,
+  "ITSAppUsesNonExemptEncryption": false,
+  "NSMotionUsageDescription": "This app uses motion for enhanced gameplay experience.",
+  "NSCameraUsageDescription": "This app does not use the camera.",
+  "NSPhotoLibraryUsageDescription": "This app does not access the photo library.",
+  "NSMicrophoneUsageDescription": "This app does not use the microphone.",
+  "CFBundleAllowMixedLocalizations": true,
+  "UIRequiredDeviceCapabilities": [
+    "armv7",
+    "gamekit"
+  ],
+  "UIBackgroundModes": [
+    "audio",
+    "processing"
+  ],
+  "CADisableMinimumFrameDurationOnPhone": true,
+  "UIRequiresFullScreen": true,
+  "UIStatusBarHidden": true,
+  "NSHighResolutionCapable": true,
+  "NSSupportsAutomaticGraphicsSwitching": false,
+  "NSPrefersDisplaySafeAreaCompatibilityMode": false,
+  "CFBundleDisplayName": "Bubble Clash",
+  "NSRequiresAquaSystemAppearance": false,
+  "UIApplicationSupportsIndirectInputEvents": false,
+  "UIRequiresPersistentWiFi": false,
+  "UIPrerenderedIcon": true
+}

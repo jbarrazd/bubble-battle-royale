@@ -182,7 +182,7 @@ export class ShootingSystem {
             this.nextBubbleColors.push(randomColor);
         }
         
-        console.log('ShootingSystem: Generated next bubble colors:', this.nextBubbleColors);
+        // console.log('ShootingSystem: Generated next bubble colors:', this.nextBubbleColors);
     }
     
     /**
@@ -192,7 +192,7 @@ export class ShootingSystem {
         // Get current color (first in queue)
         const currentColor = this.nextBubbleColors[0] || BubbleColor.BLUE;
         
-        console.log('ShootingSystem: Loading bubble color:', currentColor);
+        // console.log('ShootingSystem: Loading bubble color:', currentColor);
         
         // Load bubble into launcher
         this.playerLauncher.loadBubble(currentColor);
@@ -208,7 +208,7 @@ export class ShootingSystem {
         // Update launcher queue rings with new colors
         this.playerLauncher.updateQueueColors(this.nextBubbleColors);
         
-        console.log('ShootingSystem: Updated queue colors:', this.nextBubbleColors);
+        // console.log('ShootingSystem: Updated queue colors:', this.nextBubbleColors);
     }
     
     private onShoot(): void {
@@ -283,7 +283,7 @@ export class ShootingSystem {
     private onAIShoot = (data: any): void => {
         if (!this.opponentLauncher) return;
         
-        console.log('ShootingSystem: AI shooting angle=' + data.angle + ' color=0x' + data.color.toString(16));
+        // console.log('ShootingSystem: AI shooting angle=' + data.angle + ' color=0x' + data.color.toString(16));
         
         // Use the bubble that AI already has loaded (if provided)
         let aiBubble: Bubble;
@@ -294,7 +294,7 @@ export class ShootingSystem {
             aiBubble.setDepth(Z_LAYERS.BUBBLES_FRONT);
         } else {
             // Fallback: create new bubble (shouldn't happen)
-            console.warn('ShootingSystem: AI bubble not provided, creating new one');
+            // console.warn('ShootingSystem: AI bubble not provided, creating new one');
             aiBubble = new Bubble(
                 this.scene,
                 this.opponentLauncher.x,
@@ -315,7 +315,7 @@ export class ShootingSystem {
             Math.sin(radians) * this.shootSpeed
         );
         
-        console.log(`ShootingSystem: Velocity x=${velocity.x.toFixed(1)} y=${velocity.y.toFixed(1)}`);
+        // console.log(`ShootingSystem: Velocity x=${velocity.x.toFixed(1)} y=${velocity.y.toFixed(1)}`);
         
         // Create projectile
         const projectile: IProjectile = {

@@ -12,7 +12,7 @@ interface ArsenalSlot {
     countText: Phaser.GameObjects.Text;
     energyConduit?: Phaser.GameObjects.Graphics;
     position: { x: number, y: number };
-    powerUpType: PowerUpType | undefined;
+    powerUpType?: PowerUpType;
     count: number;
     isActive: boolean;
     cooldownOverlay?: Phaser.GameObjects.Graphics;
@@ -53,24 +53,24 @@ export class Launcher extends Phaser.GameObjects.Container {
     private effectsLayer?: Phaser.GameObjects.Container;
     
     // === VISUAL ELEMENTS ===
-    private platformGraphics: Phaser.GameObjects.Graphics | undefined;
-    private chamberGraphics: Phaser.GameObjects.Graphics | undefined;
-    private queueBackground: Phaser.GameObjects.Graphics | undefined;
+    private platformGraphics?: Phaser.GameObjects.Graphics;
+    private chamberGraphics?: Phaser.GameObjects.Graphics;
+    private queueBackground?: Phaser.GameObjects.Graphics;
     private queueLabel?: Phaser.GameObjects.Text;
-    private glowEffect: Phaser.GameObjects.Graphics | undefined;
+    private glowEffect?: Phaser.GameObjects.Graphics;
     
     // === ENHANCED UX ELEMENTS ===
-    private stateIndicator: Phaser.GameObjects.Graphics | undefined;
-    private readyIndicator: Phaser.GameObjects.Arc | undefined;
+    private stateIndicator?: Phaser.GameObjects.Graphics;
+    private readyIndicator?: Phaser.GameObjects.Arc;
     private queueContainer?: Phaser.GameObjects.Container;
-    private nextBubbleFrame: Phaser.GameObjects.Graphics | undefined;
-    private nextBubbleGraphics: Phaser.GameObjects.Graphics | undefined;
-    private secondBubbleGraphics: Phaser.GameObjects.Graphics | undefined;
+    private nextBubbleFrame?: Phaser.GameObjects.Graphics;
+    private nextBubbleGraphics?: Phaser.GameObjects.Graphics;
+    private secondBubbleGraphics?: Phaser.GameObjects.Graphics;
     
     // === ARSENAL INTEGRATION ===
     private arsenalSlots: ArsenalSlot[] = [];
     private weaponRing?: Phaser.GameObjects.Container;
-    private energyConduits: Phaser.GameObjects.Graphics | undefined;
+    private energyConduits?: Phaser.GameObjects.Graphics;
     private activePowerUp?: PowerUpType;
     private arsenalContainer?: Phaser.GameObjects.Container;
     
@@ -82,7 +82,7 @@ export class Launcher extends Phaser.GameObjects.Container {
     // === STATE MANAGEMENT ===
     private zone: ArenaZone;
     private currentAngle: number = 0;
-    private loadedBubble: Bubble | undefined;
+    private loadedBubble?: Bubble;
     private nextBubbleColors: BubbleColor[] = [];
     private currentTheme: any;
     private isAiming: boolean = false;
@@ -429,11 +429,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         if (!this.queueBackground || !this.queueContainer) return;
         
         // Render bubbles side by side horizontally
-        if (this.nextBubbleColors.length > 0 && this.nextBubbleColors[0]) {
+        if (this.nextBubbleColors.length > 0) {
             this.createNextBubble(this.nextBubbleColors[0]);
         }
         
-        if (this.nextBubbleColors.length > 1 && this.nextBubbleColors[1]) {
+        if (this.nextBubbleColors.length > 1) {
             this.createSecondBubble(this.nextBubbleColors[1]);
         }
     }
@@ -927,9 +927,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             }
             
             // Stop pulsing
-            if (this.bubbleChamber) {
-                this.scene.tweens.killTweensOf(this.bubbleChamber);
-            }
+            this.scene.tweens.killTweensOf(this.bubbleChamber);
             
             this.scene.tweens.add({
                 targets: this.bubbleChamber,
@@ -961,11 +959,10 @@ export class Launcher extends Phaser.GameObjects.Container {
     /**
      * NEW: Set launcher state with visual updates
      */
-    public override setState(state: 'idle' | 'aiming' | 'charging' | 'ready' | 'cooldown'): this {
+    public setState(state: 'idle' | 'aiming' | 'charging' | 'ready' | 'cooldown'): void {
         this.launcherState = state;
         this.updateStateIndicator();
         this.renderStateIndicators();
-        return this;
     }
 
     /**
@@ -1157,7 +1154,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Mobile visual hierarchy: emphasize the loaded bubble is READY TO SHOOT
         this.scene.tweens.add({
             targets: this.loadedBubble,
-            alpha: { from: 0.7, to: 1 },
+            alpha: { from: 0.7, to: 1, to: 0.9, to: 1 },
             duration: 600,
             ease: 'Power2.InOut',
             delay: 200
@@ -1177,10 +1174,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Mobile-friendly chamber response with clearer feedback
         this.scene.tweens.add({
             targets: this.bubbleChamber,
-            scaleX: { from: 1, to: 1.12 },
-            scaleY: { from: 1, to: 1.12 },
-            duration: 300,
-            yoyo: true,
+            scaleX: { from: 1, to: 1.12, to: 1 },
+            scaleY: { from: 1, to: 1.12, to: 1 },
+            duration: 600,
             ease: 'Back.Out'
         });
         
@@ -1192,7 +1188,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.scene.time.delayedCall(500, () => {
                 this.scene.tweens.add({
                     targets: this.bubbleChamber,
-                    alpha: { from: 1, to: 0.95 },
+                    alpha: { from: 1, to: 0.95, to: 1 },
                     duration: 300,
                     ease: 'Sine.InOut'
                 });
@@ -1222,7 +1218,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         if (!this.queueContainer) return;
         
-        // console.log('Launcher: Updating queue colors:', colors);
+        console.log('Launcher: Updating queue colors:', colors);
         
         // Clear existing bubbles with animation
         if (this.nextBubbleGraphics) {
@@ -1253,14 +1249,14 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         // Create new bubbles with correct colors after a brief delay
         this.scene.time.delayedCall(200, () => {
-            if (colors.length > 0 && colors[0]) {
-                // console.log('Creating next bubble with color:', colors[0]);
+            if (colors.length > 0) {
+                console.log('Creating next bubble with color:', colors[0]);
                 this.createNextBubble(colors[0]);
             }
-            if (colors.length > 1 && colors[1]) {
+            if (colors.length > 1) {
                 this.scene.time.delayedCall(150, () => {
-                    // console.log('Creating second bubble with color:', colors[1]!);
-                    this.createSecondBubble(colors[1]!);
+                    console.log('Creating second bubble with color:', colors[1]);
+                    this.createSecondBubble(colors[1]);
                 });
             }
         });
@@ -1275,10 +1271,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         if (this.bubbleChamber) {
             this.scene.tweens.add({
                 targets: this.bubbleChamber,
-                scaleX: 1.15 * recoilIntensity,
-                scaleY: 1.15 * recoilIntensity,
-                duration: 200 + this.powerLevel,
-                yoyo: true,
+                scaleX: { from: 1, to: 1.15 * recoilIntensity, to: 0.95, to: 1 },
+                scaleY: { from: 1, to: 1.15 * recoilIntensity, to: 0.95, to: 1 },
+                duration: 400 + (this.powerLevel * 2),
                 ease: 'Power3.Out'
             });
         }
@@ -1288,9 +1283,8 @@ export class Launcher extends Phaser.GameObjects.Container {
             const shakeIntensity = 2 * recoilIntensity;
             this.scene.tweens.add({
                 targets: this.launcherPlatform,
-                x: -shakeIntensity,
-                duration: 175,
-                yoyo: true,
+                x: { from: 0, to: -shakeIntensity, to: shakeIntensity, to: 0 },
+                duration: 350,
                 ease: 'Power2.Out'
             });
         }
@@ -1330,8 +1324,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.scene.tweens.add({
             targets: flash,
-            scale: { from: 0.5, to: 2.2 * effectIntensity },
-            alpha: { from: 0.9, to: 0 },
+            scale: { from: 0.5, to: 2.2 * effectIntensity, to: 0 },
+            alpha: { from: 0.9, to: 0.4, to: 0 },
             duration: 280 + (this.powerLevel * 2),
             ease: 'Power2.Out',
             onComplete: () => flash.destroy()
@@ -1351,8 +1345,8 @@ export class Launcher extends Phaser.GameObjects.Container {
             
             this.scene.tweens.add({
                 targets: sparkle,
-                scale: { from: 1.1, to: 0 },
-                alpha: { from: 0.9, to: 0 },
+                scale: { from: 1.1, to: 0.4, to: 0 },
+                alpha: { from: 0.9, to: 0.5, to: 0 },
                 x: sparkX + Math.cos(angle) * 28 * effectIntensity,
                 y: sparkY + Math.sin(angle) * 28 * effectIntensity,
                 duration: 450 + (this.powerLevel * 3),
@@ -1427,9 +1421,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         positions.forEach((pos, index) => {
             const slot = this.createArsenalSlot(pos, index);
             this.arsenalSlots.push(slot);
-            if (this.arsenalContainer) {
-                this.arsenalContainer.add(slot.container);
-            }
+            this.arsenalContainer.add(slot.container);
         });
         
         // Position arsenal at same depth as launcher components
@@ -1528,7 +1520,6 @@ export class Launcher extends Phaser.GameObjects.Container {
             icon,
             countText,
             position,
-            powerUpType: undefined,
             count: 0,
             isActive: false
         };
@@ -1837,7 +1828,7 @@ export class Launcher extends Phaser.GameObjects.Container {
     /**
      * Cleanup method
      */
-    public override destroy(): void {
+    public destroy(): void {
         // Clean up arsenal
         this.arsenalSlots.forEach(slot => {
             this.scene.tweens.killTweensOf(slot.container);

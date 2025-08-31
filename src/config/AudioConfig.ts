@@ -27,6 +27,8 @@ export interface MatchSound {
 
 export type MatchSize = 3 | 4 | 5 | 6 | 7;
 
+export type HapticIntensity = 'light' | 'medium' | 'strong';
+
 export type SoundEventType = 
     | 'bubble-shoot'
     | 'bubble-attach'
@@ -185,13 +187,38 @@ export const AUDIO_CONFIG = {
         }
     },
 
-    // Haptic patterns (unchanged)
-    HAPTIC_PATTERNS: {
-        LIGHT: 8,
-        MEDIUM: 20,
-        STRONG: 40,
-        VICTORY: [50, 30, 50, 30, 100],
-        DEFEAT: [100, 50, 50, 50, 25]
+    // Haptic patterns configuration
+    HAPTICS: {
+        LIGHT: {
+            pattern: 8,
+            description: 'Light tap feedback'
+        },
+        MEDIUM: {
+            pattern: 20,
+            description: 'Medium pulse feedback'
+        },
+        STRONG: {
+            pattern: 40,
+            description: 'Strong vibration feedback'
+        },
+        DOUBLE_TAP: {
+            pattern: [10, 20, 10],
+            description: 'Double tap pattern'
+        },
+        VICTORY: {
+            pattern: [50, 30, 50, 30, 100],
+            description: 'Victory celebration pattern'
+        },
+        DEFEAT: {
+            pattern: [100, 50, 50, 50, 25],
+            description: 'Defeat pattern'
+        },
+        POWER_UP: {
+            pattern: [20, 10, 30, 10, 40],
+            description: 'Power-up activation pattern'
+        },
+        COMBO_BASE: 15,
+        COMBO_MULTIPLIER: 5
     },
 
     // Audio limits

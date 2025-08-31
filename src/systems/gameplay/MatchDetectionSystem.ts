@@ -39,7 +39,8 @@ export class MatchDetectionSystem {
         
         const color = attachedBubble.getColor();
         if (color === undefined || color === null) {
-            console.warn('Bubble has no color, skipping match detection');
+            // Only log critical errors
+            console.error('Bubble has no color, skipping match detection');
             return;
         }
         
@@ -248,7 +249,7 @@ export class MatchDetectionSystem {
         // First, check for and handle Mystery Bubbles BEFORE removal
         bubbles.forEach(bubble => {
             if (bubble instanceof MysteryBubble) {
-                console.log('Found MysteryBubble in matches, collecting power-up for', isPlayerShot ? 'player' : 'opponent');
+                // console.log('Found MysteryBubble in matches, collecting power-up for', isPlayerShot ? 'player' : 'opponent');
                 (bubble as MysteryBubble).collectPowerUp(isPlayerShot);
             }
         });

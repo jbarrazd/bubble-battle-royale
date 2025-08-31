@@ -168,7 +168,7 @@ export class SoundSystem {
     // === GAME EVENT HANDLERS ===
 
     private onBubbleShoot(): void {
-        console.log('SoundSystem: bubble-shoot event received');
+        // console.log('SoundSystem: bubble-shoot event received');
         this.playEffect('bubble-shoot');
         this.hapticManager.bubbleShoot();
         this.trackEvent('bubble-shoot');
@@ -207,6 +207,21 @@ export class SoundSystem {
     private onMatchCompleted(data: { count: number; combo: number }): void {
         this.currentCombo = data.combo;
         
+        // Haptic feedback for combos
+        if (data.count >= 7) {
+            // PERFECT combo - strong pattern
+            this.hapticManager.customPattern([100, 50, 100, 50, 150], 'Perfect Combo!');
+        } else if (data.count >= 6) {
+            // AMAZING combo - strong haptic
+            this.hapticManager.matchFound(8);
+        } else if (data.count >= 5) {
+            // GREAT combo - medium haptic
+            this.hapticManager.matchFound(5);
+        } else if (data.count >= 4) {
+            // GOOD combo - light haptic
+            this.hapticManager.matchFound(3);
+        }
+        
         if (this.settings.muted) return;
         
         // Play different combo sounds based on match size
@@ -230,6 +245,16 @@ export class SoundSystem {
     }
     
     private onBubblesPopped(data: { color: number; count: number }): void {
+        // Haptic feedback for bubble pops
+        if (data.count >= 3) {
+            // Light haptic for small pops
+            this.hapticManager.bubbleAttach();
+        }
+        if (data.count >= 5) {
+            // Stronger haptic for bigger explosions
+            this.hapticManager.matchFound(data.count);
+        }
+        
         if (this.settings.muted) return;
         
         // Ensure audio context is running
@@ -355,7 +380,7 @@ export class SoundSystem {
      * Play a specific sound effect
      */
     public playEffect(type: SoundEventType, data?: any): void {
-        console.log(`SoundSystem: playEffect called - type: ${type}, muted: ${this.settings.muted}`);
+        // console.log(`SoundSystem: playEffect called - type: ${type}, muted: ${this.settings.muted}`);
         if (this.settings.muted) return;
         
         switch (type) {

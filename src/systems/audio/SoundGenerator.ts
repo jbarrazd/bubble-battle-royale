@@ -41,12 +41,12 @@ export class SoundGenerator {
     constructor() {
         // Initialize Web Audio Context with fallback
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        console.log('SoundGenerator: Audio context created, state:', this.audioContext.state);
+        // console.log('SoundGenerator: Audio context created, state:', this.audioContext.state);
         
         // Create master gain node
         this.masterGainNode = this.audioContext.createGain();
         this.masterGainNode.gain.value = this.volume;
-        console.log('SoundGenerator: Master gain set to:', this.volume);
+        // console.log('SoundGenerator: Master gain set to:', this.volume);
         
         // Create compressor for dynamic range control
         this.compressorNode = this.audioContext.createDynamicsCompressor();
@@ -95,9 +95,9 @@ export class SoundGenerator {
      * Generate bubble shooting sound with pitch variation
      */
     public generateBubbleShoot(pitchVariation: number = 0): string {
-        console.log('SoundGenerator: generateBubbleShoot called');
-        console.log('Audio context state:', this.audioContext.state);
-        console.log('Muted:', this.muted);
+        // console.log('SoundGenerator: generateBubbleShoot called');
+        // console.log('Audio context state:', this.audioContext.state);
+        // console.log('Muted:', this.muted);
         
         const config = AUDIO_CONFIG.EFFECTS.BUBBLE_SHOOT;
         // Softer pitch variation for more pleasant sound
@@ -111,7 +111,7 @@ export class SoundGenerator {
             volume: config.volume
         });
         
-        console.log('Created voice:', voiceId);
+        // console.log('Created voice:', voiceId);
         return voiceId;
     }
 

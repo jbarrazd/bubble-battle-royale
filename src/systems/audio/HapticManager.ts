@@ -4,6 +4,8 @@
  */
 
 import { AUDIO_CONFIG, HapticIntensity } from '@/config/AudioConfig';
+import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
+import { Capacitor } from '@capacitor/core';
 
 export interface IHapticPattern {
     pattern: number | number[];
@@ -11,9 +13,8 @@ export interface IHapticPattern {
 }
 
 export class HapticManager {
-    private canVibrate: boolean;
+    private canVibrate: boolean = false;
     private enabled: boolean = true;
-    private vibrateFunction?: (pattern: number | number[]) => boolean;
     
     // Pattern cache for performance
     private patternCache: Map<string, number | number[]> = new Map();
@@ -27,7 +28,9 @@ export class HapticManager {
         this.detectHapticCapabilities();
         this.initializePatternCache();
         
-        console.log(`HapticManager: Initialized with vibration support: ${this.canVibrate}`);
+        // Check if running on native platform
+        const isNative = Capacitor.isNativePlatform();
+        console.log(`HapticManager: Initialized - Native: ${isNative}, Vibration API: ${this.canVibrate}`);
     }
 
     /**
@@ -38,7 +41,6 @@ export class HapticManager {
         this.canVibrate = 'vibrate' in navigator;
         
         if (this.canVibrate) {
-            this.vibrateFunction = navigator.vibrate.bind(navigator);
             
             // Test if vibration actually works (some browsers lie)
             try {
@@ -78,7 +80,18 @@ export class HapticManager {
      * Basic vibration with pattern
      */
     public vibrate(pattern: number | number[]): boolean {
-        if (!this.canVibrate || !this.enabled || !this.shouldAllowHaptic()) {
+        if (!this.enabled || !this.shouldAllowHaptic()) {
+            return false;
+        }
+
+        // Use Capacitor Haptics for native platforms
+        if (Capacitor.isNativePlatform()) {
+            this.vibrateNative(pattern);
+            return true;
+        }
+        
+        // Fallback to Web Vibration API
+        if (!this.canVibrate) {
             return false;
         }
 
@@ -92,6 +105,31 @@ export class HapticManager {
         } catch (error) {
             console.warn('HapticManager: Vibration failed:', error);
             return false;
+        }
+    }
+    
+    /**
+     * Native haptic feedback using Capacitor
+     */
+    private async vibrateNative(pattern: number | number[]): Promise<void> {
+        try {
+            const duration = Array.isArray(pattern) ? pattern[0] : pattern;
+            
+            // Map duration to impact style
+            let style: ImpactStyle;
+            if (duration <= 10) {
+                style = ImpactStyle.Light;
+            } else if (duration <= 30) {
+                style = ImpactStyle.Medium;
+            } else {
+                style = ImpactStyle.Heavy;
+            }
+            
+            await Haptics.impact({ style });
+            this.hapticCount++;
+            this.lastHapticTime = Date.now();
+        } catch (error) {
+            console.warn('HapticManager: Native haptic failed:', error);
         }
     }
 
@@ -108,7 +146,18 @@ export class HapticManager {
     /**
      * Bubble shoot haptic - Light tap
      */
-    public bubbleShoot(): boolean {
+    public async bubbleShoot(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await Haptics.impact({ style: ImpactStyle.Light });
+                this.hapticCount++;
+                this.lastHapticTime = Date.now();
+                return true;
+            } catch (error) {
+                console.warn('Bubble shoot haptic failed:', error);
+                return false;
+            }
+        }
         const pattern = this.patternCache.get('light');
         return pattern ? this.vibrate(pattern) : false;
     }
@@ -116,7 +165,18 @@ export class HapticManager {
     /**
      * Bubble attach haptic - Medium pulse
      */
-    public bubbleAttach(): boolean {
+    public async bubbleAttach(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await Haptics.impact({ style: ImpactStyle.Medium });
+                this.hapticCount++;
+                this.lastHapticTime = Date.now();
+                return true;
+            } catch (error) {
+                console.warn('Bubble attach haptic failed:', error);
+                return false;
+            }
+        }
         const pattern = this.patternCache.get('medium');
         return pattern ? this.vibrate(pattern) : false;
     }
@@ -132,7 +192,21 @@ export class HapticManager {
     /**
      * Match found haptic - Scales with combo size
      */
-    public matchFound(comboSize: number): boolean {
+    public async matchFound(comboSize: number): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const style = comboSize >= 5 ? ImpactStyle.Heavy : 
+                             comboSize >= 4 ? ImpactStyle.Medium : 
+                             ImpactStyle.Light;
+                await Haptics.impact({ style });
+                this.hapticCount++;
+                this.lastHapticTime = Date.now();
+                return true;
+            } catch (error) {
+                console.warn('Match found haptic failed:', error);
+                return false;
+            }
+        }
         const baseIntensity = AUDIO_CONFIG.HAPTICS.COMBO_BASE;
         const multiplier = AUDIO_CONFIG.HAPTICS.COMBO_MULTIPLIER;
         const intensity = Math.min(baseIntensity + (comboSize * multiplier), 100);
@@ -151,7 +225,18 @@ export class HapticManager {
     /**
      * Victory haptic - Ascending pulse sequence
      */
-    public victory(): boolean {
+    public async victory(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await Haptics.notification({ type: NotificationType.Success });
+                this.hapticCount++;
+                this.lastHapticTime = Date.now();
+                return true;
+            } catch (error) {
+                console.warn('Victory haptic failed:', error);
+                return false;
+            }
+        }
         const pattern = this.patternCache.get('victory');
         return pattern ? this.vibrate(pattern) : false;
     }
@@ -159,7 +244,18 @@ export class HapticManager {
     /**
      * Defeat haptic - Descending pulse sequence
      */
-    public defeat(): boolean {
+    public async defeat(): Promise<boolean> {
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await Haptics.notification({ type: NotificationType.Error });
+                this.hapticCount++;
+                this.lastHapticTime = Date.now();
+                return true;
+            } catch (error) {
+                console.warn('Defeat haptic failed:', error);
+                return false;
+            }
+        }
         const pattern = this.patternCache.get('defeat');
         return pattern ? this.vibrate(pattern) : false;
     }
@@ -240,7 +336,7 @@ export class HapticManager {
      */
     public customPattern(pattern: number | number[], description?: string): boolean {
         if (description) {
-            console.log(`HapticManager: Custom haptic - ${description}`);
+            // console.log(`HapticManager: Custom haptic - ${description}`);
         }
         return this.vibrate(pattern);
     }

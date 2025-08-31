@@ -58,12 +58,12 @@ export class TurnManager {
         
         // Listen for attachment without matches
         this.scene.events.on('bubble-attached', () => {
-            console.log('TurnManager: Bubble attached event received, state:', this.turnState);
+            // console.log('TurnManager: Bubble attached event received, state:', this.turnState);
             if (this.turnState === TurnState.SHOOTING) {
                 // Small delay to allow for match detection
                 this.scene.time.delayedCall(500, () => {
                     if (this.turnState === TurnState.SHOOTING) {
-                        console.log('TurnManager: No matches after attachment, completing turn');
+                        // console.log('TurnManager: No matches after attachment, completing turn');
                         this.handleTurnComplete();
                     }
                 });
@@ -72,7 +72,7 @@ export class TurnManager {
     }
     
     public startGame(): void {
-        console.log('TurnManager: Starting game');
+        // console.log('TurnManager: Starting game');
         this.turnCount = 0;
         this.currentTurn = this.config.startingTurn!;
         this.turnState = TurnState.WAITING;
@@ -87,7 +87,7 @@ export class TurnManager {
         this.turnCount++;
         this.turnState = TurnState.AIMING;
         
-        console.log(`TurnManager: Starting turn ${this.turnCount} for ${this.currentTurn}`);
+        // console.log(`TurnManager: Starting turn ${this.turnCount} for ${this.currentTurn}`);
         
         // Emit turn start event
         this.events.emit('turn-started', {
@@ -106,12 +106,12 @@ export class TurnManager {
     
     private handleTurnComplete(): void {
         if (this.isProcessing) {
-            console.log('TurnManager: Already processing turn complete, skipping');
+            // console.log('TurnManager: Already processing turn complete, skipping');
             return;
         }
         this.isProcessing = true;
         
-        console.log(`TurnManager: Turn ${this.turnCount} complete for ${this.currentTurn}`);
+        // console.log(`TurnManager: Turn ${this.turnCount} complete for ${this.currentTurn}`);
         
         this.turnState = TurnState.WAITING;
         

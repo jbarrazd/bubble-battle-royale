@@ -6,8 +6,14 @@ export function createGameConfig(scenes: any[]): IGameConfig {
     const device = DeviceDetection.getInstance();
     const resolution = device.getOptimalResolution();
     
+    // Detect if running on iOS/Capacitor
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isCapacitor = (window as any).Capacitor !== undefined;
+    const isMobile = device.isMobile || isIOS || isCapacitor;
+    
     return {
-        type: Phaser.WEBGL,  // Force WebGL instead of AUTO
+        // Force WebGL for consistent rendering across all platforms
+        type: Phaser.WEBGL,
         parent: 'game',
         backgroundColor: '#1a1a2e',
         width: resolution.width,
@@ -16,38 +22,68 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
             width: resolution.width,
-            height: resolution.height,
-            resolution: window.devicePixelRatio || 1  // Use device pixel ratio for HD
+            height: resolution.height
         },
         physics: {
             default: 'arcade',
             arcade: {
                 gravity: { x: 0, y: 0 },
-                debug: false
+                debug: false,
+                // iOS-optimized physics with interpolation
+                fps: 60,
+                timeScale: 1,
+                overlapBias: 4,
+                tileBias: 16,
+                forceX: false,
+                isPaused: false,
+                customUpdate: false
             }
         },
         fps: {
-            target: 120,  // -1 means unlimited FPS
-            forceSetTimeOut: false  // Use RAF for better performance
+            target: 120,  // 120 FPS for all platforms - it's a simple game
+            min: 60,
+            forceSetTimeOut: false,  // Use RAF for better performance
+            smoothStep: false,  // Disable for higher FPS
+            deltaHistory: 10,  // Smooth out delta time
+            panicMax: 120  // Prevent frame skipping
         },
         render: {
-            antialias: true,  // Enable for better quality
+            antialias: true,  // Enable for better quality at 120 FPS
             pixelArt: false,
-            roundPixels: true,  // Better pixel alignment
+            roundPixels: false,  // Let iOS handle pixel alignment
             transparent: false,
             clearBeforeRender: true,
             preserveDrawingBuffer: false,
             premultipliedAlpha: true,
             failIfMajorPerformanceCaveat: false,
             powerPreference: 'high-performance',  // Request high-performance GPU
-            batchSize: 4096,
-            resolution: window.devicePixelRatio || 1,  // High DPI support
+            batchSize: isMobile ? 2048 : 4096,  // Optimize batch size for mobile
+            resolution: window.devicePixelRatio || 1,  // Full resolution
             maxLights: 10,
             maxTextures: -1,
             mipmapFilter: 'LINEAR',
-            desynchronized: false
+            desynchronized: false,  // Disable desynchronized for consistent rendering
+            autoMobilePipeline: false,  // Disable auto pipeline for consistency
+            multiTexture: true,  // Enable multi-texture support
+            // WebGL specific settings for consistency
+            antialiasSamples: 2,
+            depth: false,  // We don't need depth buffer
+            stencil: false  // We don't need stencil buffer
         },
-        scene: scenes
+        scene: scenes,
+        // iOS-specific optimizations
+        audio: {
+            disableWebAudio: false,
+            noAudio: false
+        },
+        input: {
+            activePointers: 2,  // Support multi-touch
+            smoothFactor: 0,
+            windowEvents: false  // Prevent window event conflicts
+        },
+        // Disable features that impact performance
+        disableVisibilityChange: false,
+        banner: false
     };
 }
 

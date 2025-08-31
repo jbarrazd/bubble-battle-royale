@@ -4,6 +4,8 @@ import { BootScene } from '@scenes/BootScene';
 import { PreloadScene } from '@scenes/PreloadScene';
 import { MenuScene } from '@scenes/MenuScene';
 import { GameScene } from '@scenes/GameScene';
+import { CapacitorOptimizations } from '@utils/capacitorOptimizations';
+import { Capacitor } from '@capacitor/core';
 
 class BubbleBattleRoyale {
     private game: Phaser.Game | null = null;
@@ -12,8 +14,15 @@ class BubbleBattleRoyale {
         this.initialize();
     }
 
-    private initialize(): void {
+    private async initialize(): Promise<void> {
         console.log('Bubble Battle Royale - Initializing...');
+        
+        // Apply iOS/Capacitor optimizations
+        if (Capacitor.isNativePlatform()) {
+            console.log('Running on native platform - applying optimizations');
+            const optimizer = CapacitorOptimizations.getInstance();
+            await optimizer.initialize();
+        }
         
         this.setupErrorHandling();
         this.waitForDOM(() => {

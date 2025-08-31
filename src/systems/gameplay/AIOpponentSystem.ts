@@ -57,7 +57,7 @@ export class AIOpponentSystem {
     
     public start(): void {
         this.isActive = true;
-        console.log('AI: Starting with difficulty', this.difficulty);
+        // console.log('AI: Starting with difficulty', this.difficulty);
         
         // Set initial downward angle for opponent
         this.launcher.setAimAngle(90); // 90 degrees = straight down for opponent
@@ -93,7 +93,7 @@ export class AIOpponentSystem {
             this.nextBubbleColors.push(randomColor);
         }
         
-        console.log('AI: Generated next bubble colors:', this.nextBubbleColors);
+        // console.log('AI: Generated next bubble colors:', this.nextBubbleColors);
     }
     
     /**
@@ -103,7 +103,7 @@ export class AIOpponentSystem {
         // Get current color (first in queue)
         const currentColor = this.nextBubbleColors[0] || BubbleColor.BLUE;
         
-        console.log(`AI loadNextBubble: Loading bubble color ${currentColor} hex=0x${currentColor.toString(16)}`);
+        // console.log(`AI loadNextBubble: Loading bubble color ${currentColor} hex=0x${currentColor.toString(16)}`);
         
         // Load bubble into launcher
         this.launcher.loadBubble(currentColor);
@@ -119,7 +119,7 @@ export class AIOpponentSystem {
         // Update launcher queue rings with new colors
         this.launcher.updateQueueColors(this.nextBubbleColors);
         
-        console.log('AI: Updated queue colors:', this.nextBubbleColors);
+        // console.log('AI: Updated queue colors:', this.nextBubbleColors);
     }
     
     private scheduleNextShot(): void {
@@ -155,7 +155,7 @@ export class AIOpponentSystem {
         // Find best shot based on difficulty
         const target = this.calculateBestShot(color);
         
-        console.log(`🎯 AI shooting: ID=${bubbleId} ${this.getColorName(color)} at ${target.angle.toFixed(1)}° (${target.reasoning}) score=${target.score}`);
+        // console.log(`🎯 AI shooting: ID=${bubbleId} ${this.getColorName(color)} at ${target.angle.toFixed(1)}° (${target.reasoning}) score=${target.score}`);
         
         // Update launcher aim
         this.launcher.setAimAngle(target.angle);
@@ -202,7 +202,7 @@ export class AIOpponentSystem {
         const gridBubbles = this.getGridBubbles();
         const sameColorBubbles = gridBubbles.filter(b => b.getColor() === color);
         
-        console.log(`🔍 AI analyzing: Found ${gridBubbles.length} total bubbles, ${sameColorBubbles.length} ${this.getColorName(color)} bubbles`);
+        // console.log(`🔍 AI analyzing: Found ${gridBubbles.length} total bubbles, ${sameColorBubbles.length} ${this.getColorName(color)} bubbles`);
         
         let bestTarget: IShootTarget | null = null;
         
@@ -210,7 +210,7 @@ export class AIOpponentSystem {
             // PRIORITY 1: Check if we can hit the objective directly!
             const objectiveShot = this.checkObjectiveShot();
             if (objectiveShot) {
-                console.log(`  🎯 WINNING SHOT AVAILABLE! Direct path to objective!`);
+                // console.log(`  🎯 WINNING SHOT AVAILABLE! Direct path to objective!`);
                 return objectiveShot;
             }
             // PRIORITY 2: Smart targeting for strategic eliminations
@@ -219,7 +219,7 @@ export class AIOpponentSystem {
             // First, check if we should prioritize clearing path to objective
             const objectiveExposed = this.isObjectiveExposed();
             if (!objectiveExposed) {
-                console.log(`  🏯 Objective is protected - need to clear path`);
+                // console.log(`  🏯 Objective is protected - need to clear path`);
                 // Prioritize bubbles near the objective
                 const centerX = this.scene.cameras.main.centerX;
                 const centerY = this.scene.cameras.main.centerY;
@@ -231,7 +231,7 @@ export class AIOpponentSystem {
                 });
                 
                 if (blockingBubbles.length > 0) {
-                    console.log(`  🎯 Found ${blockingBubbles.length} same-color bubbles near objective`);
+                    // console.log(`  🎯 Found ${blockingBubbles.length} same-color bubbles near objective`);
                     sameColorBubbles.unshift(...blockingBubbles); // Prioritize these
                 }
             }
@@ -283,7 +283,7 @@ export class AIOpponentSystem {
             }
             
             // Also consider strategic wall bounce shots
-            console.log(`  🎾 Checking wall bounce options...`);
+            // console.log(`  🎾 Checking wall bounce options...`);
             const bounceTargets = this.findWallBounceTargets(color, sameColorBubbles);
             allTargets.push(...bounceTargets);
             
@@ -291,8 +291,8 @@ export class AIOpponentSystem {
             if (allTargets.length > 0) {
                 allTargets.sort((a, b) => (b.totalValue || b.score) - (a.totalValue || a.score));
                 bestTarget = allTargets[0];
-                console.log(`  📊 Analyzed ${allTargets.length} possible shots`);
-                console.log(`  🎯 Best shot: ${bestTarget.reasoning} (score: ${bestTarget.totalValue || bestTarget.score})`);
+                // console.log(`  📊 Analyzed ${allTargets.length} possible shots`);
+                // console.log(`  🎯 Best shot: ${bestTarget.reasoning} (score: ${bestTarget.totalValue || bestTarget.score})`);
             }
         }
         
@@ -303,7 +303,7 @@ export class AIOpponentSystem {
         
         // Absolutely last resort - shoot randomly
         if (!bestTarget) {
-            console.log('  🎲 No good shot found, shooting randomly');
+            // console.log('  🎲 No good shot found, shooting randomly');
             const angle = 90; // Shoot straight down
             bestTarget = {
                 angle: angle,
