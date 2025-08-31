@@ -128,8 +128,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.isOpponent = (zone === ArenaZone.OPPONENT);
         
         // MOBILE-FIRST POSITIONING: Optimized for 375x667px mobile screens
-        this.BUBBLE_POSITION_Y = -20 * HD_SCALE;  // Closer position for compact design
-        this.QUEUE_POSITION_Y = 15 * HD_SCALE;     // Closer to chamber for integrated look
+        this.BUBBLE_POSITION_Y = -28 * HD_SCALE;  // Main chamber position
+        this.QUEUE_POSITION_Y = 25 * HD_SCALE;     // Queue loading chamber position
         
         if (this.isOpponent) {
             this.currentAngle = 90;
@@ -213,6 +213,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.nextBubbleFrame = this.scene.add.graphics();
         
         this.queueContainer.add([this.queueBackground, this.nextBubbleFrame]);
+        
+        // No rotation on the whole container - bubbles will have their own animations
     }
 
     /**
@@ -256,47 +258,42 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.platformGraphics.clear();
         
-        // Create an integrated launcher design
+        // Create a compact integrated launcher design
         const topY = this.BUBBLE_POSITION_Y;
         const bottomY = this.QUEUE_POSITION_Y;
         const height = Math.abs(bottomY - topY);
         
-        // Central connecting column
-        const columnWidth = 35 * HD_SCALE;
+        // Energy flow tube connecting chambers
+        const columnWidth = 24 * HD_SCALE;
         
-        // Draw connecting tube
+        // Draw energy conduit
         this.platformGraphics.fillGradientStyle(
             this.currentTheme.platform.top,
             this.currentTheme.platform.top,
             this.currentTheme.platform.bottom,
             this.currentTheme.platform.bottom,
-            1, 1, 0.8, 0.8
+            1, 1, 0.7, 0.7
         );
         this.platformGraphics.fillRoundedRect(
             -columnWidth/2, 
-            topY + (10 * HD_SCALE), 
+            topY + (14 * HD_SCALE), 
             columnWidth, 
-            height - (20 * HD_SCALE), 
-            12 * HD_SCALE
+            height - (22 * HD_SCALE), 
+            8 * HD_SCALE
         );
         
-        // Side rails for depth
-        this.platformGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.platform.rim, 0.6);
+        // Energy flow lines
+        this.platformGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.chamber.highlight, 0.3);
+        this.platformGraphics.lineBetween(-columnWidth/3, topY + 20 * HD_SCALE, -columnWidth/3, bottomY - 10 * HD_SCALE);
+        this.platformGraphics.lineBetween(columnWidth/3, topY + 20 * HD_SCALE, columnWidth/3, bottomY - 10 * HD_SCALE);
+        
+        // Subtle border
+        this.platformGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.platform.rim, 0.3);
         this.platformGraphics.strokeRoundedRect(
             -columnWidth/2, 
-            topY + (10 * HD_SCALE), 
+            topY + (14 * HD_SCALE), 
             columnWidth, 
-            height - (20 * HD_SCALE), 
-            12 * HD_SCALE
-        );
-        
-        // Inner track
-        this.platformGraphics.fillStyle(0x0a0a0a, 0.4);
-        this.platformGraphics.fillRoundedRect(
-            -columnWidth/2 + (6 * HD_SCALE), 
-            topY + (15 * HD_SCALE), 
-            columnWidth - (12 * HD_SCALE), 
-            height - (30 * HD_SCALE), 
+            height - (22 * HD_SCALE), 
             8 * HD_SCALE
         );
     }
@@ -352,29 +349,41 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.queueBackground.clear();
         
-        // Smaller, more integrated queue base
-        const platformRadius = 26 * HD_SCALE;  // Match chamber size
-        const innerRadius = 22 * HD_SCALE;
+        // Create a circular loading chamber similar to main chamber
+        const queueRadius = 20 * HD_SCALE;
+        const innerRadius = 14 * HD_SCALE;
         
-        // Base platform gradient - subtle
+        // Gradient background matching launcher style
         this.queueBackground.fillGradientStyle(
-            this.currentTheme.platform.top,
-            this.currentTheme.platform.top,
-            this.currentTheme.platform.bottom,
-            this.currentTheme.platform.bottom,
-            1, 1, 0.6, 0.6
+            this.currentTheme.chamber.outerTop,
+            this.currentTheme.chamber.outerTop,
+            this.currentTheme.chamber.outerBottom,
+            this.currentTheme.chamber.outerBottom,
+            0.8, 0.8, 0.6, 0.6
         );
-        this.queueBackground.fillCircle(0, 0, platformRadius);
+        this.queueBackground.fillCircle(0, 0, queueRadius);
         
-        // Platform rim - subtle
-        this.queueBackground.lineStyle(2 * HD_SCALE, this.currentTheme.platform.rim, 0.6);
-        this.queueBackground.strokeCircle(0, 0, platformRadius);
+        // Rim matching launcher theme
+        this.queueBackground.lineStyle(2.5 * HD_SCALE, this.currentTheme.chamber.rim, 0.8);
+        this.queueBackground.strokeCircle(0, 0, queueRadius);
         
-        // Inner loading area
-        this.queueBackground.fillStyle(0x0a0a0a, 0.4);
+        // Inner chamber where bubbles queue
+        this.queueBackground.fillStyle(0x0a0a0a, 0.7);
         this.queueBackground.fillCircle(0, 0, innerRadius);
         
-        // Render queue bubbles with enhanced mobile sizing
+        // Inner rim accent
+        this.queueBackground.lineStyle(1.5 * HD_SCALE, this.currentTheme.chamber.innerRim, 0.6);
+        this.queueBackground.strokeCircle(0, 0, innerRadius);
+        
+        // Loading indicator arc (animated)
+        this.queueBackground.lineStyle(1 * HD_SCALE, this.currentTheme.chamber.highlight, 0.4);
+        this.queueBackground.strokeCircle(0, 0, innerRadius + (2 * HD_SCALE));
+        
+        // Small highlight dots for depth
+        this.queueBackground.fillStyle(this.currentTheme.chamber.highlight, 0.3);
+        this.queueBackground.fillCircle(-4 * HD_SCALE, -4 * HD_SCALE, 2 * HD_SCALE);
+        
+        // Render queue bubbles
         this.renderEnhancedQueueBubbles();
     }
 
@@ -414,12 +423,12 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     /**
-     * MOBILE-OPTIMIZED: Renders queue bubbles with perfect mobile visibility
+     * MOBILE-OPTIMIZED: Renders queue bubbles side by side
      */
     private renderEnhancedQueueBubbles(): void {
         if (!this.queueBackground || !this.queueContainer) return;
         
-        // Initial render of bubbles
+        // Render bubbles side by side horizontally
         if (this.nextBubbleColors.length > 0) {
             this.createNextBubble(this.nextBubbleColors[0]);
         }
@@ -435,23 +444,45 @@ export class Launcher extends Phaser.GameObjects.Container {
     private createNextBubble(color: BubbleColor): void {
         if (!this.queueContainer) return;
         
+        // Clear any existing graphics first
+        if (this.nextBubbleGraphics) {
+            this.nextBubbleGraphics.destroy();
+            this.nextBubbleGraphics = undefined;
+        }
+        
         const bubbleGraphics = this.scene.add.graphics();
         this.queueContainer.add(bubbleGraphics);
         this.nextBubbleGraphics = bubbleGraphics;
         
+        // Center position for main queue bubble
+        bubbleGraphics.x = 0;
+        bubbleGraphics.y = 0;
+        
+        // Draw the next bubble - larger, ready to move up
+        const radius = 11 * HD_SCALE;  // Good size for next bubble
+        this.drawQueueBubble(bubbleGraphics, 0, 0, radius, 1, color);
+        
         // Set initial scale to 0 for animation
         bubbleGraphics.setScale(0);
         
-        // Draw the large bubble - fill the available space
-        const radius = 40;  // 80px diameter with HD_SCALE, fills the 88px inner area
-        this.drawQueueBubble(bubbleGraphics, 0, 0, radius, 1.0, color);
-        
-        // Animate appearance
+        // Animate appearance with rotation for loading effect
         this.scene.tweens.add({
             targets: bubbleGraphics,
             scale: 1,
-            duration: 300,
+            rotation: Math.PI * 2,
+            duration: 400,
             ease: 'Back.easeOut'
+        });
+        
+        // Add pulsing effect to show it's ready
+        this.scene.tweens.add({
+            targets: bubbleGraphics,
+            scale: { from: 1, to: 1.08 },
+            duration: 1200,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.InOut',
+            delay: 400
         });
     }
     
@@ -461,24 +492,45 @@ export class Launcher extends Phaser.GameObjects.Container {
     private createSecondBubble(color: BubbleColor): void {
         if (!this.queueContainer) return;
         
+        // Clear any existing graphics first
+        if (this.secondBubbleGraphics) {
+            this.secondBubbleGraphics.destroy();
+            this.secondBubbleGraphics = undefined;
+        }
+        
         const bubbleGraphics = this.scene.add.graphics();
-        this.queueContainer.add(bubbleGraphics);
+        // Add behind the main bubble
+        this.queueContainer.addAt(bubbleGraphics, 0);
         this.secondBubbleGraphics = bubbleGraphics;
+        
+        // Position offset to the side - visible but smaller
+        bubbleGraphics.x = 9 * HD_SCALE;
+        bubbleGraphics.y = 7 * HD_SCALE;
+        
+        // Draw the small bubble - smaller, waiting its turn
+        const radius = 7 * HD_SCALE;  // Smaller bubble but visible
+        this.drawQueueBubble(bubbleGraphics, 0, 0, radius, 0.7, color);
         
         // Set initial scale to 0 for animation
         bubbleGraphics.setScale(0);
         
-        // Draw the small bubble - visible in center
-        const radius = 18;  // 36px diameter with HD_SCALE, good visibility
-        this.drawSmallQueueBubble(bubbleGraphics, 0, 0, radius, 0.85, color);
-        
         // Animate appearance
         this.scene.tweens.add({
             targets: bubbleGraphics,
-            scale: 1,
-            duration: 300,
-            delay: 100, // Slight delay after the first bubble
+            scale: 0.65,  // Keep it smaller
+            duration: 400,
             ease: 'Back.easeOut'
+        });
+        
+        // Gentle floating motion for dynamic feel
+        this.scene.tweens.add({
+            targets: bubbleGraphics,
+            y: bubbleGraphics.y - 1.5 * HD_SCALE,
+            duration: 2500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.InOut',
+            delay: 200
         });
     }
     
@@ -521,58 +573,32 @@ export class Launcher extends Phaser.GameObjects.Container {
     private drawQueueBubble(graphics: Phaser.GameObjects.Graphics, x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
         const bubbleTheme = this.getBubbleColors(color);
         
-        graphics.fillStyle(Phaser.Display.Color.GetColor32(
-            bubbleTheme.primary >> 16 & 0xFF,
-            bubbleTheme.primary >> 8 & 0xFF,
-            bubbleTheme.primary & 0xFF,
-            alpha
-        ));
+        // Main bubble fill with correct color
+        graphics.fillStyle(bubbleTheme.primary);
         graphics.fillCircle(x, y, radius);
         
-        graphics.lineStyle(2 * HD_SCALE, bubbleTheme.dark, alpha * 0.9);
+        // Strong border
+        graphics.lineStyle(2 * HD_SCALE, bubbleTheme.dark, 0.9);
         graphics.strokeCircle(x, y, radius);
         
-        graphics.fillStyle(Phaser.Display.Color.GetColor32(
-            bubbleTheme.light >> 16 & 0xFF,
-            bubbleTheme.light >> 8 & 0xFF,
-            bubbleTheme.light & 0xFF,
-            alpha * 0.9
-        ));
-        graphics.fillCircle(x - 2, y - 2, radius * 0.35);
+        // Highlight spot
+        graphics.fillStyle(bubbleTheme.light);
+        graphics.fillCircle(x - radius * 0.3, y - radius * 0.3, radius * 0.35);
         
-        graphics.fillStyle(Phaser.Display.Color.GetColor32(
-            bubbleTheme.accent >> 16 & 0xFF,
-            bubbleTheme.accent >> 8 & 0xFF,
-            bubbleTheme.accent & 0xFF,
-            alpha * 0.3
-        ));
+        // Inner glow
+        graphics.fillStyle(bubbleTheme.accent, 0.4);
         graphics.fillCircle(x, y, radius * 0.6);
+        
+        // Set overall alpha
+        graphics.setAlpha(alpha);
     }
     
     /**
      * Draw small queue bubble on graphics object
      */
     private drawSmallQueueBubble(graphics: Phaser.GameObjects.Graphics, x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
-        const bubbleTheme = this.getBubbleColors(color);
-        
-        graphics.fillStyle(Phaser.Display.Color.GetColor32(
-            bubbleTheme.primary >> 16 & 0xFF,
-            bubbleTheme.primary >> 8 & 0xFF,
-            bubbleTheme.primary & 0xFF,
-            alpha
-        ));
-        graphics.fillCircle(x, y, radius);
-        
-        graphics.lineStyle(1 * HD_SCALE, bubbleTheme.dark, alpha * 0.8);
-        graphics.strokeCircle(x, y, radius);
-        
-        graphics.fillStyle(Phaser.Display.Color.GetColor32(
-            bubbleTheme.light >> 16 & 0xFF,
-            bubbleTheme.light >> 8 & 0xFF,
-            bubbleTheme.light & 0xFF,
-            alpha * 0.7
-        ));
-        graphics.fillCircle(x - 1, y - 1, radius * 0.3);
+        // Just use the same method as the main bubble for consistency
+        this.drawQueueBubble(graphics, x, y, radius, alpha, color);
     }
 
 
@@ -1190,15 +1216,15 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         if (!this.queueContainer) return;
         
-        // Simple approach: always recreate the bubbles with proper colors
-        // Fade out existing bubbles
+        console.log('Launcher: Updating queue colors:', colors);
+        
+        // Clear existing bubbles with animation
         if (this.nextBubbleGraphics) {
             this.scene.tweens.add({
                 targets: this.nextBubbleGraphics,
                 alpha: 0,
-                scale: 0.5,
+                scale: 0,
                 duration: 150,
-                ease: 'Power2.In',
                 onComplete: () => {
                     this.nextBubbleGraphics?.destroy();
                     this.nextBubbleGraphics = undefined;
@@ -1207,13 +1233,11 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
         
         if (this.secondBubbleGraphics) {
-            // Make the second bubble grow and fade
             this.scene.tweens.add({
                 targets: this.secondBubbleGraphics,
                 alpha: 0,
-                scale: 1.8,
-                duration: 200,
-                ease: 'Power2.Out',
+                scale: 0,
+                duration: 150,
                 onComplete: () => {
                     this.secondBubbleGraphics?.destroy();
                     this.secondBubbleGraphics = undefined;
@@ -1221,13 +1245,15 @@ export class Launcher extends Phaser.GameObjects.Container {
             });
         }
         
-        // Create new bubbles after a short delay
+        // Create new bubbles with correct colors after a brief delay
         this.scene.time.delayedCall(200, () => {
             if (colors.length > 0) {
+                console.log('Creating next bubble with color:', colors[0]);
                 this.createNextBubble(colors[0]);
             }
             if (colors.length > 1) {
-                this.scene.time.delayedCall(100, () => {
+                this.scene.time.delayedCall(150, () => {
+                    console.log('Creating second bubble with color:', colors[1]);
                     this.createSecondBubble(colors[1]);
                 });
             }
