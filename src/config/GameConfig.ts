@@ -42,9 +42,9 @@ export function createGameConfig(scenes: any[]): IGameConfig {
         },
         render: {
             // PERFORMANCE: Optimize for iOS
-            antialias: false,  // Always disable for performance
+            antialias: false,  // Disable for better performance
             pixelArt: false,
-            roundPixels: false,  // Let iOS handle pixel alignment
+            roundPixels: false,  // Better performance
             transparent: false,
             clearBeforeRender: true,
             preserveDrawingBuffer: false,
@@ -52,9 +52,9 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             failIfMajorPerformanceCaveat: false,
             powerPreference: 'high-performance',  // Request high-performance GPU
             batchSize: 4096,  // Increased for 120 FPS target
-            // Resolution should match the devicePixelRatio but capped at 2
-            // This ensures crisp rendering without overloading the GPU
-            resolution: Math.min(window.devicePixelRatio || 1, 2),
+            // Ultra HD resolution for premium quality
+            // Using higher resolution for sharper graphics
+            resolution: Math.min(window.devicePixelRatio || 1, 3),
             maxLights: 1,  // Minimum required for shader compilation
             maxTextures: -1,
             mipmapFilter: 'LINEAR',
@@ -63,7 +63,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             autoMobilePipeline: false,  // Disable auto pipeline for consistency
             multiTexture: true,  // Enable for better batching at 120 FPS
             // WebGL specific settings
-            antialiasSamples: isCapacitor ? 0 : 2,  // No MSAA on iOS
+            antialiasSamples: 0,  // No MSAA for performance
             depth: false,  // We don't need depth buffer
             stencil: false,  // We don't need stencil buffer
             // iOS specific WebGL optimizations
@@ -87,8 +87,8 @@ export function createGameConfig(scenes: any[]): IGameConfig {
     };
 }
 
-// HD_SCALE: Factor to scale everything for HD quality
-export const HD_SCALE = 2; // HD quality restored - keeping visual quality
+// HD_SCALE: Factor to scale everything for Ultra HD quality
+export const HD_SCALE = 2.5; // Ultra HD quality restored
 
 export const GAME_CONSTANTS = {
     BASE_WIDTH: 375 * HD_SCALE,  // 750 for HD

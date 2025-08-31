@@ -1,27 +1,27 @@
 import { IArenaConfig } from '@/types/ArenaTypes';
 
-const HD_SCALE = 2;  // HD scaling factor - restored for visual quality
+const HD_SCALE = 2.5;  // Ultra HD scaling factor restored
 
 export const ARENA_CONFIG: IArenaConfig = {
-    width: 375 * HD_SCALE,  // 750 HD width
-    height: 667 * HD_SCALE, // 1334 HD height
-    playerZoneHeight: 267 * HD_SCALE,    // 534 HD
-    opponentZoneHeight: 267 * HD_SCALE,  // 534 HD
-    objectiveZoneHeight: 133 * HD_SCALE, // 266 HD
-    bubbleSize: 32 * HD_SCALE,  // 64 HD
-    objectiveSize: 32 * HD_SCALE, // 64 HD
-    launcherOffset: 50 * HD_SCALE  // 100 HD
+    width: 375 * HD_SCALE,  // 937.5 Ultra HD width
+    height: 667 * HD_SCALE, // 1667.5 Ultra HD height
+    playerZoneHeight: 267 * HD_SCALE,    // 667.5 Ultra HD
+    opponentZoneHeight: 267 * HD_SCALE,  // 667.5 Ultra HD
+    objectiveZoneHeight: 133 * HD_SCALE, // 332.5 Ultra HD
+    bubbleSize: 32 * HD_SCALE,  // 80 Ultra HD
+    objectiveSize: 32 * HD_SCALE, // 80 Ultra HD
+    launcherOffset: 50 * HD_SCALE  // 125 Ultra HD
 };
 
 export const BUBBLE_CONFIG = {
-    SIZE: 32 * HD_SCALE,  // 64 HD
+    SIZE: 32 * HD_SCALE,  // 80 Ultra HD
     GAP: 0,  // No gap - bubbles touch perfectly
     COLORS: 5,
     POOL_SIZE: 50, // OPTIMIZED: Reduced pool size for better iOS performance
-    HEX_WIDTH: 32 * HD_SCALE,  // 64 HD
-    HEX_HEIGHT: 28 * HD_SCALE, // 56 HD (SIZE * 0.866)
+    HEX_WIDTH: 32 * HD_SCALE,  // 80 Ultra HD
+    HEX_HEIGHT: 28 * HD_SCALE, // 70 Ultra HD (SIZE * 0.866)
     ANIMATION_DURATION: 200,
-    FALL_SPEED: 500 * HD_SCALE  // 1000 HD
+    FALL_SPEED: 500 * HD_SCALE  // 1250 Ultra HD
 };
 
 export const GRID_CONFIG = {
@@ -33,11 +33,11 @@ export const GRID_CONFIG = {
 };
 
 export const DANGER_ZONE_CONFIG = {
-    PLAYER_OFFSET: 120 * HD_SCALE,    // 240 HD
-    OPPONENT_OFFSET: 120 * HD_SCALE,  // 240 HD
+    PLAYER_OFFSET: 120 * HD_SCALE,    // 300 Ultra HD
+    OPPONENT_OFFSET: 120 * HD_SCALE,  // 300 Ultra HD
     LINE_COLOR: 0xFFFFFF,
     LINE_ALPHA: 0.08,
-    LINE_WIDTH: 1 * HD_SCALE,  // 2 HD
+    LINE_WIDTH: 1 * HD_SCALE,  // 2.5 Ultra HD
     PULSE_DURATION: 1000
 };
 

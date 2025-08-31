@@ -379,12 +379,15 @@ export class GridAttachmentSystem {
             duration: duration,
             ease: 'Power2',
             onComplete: () => {
-                // Small visual feedback
+                // Enhanced attachment feedback
+                this.createAttachmentEffect(bubble);
+                
+                // Small bounce effect
                 this.scene.tweens.add({
                     targets: bubble,
-                    scaleX: 1.1,
-                    scaleY: 1.1,
-                    duration: 50,
+                    scaleX: 1.15,
+                    scaleY: 1.15,
+                    duration: 80,
                     ease: 'Back.easeOut',
                     yoyo: true
                 });
@@ -440,6 +443,57 @@ export class GridAttachmentSystem {
                 }
             }
         });
+    }
+    
+    /**
+     * Create visual effect when bubble attaches
+     */
+    private createAttachmentEffect(bubble: Bubble): void {
+        const color = bubble.getColor();
+        
+        // Create a ring effect at attachment point
+        const ring = this.scene.add.circle(bubble.x, bubble.y, BUBBLE_CONFIG.SIZE / 2, color, 0);
+        ring.setStrokeStyle(2, color, 0.6);
+        ring.setDepth(bubble.depth - 1);
+        
+        // Animate ring expansion
+        this.scene.tweens.add({
+            targets: ring,
+            scale: 1.5,
+            alpha: 0,
+            duration: 300,
+            ease: 'Power2',
+            onComplete: () => {
+                ring.destroy();
+            }
+        });
+        
+        // Small particle burst
+        for (let i = 0; i < 4; i++) {
+            const particle = this.scene.add.circle(
+                bubble.x,
+                bubble.y,
+                2,
+                color,
+                0.8
+            );
+            
+            const angle = (Math.PI * 2 * i) / 4;
+            const distance = 20;
+            
+            this.scene.tweens.add({
+                targets: particle,
+                x: bubble.x + Math.cos(angle) * distance,
+                y: bubble.y + Math.sin(angle) * distance,
+                scale: 0,
+                alpha: 0,
+                duration: 250,
+                ease: 'Power2',
+                onComplete: () => {
+                    particle.destroy();
+                }
+            });
+        }
     }
     
     /**
