@@ -1,6 +1,7 @@
 import { Scene } from 'phaser';
 import { PowerUpType } from '@/systems/powerups/PowerUpManager';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 
 /**
  * Mystery Box that drops from destroyed Mystery Bubbles
@@ -31,10 +32,10 @@ export class MysteryBox extends Phaser.GameObjects.Container {
     }
     
     private createVisuals(): void {
-        // Create glow effect
+        // Create glow effect - SCALED
         this.glowEffect = this.scene.add.graphics();
         this.glowEffect.fillStyle(0xFFD700, 0.3);
-        this.glowEffect.fillCircle(0, 0, 25);
+        this.glowEffect.fillCircle(0, 0, 13 * HD_SCALE);
         this.add(this.glowEffect);
         
         // Create box background
@@ -43,27 +44,27 @@ export class MysteryBox extends Phaser.GameObjects.Container {
         this.boxSprite.setScale(0.8);
         this.add(this.boxSprite);
         
-        // Create question mark
+        // Create question mark - SCALED
         this.questionMark = this.scene.add.text(0, 0, '?', {
-            fontSize: '20px',
+            fontSize: `${12 * HD_SCALE}px`,
             fontFamily: 'Arial Black',
             color: '#FFFFFF',
             stroke: '#000000',
-            strokeThickness: 2
+            strokeThickness: 2 * HD_SCALE
         });
         this.questionMark.setOrigin(0.5);
         this.add(this.questionMark);
         
-        // Create timer bar background
+        // Create timer bar background - SCALED
         this.timerBarBg = this.scene.add.graphics();
         this.timerBarBg.fillStyle(0x000000, 0.5);
-        this.timerBarBg.fillRect(-20, -35, 40, 4);
+        this.timerBarBg.fillRect(-10 * HD_SCALE, -18 * HD_SCALE, 20 * HD_SCALE, 2 * HD_SCALE);
         this.add(this.timerBarBg);
         
-        // Create timer bar
+        // Create timer bar - SCALED
         this.timerBar = this.scene.add.graphics();
         this.timerBar.fillStyle(0x00FF00, 1);
-        this.timerBar.fillRect(-20, -35, 40, 4);
+        this.timerBar.fillRect(-10 * HD_SCALE, -18 * HD_SCALE, 20 * HD_SCALE, 2 * HD_SCALE);
         this.add(this.timerBar);
         
         // Add sparkle particles
@@ -88,9 +89,9 @@ export class MysteryBox extends Phaser.GameObjects.Container {
                 if (!this.visible || this.collected) return;
                 
                 const sparkle = this.scene.add.star(
-                    this.x + Phaser.Math.Between(-15, 15),
-                    this.y + Phaser.Math.Between(-15, 15),
-                    4, 2, 4,
+                    this.x + Phaser.Math.Between(-8 * HD_SCALE, 8 * HD_SCALE),
+                    this.y + Phaser.Math.Between(-8 * HD_SCALE, 8 * HD_SCALE),
+                    4, 2 * HD_SCALE, 4 * HD_SCALE,
                     0xFFD700
                 );
                 sparkle.setDepth(this.depth - 1);
@@ -166,7 +167,7 @@ export class MysteryBox extends Phaser.GameObjects.Container {
         }
         
         this.timerBar.fillStyle(color, 1);
-        this.timerBar.fillRect(-20, -35, 40 * percentage, 4);
+        this.timerBar.fillRect(-10 * HD_SCALE, -18 * HD_SCALE, (20 * HD_SCALE) * percentage, 2 * HD_SCALE);
         
         // Flash when low on time
         if (percentage < 0.33) {

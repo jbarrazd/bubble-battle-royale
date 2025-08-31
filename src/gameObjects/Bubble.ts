@@ -1,5 +1,6 @@
 import { BubbleColor, IHexPosition } from '@/types/ArenaTypes';
 import { BUBBLE_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 
 export class Bubble extends Phaser.GameObjects.Container {
     private bubbleSprite: Phaser.GameObjects.Arc;
@@ -18,7 +19,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         // Create main bubble sprite with HD quality gradient effect
         this.bubbleSprite = scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2, color);
-        this.bubbleSprite.setStrokeStyle(4, this.getDarkerColor(color), 1);  // HD stroke thickness
+        this.bubbleSprite.setStrokeStyle(2 * HD_SCALE, this.getDarkerColor(color), 1);  // HD stroke thickness
         
         // Create highlight for 3D effect with better quality
         this.highlightSprite = scene.add.circle(
@@ -65,7 +66,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.color = color;
         // Update visual sprite to match
         this.bubbleSprite.setFillStyle(color);
-        this.bubbleSprite.setStrokeStyle(4, this.getDarkerColor(color), 1);  // HD stroke
+        this.bubbleSprite.setStrokeStyle(2 * HD_SCALE, this.getDarkerColor(color), 1);  // HD stroke
         // Update pattern for colorblind accessibility
         this.addColorblindPattern(color);
     }
@@ -103,7 +104,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         });
         
         // Add pulsing glow effect
-        const glow = this.scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2 + 4, this.color, 0.3);
+        const glow = this.scene.add.circle(0, 0, BUBBLE_CONFIG.SIZE / 2 + (2 * HD_SCALE), this.color, 0.3);
         this.addAt(glow, 0);
     }
 
@@ -134,14 +135,14 @@ export class Bubble extends Phaser.GameObjects.Container {
         if (!this.patternSprite) return;
         
         this.patternSprite.clear();
-        this.patternSprite.lineStyle(1.5, 0xffffff, 0.4);
+        this.patternSprite.lineStyle(1 * HD_SCALE, 0xffffff, 0.4);
         
         const radius = BUBBLE_CONFIG.SIZE / 2;
         
         switch (color) {
             case BubbleColor.RED:
                 // Horizontal lines pattern
-                for (let y = -radius + 4; y < radius; y += 6) {
+                for (let y = -radius + (2 * HD_SCALE); y < radius; y += (3 * HD_SCALE)) {
                     const x = Math.sqrt(radius * radius - y * y) * 0.8;
                     this.patternSprite.lineBetween(-x, y, x, y);
                 }
@@ -149,7 +150,7 @@ export class Bubble extends Phaser.GameObjects.Container {
                 
             case BubbleColor.BLUE:
                 // Vertical lines pattern
-                for (let x = -radius + 4; x < radius; x += 6) {
+                for (let x = -radius + (2 * HD_SCALE); x < radius; x += (3 * HD_SCALE)) {
                     const y = Math.sqrt(radius * radius - x * x) * 0.8;
                     this.patternSprite.lineBetween(x, -y, x, y);
                 }
@@ -157,7 +158,7 @@ export class Bubble extends Phaser.GameObjects.Container {
                 
             case BubbleColor.GREEN:
                 // Diagonal lines (top-left to bottom-right)
-                for (let offset = -radius; offset < radius; offset += 6) {
+                for (let offset = -radius; offset < radius; offset += (3 * HD_SCALE)) {
                     const startX = Math.max(-radius * 0.7, offset - radius * 0.7);
                     const startY = Math.max(-radius * 0.7, -offset - radius * 0.7);
                     const endX = Math.min(radius * 0.7, offset + radius * 0.7);
@@ -168,11 +169,11 @@ export class Bubble extends Phaser.GameObjects.Container {
                 
             case BubbleColor.YELLOW:
                 // Dots pattern
-                for (let x = -radius + 5; x < radius; x += 8) {
-                    for (let y = -radius + 5; y < radius; y += 8) {
+                for (let x = -radius + (3 * HD_SCALE); x < radius; x += (4 * HD_SCALE)) {
+                    for (let y = -radius + (3 * HD_SCALE); y < radius; y += (4 * HD_SCALE)) {
                         if (x * x + y * y < radius * radius * 0.7) {
                             this.patternSprite.fillStyle(0xffffff, 0.5);
-                            this.patternSprite.fillCircle(x, y, 1.5);
+                            this.patternSprite.fillCircle(x, y, 1 * HD_SCALE);
                         }
                     }
                 }
@@ -180,7 +181,7 @@ export class Bubble extends Phaser.GameObjects.Container {
                 
             case BubbleColor.PURPLE:
                 // Cross-hatch pattern (X pattern)
-                for (let offset = -radius; offset < radius; offset += 6) {
+                for (let offset = -radius; offset < radius; offset += (3 * HD_SCALE)) {
                     // Diagonal 1
                     const x1 = Math.max(-radius * 0.7, offset - radius * 0.7);
                     const y1 = Math.max(-radius * 0.7, -offset - radius * 0.7);

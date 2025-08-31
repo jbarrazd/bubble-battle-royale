@@ -1,4 +1,5 @@
 import { Scene } from 'phaser';
+import { HD_SCALE } from '@/config/GameConfig';
 
 // Types of poolable effects
 export enum EffectType {
@@ -38,15 +39,15 @@ class FloatingTextEffect implements IPoolableEffect {
         
         // Create text - optimized for mobile
         this.text = scene.add.text(0, 0, '', {
-            fontSize: '20px',  // Balanced size for mobile
+            fontSize: `${10 * HD_SCALE}px`,  // Balanced size for mobile HD
             color: '#FFFFFF',
             fontFamily: 'Arial Black',
             fontStyle: 'bold',
             stroke: '#000000',
-            strokeThickness: 3  // Clean stroke width
+            strokeThickness: 2 * HD_SCALE  // Clean stroke width HD
         });
         this.text.setOrigin(0.5);
-        this.text.setShadow(2, 2, '#000000', 4, true, true);
+        this.text.setShadow(1 * HD_SCALE, 1 * HD_SCALE, '#000000', 2 * HD_SCALE, true, true);
         
         this.gameObject.add(this.text);
         this.deactivate();
@@ -236,7 +237,7 @@ class RingExplosionEffect implements IPoolableEffect {
         this.gameObject.setVisible(true);
         this.gameObject.setPosition(x, y);
         
-        this.gameObject.lineStyle(4, color, 1);
+        this.gameObject.lineStyle(2 * HD_SCALE, color, 1);
         this.gameObject.strokeCircle(0, 0, size);
         this.gameObject.setScale(0);
         

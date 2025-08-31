@@ -3,7 +3,7 @@ import { SceneKeys, ISceneData } from '@/types/GameTypes';
 import { SceneManager } from '@systems/core/SceneManager';
 import { DeviceDetection } from '@utils/DeviceDetection';
 import { PerformanceMonitor } from '@utils/PerformanceMonitor';
-import { GAME_CONSTANTS } from '@config/GameConfig';
+import { GAME_CONSTANTS, HD_SCALE } from '@config/GameConfig';
 
 export class BootScene extends Scene {
     private sceneManager!: SceneManager;
@@ -34,7 +34,7 @@ export class BootScene extends Scene {
             'Initializing...',
             {
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '24px',
+                fontSize: `${12 * HD_SCALE}px`,
                 color: GAME_CONSTANTS.COLORS.UI_TEXT,
                 align: 'center'
             }
@@ -42,10 +42,10 @@ export class BootScene extends Scene {
 
         const progressBar = this.add.graphics();
         const progressBox = this.add.graphics();
-        const width = 320;
-        const height = 50;
+        const width = 160 * HD_SCALE;
+        const height = 25 * HD_SCALE;
         const x = this.cameras.main.centerX - width / 2;
-        const y = this.cameras.main.centerY + 40;
+        const y = this.cameras.main.centerY + (20 * HD_SCALE);
 
         progressBox.fillStyle(0x222222, 0.8);
         progressBox.fillRect(x, y, width, height);
@@ -53,7 +53,7 @@ export class BootScene extends Scene {
         this.load.on('progress', (value: number) => {
             progressBar.clear();
             progressBar.fillStyle(0xffffff, 1);
-            progressBar.fillRect(x + 10, y + 10, (width - 20) * value, height - 20);
+            progressBar.fillRect(x + (5 * HD_SCALE), y + (5 * HD_SCALE), (width - (10 * HD_SCALE)) * value, height - (10 * HD_SCALE));
         });
 
         this.load.on('complete', () => {
@@ -184,18 +184,18 @@ export class BootScene extends Scene {
             message,
             {
                 fontFamily: 'Arial, sans-serif',
-                fontSize: '20px',
+                fontSize: `${10 * HD_SCALE}px`,
                 color: '#ff0000',
                 align: 'center',
-                wordWrap: { width: 300 }
+                wordWrap: { width: 150 * HD_SCALE }
             }
         ).setOrigin(0.5);
 
         this.add.rectangle(
             this.cameras.main.centerX,
             this.cameras.main.centerY,
-            errorText.width + 40,
-            errorText.height + 40,
+            errorText.width + (20 * HD_SCALE),
+            errorText.height + (20 * HD_SCALE),
             0x000000,
             0.8
         ).setOrigin(0.5);

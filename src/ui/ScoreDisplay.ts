@@ -14,44 +14,48 @@ export class ScoreDisplay extends Phaser.GameObjects.Container {
         const screenWidth = scene.cameras.main.width;
         const screenHeight = scene.cameras.main.height;
         
-        // Player: bottom-left, Opponent: top-right (mirrored)
+        // Player: bottom-left, Opponent: top-right (mirrored) - adjusted for extra large size
         const x = isOpponent ? 
-            screenWidth - (60 * HD_SCALE) : // Scaled position
-            60 * HD_SCALE; // Scaled position
-        const y = isOpponent ? 25 * HD_SCALE : screenHeight - (25 * HD_SCALE);  // Scaled positions
+            screenWidth - (120 * HD_SCALE) : // More space for giant panel
+            120 * HD_SCALE; // Scaled position
+        const y = isOpponent ? 70 * HD_SCALE : screenHeight - (70 * HD_SCALE);  // More space from edges
         
         super(scene, x, y);
         this.isOpponent = isOpponent;
         
-        // Compact background panel
+        // Compact background panel - EXTRA LARGE for maximum visibility
         const bg = scene.add.graphics();
-        bg.fillStyle(0x000000, 0.5);
-        bg.fillRoundedRect(-40 * HD_SCALE, -30 * HD_SCALE, 80 * HD_SCALE, 60 * HD_SCALE, 10 * HD_SCALE);
-        bg.lineStyle(2 * HD_SCALE, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.4);
-        bg.strokeRoundedRect(-40 * HD_SCALE, -30 * HD_SCALE, 80 * HD_SCALE, 60 * HD_SCALE, 10 * HD_SCALE);
+        bg.fillStyle(0x000000, 0.6);
+        bg.fillRoundedRect(-100 * HD_SCALE, -60 * HD_SCALE, 200 * HD_SCALE, 120 * HD_SCALE, 15 * HD_SCALE);
+        bg.lineStyle(4 * HD_SCALE, this.isOpponent ? 0xFF6B6B : 0x4ECDC4, 0.8);
+        bg.strokeRoundedRect(-100 * HD_SCALE, -60 * HD_SCALE, 200 * HD_SCALE, 120 * HD_SCALE, 15 * HD_SCALE);
         
-        // Score label
-        const label = scene.add.text(0, -15 * HD_SCALE, this.isOpponent ? 'ENEMY' : 'SCORE', {
-            fontSize: `${10 * HD_SCALE}px`,
+        // Score label - MASSIVE text size
+        const label = scene.add.text(0, -35 * HD_SCALE, this.isOpponent ? 'ENEMY' : 'SCORE', {
+            fontSize: `${24 * HD_SCALE}px`,
             color: '#FFFFFF',
             fontFamily: 'Arial Black',
             stroke: this.isOpponent ? '#8B0000' : '#00008B',
-            strokeThickness: 2 * HD_SCALE
+            strokeThickness: 4 * HD_SCALE
         }).setOrigin(0.5);
         
-        // Score value
-        this.scoreText = scene.add.text(0, 5 * HD_SCALE, '0', {
-            fontSize: `${20 * HD_SCALE}px`,
+        // Score value - GIGANTIC for maximum visibility
+        this.scoreText = scene.add.text(0, 10 * HD_SCALE, '0', {
+            fontSize: `${48 * HD_SCALE}px`,
             color: '#FFFFFF',
-            fontFamily: 'Arial Black'
+            fontFamily: 'Arial Black',
+            stroke: '#000000',
+            strokeThickness: 3 * HD_SCALE
         }).setOrigin(0.5);
         
-        // Combo text (hidden by default) - positioned outside the compact box
-        this.comboText = scene.add.text(0, 35 * HD_SCALE, '', {
-            fontSize: `${10 * HD_SCALE}px`,
+        // Combo text (hidden by default) - positioned outside the box
+        this.comboText = scene.add.text(0, 65 * HD_SCALE, '', {
+            fontSize: `${20 * HD_SCALE}px`,
             color: '#FFA500',
-            fontFamily: 'Arial',
-            fontStyle: 'bold'
+            fontFamily: 'Arial Black',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3 * HD_SCALE
         }).setOrigin(0.5);
         this.comboText.setVisible(false);
         

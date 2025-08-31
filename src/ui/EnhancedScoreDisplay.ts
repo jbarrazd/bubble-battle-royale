@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { HD_SCALE } from '@/config/GameConfig';
 
 export interface ScoreDisplayConfig {
     player: {
@@ -26,9 +27,13 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
     private opponentTargetScore: number = 0;
     
     // Winning indicators
-    private playerWinIndicator: Phaser.GameObjects.Container;
-    private opponentWinIndicator: Phaser.GameObjects.Container;
+    private playerLeadIndicator: Phaser.GameObjects.Text;
+    private opponentLeadIndicator: Phaser.GameObjects.Text;
     private currentLeader: 'player' | 'opponent' | 'tie' = 'tie';
+    
+    // Container backgrounds
+    private playerContainer: Phaser.GameObjects.Container;
+    private opponentContainer: Phaser.GameObjects.Container;
     
     constructor(scene: Phaser.Scene) {
         super(scene, 0, 0);
@@ -44,95 +49,99 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
     }
     
     private createPlayerDisplay(): void {
-        // Mobile-safe positioning with better spacing
-        const safePadding = 15; // Balanced padding
-        const bottomSafeArea = 34; // Account for home indicator
-        const containerWidth = 90; // Slightly larger
-        const containerHeight = 40; // Slightly taller
+        // Clean positioning with HD scaling
+        const padding = 15 * HD_SCALE;
+        const bottomOffset = 30 * HD_SCALE;
+        const containerWidth = 90 * HD_SCALE;
+        const containerHeight = 50 * HD_SCALE;
         
-        const x = safePadding;
-        const y = this.scene.cameras.main.height - bottomSafeArea - containerHeight - 30; // More space from bottom
+        const x = padding;
+        const y = this.scene.cameras.main.height - bottomOffset - containerHeight;
         
-        // Compact container with good contrast
-        const playerBg = this.scene.add.graphics();
-        playerBg.fillStyle(0x1B5E20, 0.85); // Darker green background with better opacity
-        playerBg.fillRoundedRect(x, y, containerWidth, containerHeight, 10);
+        this.playerContainer = this.scene.add.container(x, y);
         
-        // Add subtle border for definition
-        playerBg.lineStyle(1.5, 0x00E676, 0.8); // Bright green border
-        playerBg.strokeRoundedRect(x, y, containerWidth, containerHeight, 10);
+        // Clean modern background
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1A1A2E, 0.9); // Dark blue-gray
+        bg.fillRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
+        bg.lineStyle(2 * HD_SCALE, 0x16C79A, 1); // Clean teal border
+        bg.strokeRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
         
-        // Compact player indicator
-        const playerDot = this.scene.add.circle(x + 12, y + 20, 3, 0x00E676);
-        
-        // Player label - compact size
-        this.playerNameText = this.scene.add.text(x + 25, y + 8, 'YOU', {
-            fontSize: '10px', // Back to original size
-            color: '#FFFFFF',
+        // Player label
+        this.playerNameText = this.scene.add.text(10 * HD_SCALE, 8 * HD_SCALE, 'PLAYER', {
+            fontSize: `${9 * HD_SCALE}px`,
+            color: '#16C79A',
             fontFamily: 'Arial',
             fontStyle: 'bold'
         });
         
-        // Player score - proportional to launcher
-        this.playerScoreText = this.scene.add.text(x + 25, y + 20, '0', {
-            fontSize: '16px', // Back to original size
+        // Score text
+        this.playerScoreText = this.scene.add.text(10 * HD_SCALE, 22 * HD_SCALE, '0', {
+            fontSize: `${16 * HD_SCALE}px`,
             color: '#FFFFFF',
-            fontFamily: 'Arial',
+            fontFamily: 'Arial Black',
             fontStyle: 'bold'
         });
         
-        // Create winning indicator (hidden initially)
-        this.playerWinIndicator = this.createWinningIndicator(x + 40, y - 20, 0x4CAF50);
-        this.playerWinIndicator.setVisible(false);
+        // Lead indicator (simple crown emoji)
+        this.playerLeadIndicator = this.scene.add.text(containerWidth - 20 * HD_SCALE, containerHeight / 2, '👑', {
+            fontSize: `${12 * HD_SCALE}px`,
+            fontFamily: 'Arial'
+        });
+        this.playerLeadIndicator.setOrigin(0.5);
+        this.playerLeadIndicator.setVisible(false);
         
-        this.add([playerBg, playerDot, this.playerNameText, this.playerScoreText, this.playerWinIndicator]);
+        this.playerContainer.add([bg, this.playerNameText, this.playerScoreText, this.playerLeadIndicator]);
+        this.add(this.playerContainer);
     }
     
     private createOpponentDisplay(): void {
-        // Mobile-safe positioning with better spacing
-        const safePadding = 15; // Balanced padding
-        const topSafeArea = 44; // Account for status bar/notch
-        const containerWidth = 90; // Slightly larger
-        const containerHeight = 40; // Slightly taller
+        // Clean positioning with HD scaling
+        const padding = 15 * HD_SCALE;
+        const topOffset = 35 * HD_SCALE;
+        const containerWidth = 90 * HD_SCALE;
+        const containerHeight = 50 * HD_SCALE;
         
-        const x = this.scene.cameras.main.width - safePadding - containerWidth;
-        const y = topSafeArea + safePadding;
+        const x = this.scene.cameras.main.width - padding - containerWidth;
+        const y = topOffset;
         
-        // Compact container with good contrast
-        const opponentBg = this.scene.add.graphics();
-        opponentBg.fillStyle(0xC62828, 0.85); // Darker red background with better opacity
-        opponentBg.fillRoundedRect(x, y, containerWidth, containerHeight, 10);
+        this.opponentContainer = this.scene.add.container(x, y);
         
-        // Add subtle border for definition
-        opponentBg.lineStyle(1.5, 0xFF5252, 0.8); // Bright red border
-        opponentBg.strokeRoundedRect(x, y, containerWidth, containerHeight, 10);
+        // Clean modern background
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1A1A2E, 0.9); // Dark blue-gray
+        bg.fillRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
+        bg.lineStyle(2 * HD_SCALE, 0xF45866, 1); // Clean red border
+        bg.strokeRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
         
-        // Compact opponent indicator
-        const opponentDot = this.scene.add.circle(x + containerWidth - 12, y + 20, 3, 0xFF5252);
-        
-        // Opponent label - compact size
-        this.opponentNameText = this.scene.add.text(x + containerWidth - 25, y + 8, 'AI', {
-            fontSize: '10px', // Back to original size
-            color: '#FFFFFF',
+        // Opponent label
+        this.opponentNameText = this.scene.add.text(containerWidth - 10 * HD_SCALE, 8 * HD_SCALE, 'OPPONENT', {
+            fontSize: `${9 * HD_SCALE}px`,
+            color: '#F45866',
             fontFamily: 'Arial',
             fontStyle: 'bold'
         });
         this.opponentNameText.setOrigin(1, 0);
         
-        // Opponent score - proportional to launcher
-        this.opponentScoreText = this.scene.add.text(x + containerWidth - 25, y + 20, '0', {
-            fontSize: '16px', // Back to original size
+        // Score text
+        this.opponentScoreText = this.scene.add.text(containerWidth - 10 * HD_SCALE, 22 * HD_SCALE, '0', {
+            fontSize: `${16 * HD_SCALE}px`,
             color: '#FFFFFF',
-            fontFamily: 'Arial',
+            fontFamily: 'Arial Black',
             fontStyle: 'bold'
         });
         this.opponentScoreText.setOrigin(1, 0);
         
-        // Create winning indicator (hidden initially)
-        this.opponentWinIndicator = this.createWinningIndicator(x + 40, y - 20, 0xF44336);
-        this.opponentWinIndicator.setVisible(false);
+        // Lead indicator (simple crown emoji)
+        this.opponentLeadIndicator = this.scene.add.text(20 * HD_SCALE, containerHeight / 2, '👑', {
+            fontSize: `${12 * HD_SCALE}px`,
+            fontFamily: 'Arial'
+        });
+        this.opponentLeadIndicator.setOrigin(0.5);
+        this.opponentLeadIndicator.setVisible(false);
         
-        this.add([opponentBg, opponentDot, this.opponentNameText, this.opponentScoreText, this.opponentWinIndicator]);
+        this.opponentContainer.add([bg, this.opponentNameText, this.opponentScoreText, this.opponentLeadIndicator]);
+        this.add(this.opponentContainer);
     }
     
     public updatePlayerScore(newScore: number, instant: boolean = false): void {
@@ -192,16 +201,10 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
     private pulseScore(scoreText: Phaser.GameObjects.Text): void {
         this.scene.tweens.add({
             targets: scoreText,
-            scale: 1.2,
+            scale: 1.1,
             duration: 150,
             yoyo: true,
             ease: 'Power2'
-        });
-        
-        // Flash color
-        scoreText.setTint(0xFFD700);
-        this.scene.time.delayedCall(200, () => {
-            scoreText.clearTint();
         });
     }
     
@@ -229,44 +232,6 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         this.opponentScoreText.setText('0');
     }
     
-    private createWinningIndicator(x: number, y: number, color: number): Phaser.GameObjects.Container {
-        const container = this.scene.add.container(x, y);
-        
-        // Crown/star icon
-        const crown = this.scene.add.star(0, 0, 5, 4, 8, color);
-        crown.setScale(0.8);
-        
-        // "WINNING" text
-        const winText = this.scene.add.text(0, 12, 'LEAD', {
-            fontSize: '8px',
-            color: '#FFD700',
-            fontFamily: 'Arial Black',
-            fontStyle: 'bold'
-        });
-        winText.setOrigin(0.5);
-        
-        container.add([crown, winText]);
-        
-        // Continuous animation
-        this.scene.tweens.add({
-            targets: crown,
-            angle: 360,
-            duration: 3000,
-            repeat: -1,
-            ease: 'Linear'
-        });
-        
-        this.scene.tweens.add({
-            targets: crown,
-            scale: { from: 0.8, to: 1 },
-            duration: 500,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-        });
-        
-        return container;
-    }
     
     private updateLeaderIndicator(): void {
         const playerScore = this.playerTargetScore;
@@ -281,80 +246,45 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         }
         
         if (newLeader !== this.currentLeader) {
-            // Hide previous indicators
-            this.playerWinIndicator.setVisible(false);
-            this.opponentWinIndicator.setVisible(false);
+            // Update leader indicators
+            this.playerLeadIndicator.setVisible(newLeader === 'player');
+            this.opponentLeadIndicator.setVisible(newLeader === 'opponent');
             
-            // Show new leader indicator with enhanced effects
+            // Simple glow effect for winner
             if (newLeader === 'player') {
-                this.playerWinIndicator.setVisible(true);
-                this.showLeaderEffect(this.playerWinIndicator, 0x00E676);
-                // Enhanced leader visual hierarchy
-                this.playerScoreText.setTint(0xFFD700);
-                this.playerScoreText.setScale(1.05); // Subtle scale increase
-                this.opponentScoreText.clearTint();
-                this.opponentScoreText.setScale(1.0); // Normal size when losing
-                // Add glow effect to player container
-                this.playerNameText.setTint(0xFFD700);
+                this.animateLeader(this.playerLeadIndicator);
+                this.playerContainer.setScale(1.02);
+                this.opponentContainer.setScale(1);
             } else if (newLeader === 'opponent') {
-                this.opponentWinIndicator.setVisible(true);
-                this.showLeaderEffect(this.opponentWinIndicator, 0xFF5252);
-                // Enhanced leader visual hierarchy
-                this.opponentScoreText.setTint(0xFFD700);
-                this.opponentScoreText.setScale(1.05); // Subtle scale increase
-                this.playerScoreText.clearTint();
-                this.playerScoreText.setScale(1.0); // Normal size when losing
-                // Add glow effect to opponent container
-                this.opponentNameText.setTint(0xFFD700);
-                this.playerNameText.clearTint();
+                this.animateLeader(this.opponentLeadIndicator);
+                this.opponentContainer.setScale(1.02);
+                this.playerContainer.setScale(1);
             } else {
-                // Tie - clear all effects
-                this.playerScoreText.clearTint();
-                this.playerScoreText.setScale(1.0);
-                this.opponentScoreText.clearTint();
-                this.opponentScoreText.setScale(1.0);
-                this.playerNameText.clearTint();
-                this.opponentNameText.clearTint();
+                this.playerContainer.setScale(1);
+                this.opponentContainer.setScale(1);
             }
             
             this.currentLeader = newLeader;
         }
     }
     
-    private showLeaderEffect(indicator: Phaser.GameObjects.Container, color: number): void {
-        // Create particle burst
-        for (let i = 0; i < 8; i++) {
-            const angle = (Math.PI * 2 * i) / 8;
-            const particle = this.scene.add.circle(
-                indicator.x + Math.cos(angle) * 10,
-                indicator.y + Math.sin(angle) * 10,
-                2,
-                color,
-                0.8
-            );
-            
-            this.add(particle);
-            
-            this.scene.tweens.add({
-                targets: particle,
-                x: indicator.x + Math.cos(angle) * 30,
-                y: indicator.y + Math.sin(angle) * 30,
-                alpha: 0,
-                scale: 0,
-                duration: 600,
-                ease: 'Power2.easeOut',
-                onComplete: () => {
-                    particle.destroy();
-                }
-            });
-        }
-        
-        // Scale bounce effect
+    private animateLeader(indicator: Phaser.GameObjects.Text): void {
+        // Simple bounce animation for crown
         this.scene.tweens.add({
             targets: indicator,
             scale: { from: 0, to: 1 },
             duration: 300,
             ease: 'Back.easeOut'
+        });
+        
+        // Subtle rotation
+        this.scene.tweens.add({
+            targets: indicator,
+            angle: { from: -10, to: 10 },
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.InOut'
         });
     }
     
@@ -364,12 +294,10 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
             this.scene.tweens.killTweensOf(this);
             this.scene.tweens.killTweensOf(this.playerScoreText);
             this.scene.tweens.killTweensOf(this.opponentScoreText);
-            if (this.playerWinIndicator) {
-                this.scene.tweens.killTweensOf(this.playerWinIndicator);
-            }
-            if (this.opponentWinIndicator) {
-                this.scene.tweens.killTweensOf(this.opponentWinIndicator);
-            }
+            this.scene.tweens.killTweensOf(this.playerLeadIndicator);
+            this.scene.tweens.killTweensOf(this.opponentLeadIndicator);
+            this.scene.tweens.killTweensOf(this.playerContainer);
+            this.scene.tweens.killTweensOf(this.opponentContainer);
         }
         super.destroy();
     }

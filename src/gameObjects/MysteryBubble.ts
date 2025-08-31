@@ -2,6 +2,7 @@ import { Scene } from 'phaser';
 import { Bubble } from './Bubble';
 import { PowerUpType } from '@/systems/powerups/PowerUpManager';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { HD_SCALE } from '@/config/GameConfig';
 
 /**
  * Mystery Bubble that cycles through different power-ups
@@ -61,15 +62,15 @@ export class MysteryBubble extends Bubble {
         this.updateGlowEffect();
         this.addAt(this.glowEffect, 0); // Add behind bubble
         
-        // Create icon background circle for better visibility
+        // Create icon background circle for better visibility - LARGER
         this.iconBg = this.scene.add.graphics();
         this.iconBg.fillStyle(0x000000, 0.3);
-        this.iconBg.fillCircle(0, 0, 12);
+        this.iconBg.fillCircle(0, 0, 10 * HD_SCALE);
         this.add(this.iconBg);
         
-        // Create power-up icon
+        // Create power-up icon - MUCH LARGER for visibility
         this.powerUpIcon = this.scene.add.text(0, 0, '', {
-            fontSize: '18px',
+            fontSize: `${14 * HD_SCALE}px`,
             fontFamily: 'Arial'
         });
         this.powerUpIcon.setOrigin(0.5);
@@ -95,11 +96,11 @@ export class MysteryBubble extends Bubble {
         this.glowEffect.clear();
         const config = this.powerUpIcons[this.currentPowerUp];
         
-        // Create gradient glow
+        // Create gradient glow - LARGER for bigger icon
         this.glowEffect.fillStyle(config.color, 0.2);
-        this.glowEffect.fillCircle(0, 0, 20);
+        this.glowEffect.fillCircle(0, 0, 14 * HD_SCALE);
         this.glowEffect.fillStyle(config.color, 0.1);
-        this.glowEffect.fillCircle(0, 0, 25);
+        this.glowEffect.fillCircle(0, 0, 18 * HD_SCALE);
     }
     
     private updatePowerUpDisplay(): void {
@@ -166,21 +167,21 @@ export class MysteryBubble extends Bubble {
         // Create visual feedback at bubble position
         const config = this.powerUpIcons[this.currentPowerUp];
         
-        // Create large icon that floats up and fades
+        // Create large icon that floats up and fades - LARGER
         const floatingIcon = this.scene.add.text(this.x, this.y, config.icon, {
-            fontSize: '32px',
+            fontSize: `${24 * HD_SCALE}px`,
             fontFamily: 'Arial'
         });
         floatingIcon.setOrigin(0.5);
         floatingIcon.setDepth(Z_LAYERS.FLOATING_UI);
         
-        // Add "POWER-UP!" text
-        const powerUpText = this.scene.add.text(this.x, this.y + 20, 'POWER-UP!', {
-            fontSize: '16px',
+        // Add "POWER-UP!" text - LARGER
+        const powerUpText = this.scene.add.text(this.x, this.y + (15 * HD_SCALE), 'POWER-UP!', {
+            fontSize: `${12 * HD_SCALE}px`,
             fontFamily: 'Arial Black',
             color: '#FFFFFF',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 2 * HD_SCALE
         });
         powerUpText.setOrigin(0.5);
         powerUpText.setDepth(Z_LAYERS.FLOATING_UI);
@@ -188,7 +189,7 @@ export class MysteryBubble extends Bubble {
         // Animate both elements
         this.scene.tweens.add({
             targets: [floatingIcon, powerUpText],
-            y: this.y - 50,
+            y: this.y - (25 * HD_SCALE),
             alpha: 0,
             scale: 1.5,
             duration: 1000,
@@ -200,7 +201,7 @@ export class MysteryBubble extends Bubble {
         });
         
         // Flash effect
-        const flash = this.scene.add.circle(this.x, this.y, 30, config.color, 0.5);
+        const flash = this.scene.add.circle(this.x, this.y, 15 * HD_SCALE, config.color, 0.5);
         flash.setDepth(Z_LAYERS.FLOATING_UI - 1);
         
         this.scene.tweens.add({
