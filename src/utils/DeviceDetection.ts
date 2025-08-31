@@ -90,7 +90,7 @@ export class DeviceDetection {
     }
 
     public getOptimalResolution(): { width: number; height: number } {
-        const HD_SCALE = 2;  // HD scaling factor
+        const HD_SCALE = 2;  // Keep HD quality
         const baseWidth = 375 * HD_SCALE;  // 750 HD
         const baseHeight = 667 * HD_SCALE;  // 1334 HD
         const maxWidth = 414 * HD_SCALE;    // 828 HD

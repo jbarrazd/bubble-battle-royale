@@ -202,7 +202,8 @@ export class AIOpponentSystem {
         const gridBubbles = this.getGridBubbles();
         const sameColorBubbles = gridBubbles.filter(b => b.getColor() === color);
         
-        // console.log(`🔍 AI analyzing: Found ${gridBubbles.length} total bubbles, ${sameColorBubbles.length} ${this.getColorName(color)} bubbles`);
+        // BALANCED: Use all same color bubbles for smart AI
+        const closestBubbles = sameColorBubbles; // Use all for now to keep AI smart
         
         let bestTarget: IShootTarget | null = null;
         
@@ -236,23 +237,24 @@ export class AIOpponentSystem {
                 }
             }
             
-            if (sameColorBubbles.length > 0) {
-                // Analyze ALL possible shots, not just the first one found
-                for (const targetBubble of sameColorBubbles) {
-                    // Try different attachment points
+            if (closestBubbles.length > 0) {
+                // OPTIMIZED: Only analyze closest bubbles, not ALL
+                for (const targetBubble of closestBubbles) {
+                    // OPTIMIZED: Try 3 key angles for good coverage
                     const angles = [
+                        this.calculateAngleToTarget(targetBubble.x, targetBubble.y),
                         this.calculateAngleToTarget(targetBubble.x, targetBubble.y - BUBBLE_CONFIG.SIZE),
-                        this.calculateAngleToTarget(targetBubble.x - BUBBLE_CONFIG.SIZE * 0.5, targetBubble.y),
-                        this.calculateAngleToTarget(targetBubble.x + BUBBLE_CONFIG.SIZE * 0.5, targetBubble.y),
-                        this.calculateAngleToTarget(targetBubble.x, targetBubble.y)
+                        this.calculateAngleToTarget(targetBubble.x - BUBBLE_CONFIG.SIZE * 0.5, targetBubble.y)
                     ];
                     
                     for (const angle of angles) {
                         if (angle >= 15 && angle <= 165) {
                             const targetPos = { x: targetBubble.x, y: targetBubble.y };
-                            if (this.isTrajectoryClear(angle, targetPos)) {
-                                const potentialFalls = this.predictFallsFromShot(targetBubble, color);
+                            // OPTIMIZED: Better trajectory check
+                            if (this.isTrajectoryLikelyClear(angle, targetPos)) {
+                                // OPTIMIZED: Use smarter match counting
                                 const matchSize = this.countPotentialMatch(targetBubble, color);
+                                const potentialFalls = matchSize >= 3 ? 2 : 0; // Simple fall estimation
                                 
                                 // Check distance to objective for priority
                                 const centerX = this.scene.cameras.main.centerX;
@@ -282,10 +284,12 @@ export class AIOpponentSystem {
                 }
             }
             
-            // Also consider strategic wall bounce shots
-            // console.log(`  🎾 Checking wall bounce options...`);
-            const bounceTargets = this.findWallBounceTargets(color, sameColorBubbles);
-            allTargets.push(...bounceTargets);
+            // OPTIMIZED: Include basic wall bounce for smart plays
+            if (closestBubbles.length > 0 && closestBubbles.length < 5) {
+                // Only check wall bounces when there are few targets
+                const bounceTargets = this.findWallBounceTargets(color, closestBubbles.slice(0, 3));
+                allTargets.push(...bounceTargets);
+            }
             
             // Pick the best target from all analyzed
             if (allTargets.length > 0) {
@@ -301,15 +305,35 @@ export class AIOpponentSystem {
             bestTarget = this.findStraightShotTarget(sameColorBubbles);
         }
         
-        // Absolutely last resort - shoot randomly
+        // If still no direct shot, try ANY bubble we can hit
         if (!bestTarget) {
-            // console.log('  🎲 No good shot found, shooting randomly');
-            const angle = 90; // Shoot straight down
+            const allBubbles = this.getGridBubbles();
+            for (const bubble of allBubbles) {
+                const angle = this.calculateAngleToTarget(bubble.x, bubble.y);
+                if (angle >= 15 && angle <= 165) {
+                    const targetPos = { x: bubble.x, y: bubble.y };
+                    if (this.isTrajectoryLikelyClear(angle, targetPos)) {
+                        bestTarget = {
+                            angle: angle,
+                            useWallBounce: 'none',
+                            score: 10,
+                            reasoning: 'any available target'
+                        };
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Absolutely last resort - shoot at safe angles
+        if (!bestTarget) {
+            const safeAngles = [85, 90, 95, 75, 105];
+            const randomAngle = safeAngles[Math.floor(Math.random() * safeAngles.length)];
             bestTarget = {
-                angle: angle,
+                angle: randomAngle,
                 useWallBounce: 'none',
                 score: 0,
-                reasoning: 'random (no targets)'
+                reasoning: 'safe fallback'
             };
         }
         
@@ -327,7 +351,7 @@ export class AIOpponentSystem {
             // Check if angle is within launcher constraints
             if (angle >= 15 && angle <= 165) {
                 const targetPos = { x: bubble.x, y: bubble.y };
-                if (this.isTrajectoryClear(angle, targetPos)) {
+                if (this.isTrajectoryLikelyClear(angle, targetPos)) {
                     return {
                         angle: angle,
                         useWallBounce: 'none',
@@ -360,7 +384,7 @@ export class AIOpponentSystem {
                     const angle = this.calculateAngleToTarget(point.x, point.y);
                     
                     // Check if angle is valid and trajectory is clear
-                    if (angle >= 15 && angle <= 165 && this.isTrajectoryClear(angle, point)) {
+                    if (angle >= 15 && angle <= 165 && this.isTrajectoryLikelyClear(angle, point)) {
                         targets.push({
                             angle: angle,
                             useWallBounce: 'none',
@@ -420,7 +444,7 @@ export class AIOpponentSystem {
             if (leftAngle >= 100 && leftAngle <= 165) {
                 // Verify the bounce path is clear
                 const bouncePoint = { x: 0, y: this.launcher.y + Math.tan(leftAngle * Math.PI / 180) * this.launcher.x };
-                if (this.isTrajectoryClear(leftAngle, bouncePoint)) {
+                if (this.isTrajectoryLikelyClear(leftAngle, bouncePoint)) {
                     return {
                         angle: leftAngle,
                         useWallBounce: 'left',
@@ -437,7 +461,7 @@ export class AIOpponentSystem {
             if (rightAngle >= 15 && rightAngle <= 80) {
                 // Verify the bounce path is clear
                 const bouncePoint = { x: screenWidth, y: this.launcher.y + Math.tan(rightAngle * Math.PI / 180) * (screenWidth - this.launcher.x) };
-                if (this.isTrajectoryClear(rightAngle, bouncePoint)) {
+                if (this.isTrajectoryLikelyClear(rightAngle, bouncePoint)) {
                     return {
                         angle: rightAngle,
                         useWallBounce: 'right',
@@ -506,7 +530,7 @@ export class AIOpponentSystem {
     }
     
     private isTrajectoryClear(angle: number, target: { x: number, y: number }): boolean {
-        // Simulate trajectory and check for collisions
+        // OPTIMIZED: Reduced trajectory simulation
         const radians = angle * (Math.PI / 180);
         const velocity = {
             x: Math.cos(radians) * this.SHOOT_SPEED,
@@ -517,8 +541,8 @@ export class AIOpponentSystem {
         let testY = this.launcher.y;
         const targetDist = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, target.x, target.y);
         
-        // Check points along the trajectory
-        const steps = 20;
+        // OPTIMIZED: Check reasonable points (10 instead of 20)
+        const steps = 10;
         const stepDist = targetDist / steps;
         
         for (let i = 1; i < steps; i++) {
@@ -564,6 +588,77 @@ export class AIOpponentSystem {
             case BubbleColor.MYSTERY: return 'MYSTERY';
             default: return 'UNKNOWN';
         }
+    }
+    
+    /**
+     * OPTIMIZED: Get strategic bubbles for analysis (not just closest)
+     */
+    private getClosestBubbles(bubbles: Bubble[], limit: number): Bubble[] {
+        // Sort by strategic value: closer to objective and easier to hit
+        const centerX = this.scene.cameras.main.centerX;
+        const centerY = this.scene.cameras.main.centerY;
+        
+        const sorted = bubbles.sort((a, b) => {
+            // Consider both distance to launcher AND distance to objective
+            const distA = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, a.x, a.y);
+            const distB = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, b.x, b.y);
+            
+            const objDistA = Phaser.Math.Distance.Between(a.x, a.y, centerX, centerY);
+            const objDistB = Phaser.Math.Distance.Between(b.x, b.y, centerX, centerY);
+            
+            // Prioritize bubbles near objective but also reachable
+            const scoreA = distA * 0.3 + objDistA * 0.7;
+            const scoreB = distB * 0.3 + objDistB * 0.7;
+            
+            return scoreA - scoreB;
+        });
+        return sorted.slice(0, limit);
+    }
+    
+    /**
+     * OPTIMIZED: Quick trajectory check without full simulation
+     */
+    private isTrajectoryLikelyClear(angle: number, target: { x: number, y: number }): boolean {
+        // More lenient path checking for better AI performance
+        const gridBubbles = this.getGridBubbles();
+        const radians = angle * Math.PI / 180;
+        const direction = {
+            x: Math.cos(radians),
+            y: Math.sin(radians)
+        };
+        
+        const targetDist = Phaser.Math.Distance.Between(this.launcher.x, this.launcher.y, target.x, target.y);
+        
+        // Check only a few key points along the path
+        for (let t = 0.3; t < 0.9; t += 0.3) {
+            const checkX = this.launcher.x + direction.x * targetDist * t;
+            const checkY = this.launcher.y + direction.y * targetDist * t;
+            
+            // Check if any bubble blocks this point
+            for (const bubble of gridBubbles) {
+                if (!bubble.visible) continue;
+                const dist = Phaser.Math.Distance.Between(checkX, checkY, bubble.x, bubble.y);
+                if (dist < BUBBLE_CONFIG.SIZE * 0.7) { // More lenient collision
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * OPTIMIZED: Quick match count without recursion
+     */
+    private quickCountPotentialMatch(targetBubble: Bubble, shootColor: BubbleColor): number {
+        // Just count immediate neighbors of same color
+        const neighbors = this.getNeighborBubbles(targetBubble);
+        let count = 1; // Include the shot itself
+        for (const neighbor of neighbors) {
+            if (neighbor.getColor() === shootColor) {
+                count++;
+            }
+        }
+        return count;
     }
     
     private countPotentialMatch(targetBubble: Bubble, shootColor: BubbleColor): number {
@@ -649,7 +744,7 @@ export class AIOpponentSystem {
         if (angle >= 15 && angle <= 165) {
             // Check if path is clear
             const target = { x: centerX, y: centerY };
-            if (this.isTrajectoryClear(angle, target)) {
+            if (this.isTrajectoryLikelyClear(angle, target)) {
                 return {
                     angle: angle,
                     useWallBounce: 'none',

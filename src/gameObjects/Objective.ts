@@ -1,5 +1,6 @@
 import { IObjectiveConfig } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { AnimationBatcher } from '@/systems/visual/AnimationBatcher';
 
 export class Objective extends Phaser.GameObjects.Container {
     private chestBody: Phaser.GameObjects.Rectangle;
@@ -10,6 +11,11 @@ export class Objective extends Phaser.GameObjects.Container {
     private health: number;
     private maxHealth: number;
     private shielded: boolean = true;
+    // Store timer references for cleanup
+    private sparkleTimer?: Phaser.Time.TimerEvent;
+    private shimmerTimer?: Phaser.Time.TimerEvent;
+    private starBurstTimer?: Phaser.Time.TimerEvent;
+    private peekTimer?: Phaser.Time.TimerEvent;
 
     constructor(scene: Phaser.Scene, config: IObjectiveConfig) {
         super(scene, config.x, config.y);
@@ -79,12 +85,12 @@ export class Objective extends Phaser.GameObjects.Container {
         
         // Particle system - industry standard for objective highlighting
         
-        // 1. Continuous upward sparkles (treasure chest magic)
-        scene.time.addEvent({
-            delay: 200,
+        // 1. OPTIMIZED: Batch sparkle creation (same visual, better performance)
+        this.sparkleTimer = scene.time.addEvent({
+            delay: 300, // Slightly less frequent but create more at once
             repeat: -1,
             callback: () => {
-                const sparkleCount = Phaser.Math.Between(1, 3);
+                const sparkleCount = Phaser.Math.Between(2, 4); // More particles per batch
                 for (let i = 0; i < sparkleCount; i++) {
                     const offsetX = Phaser.Math.Between(-config.size/2, config.size/2);
                     const particle = scene.add.circle(
@@ -146,9 +152,9 @@ export class Objective extends Phaser.GameObjects.Container {
         }
         */
         
-        // 3. Shimmer waves (used in Zelda, God of War, etc.)
-        scene.time.addEvent({
-            delay: 1500,
+        // 3. Shimmer waves (used in Zelda, God of War, etc.) - Already optimized
+        this.shimmerTimer = scene.time.addEvent({
+            delay: 1500, // Already good frequency
             repeat: -1,
             callback: () => {
                 // Create expanding ring of light
@@ -169,9 +175,9 @@ export class Objective extends Phaser.GameObjects.Container {
             }
         });
         
-        // 4. Screen-space particles for extra emphasis
-        scene.time.addEvent({
-            delay: 3000,
+        // 4. Screen-space particles for extra emphasis - Already optimized
+        this.starBurstTimer = scene.time.addEvent({
+            delay: 3000, // Already good frequency
             repeat: -1,
             callback: () => {
                 // Star burst every 3 seconds
@@ -251,9 +257,9 @@ export class Objective extends Phaser.GameObjects.Container {
             ease: 'Sine.easeInOut'
         });
         
-        // 5. Chest lid occasional "peek" animation
-        scene.time.addEvent({
-            delay: 8000,
+        // 5. Chest lid occasional "peek" animation - Already optimized
+        this.peekTimer = scene.time.addEvent({
+            delay: 8000, // Already good frequency
             repeat: -1,
             callback: () => {
                 scene.tweens.add({
@@ -358,6 +364,24 @@ export class Objective extends Phaser.GameObjects.Container {
     }
 
     public override destroy(): void {
+        // CRITICAL: Clean up all timers to prevent memory leak
+        if (this.sparkleTimer) {
+            this.sparkleTimer.destroy();
+            this.sparkleTimer = undefined;
+        }
+        if (this.shimmerTimer) {
+            this.shimmerTimer.destroy();
+            this.shimmerTimer = undefined;
+        }
+        if (this.starBurstTimer) {
+            this.starBurstTimer.destroy();
+            this.starBurstTimer = undefined;
+        }
+        if (this.peekTimer) {
+            this.peekTimer.destroy();
+            this.peekTimer = undefined;
+        }
+        
         // Victory animation - chest opens
         this.scene.tweens.add({
             targets: this.chestLid,

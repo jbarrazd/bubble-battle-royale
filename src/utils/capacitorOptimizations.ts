@@ -32,7 +32,7 @@ export class CapacitorOptimizations {
         console.log('Initializing Capacitor optimizations for iOS...');
         
         try {
-            // REMOVED - Causes device overheating
+            // Performance optimizations disabled - let iOS handle naturally
             // await this.maximizeDevicePerformance();
             
             // Hide status bar for full screen experience
@@ -198,25 +198,8 @@ export class CapacitorOptimizations {
             });
         }
         
-        // Request high refresh rate if available
-        if ('requestAnimationFrame' in window) {
-            let lastTime = 0;
-            const targetFPS = 60;
-            const targetFrameTime = 1000 / targetFPS;
-            
-            const highPerfLoop = (currentTime: number) => {
-                const deltaTime = currentTime - lastTime;
-                
-                if (deltaTime >= targetFrameTime) {
-                    lastTime = currentTime - (deltaTime % targetFrameTime);
-                }
-                
-                requestAnimationFrame(highPerfLoop);
-            };
-            
-            // Start high performance loop
-            requestAnimationFrame(highPerfLoop);
-        }
+        // REMOVED: Empty RAF loop was consuming resources
+        // Phaser already handles its own render loop efficiently
         
         console.log('High performance mode requested');
     }

@@ -1,6 +1,6 @@
 import { IArenaConfig } from '@/types/ArenaTypes';
 
-const HD_SCALE = 2;  // HD scaling factor
+const HD_SCALE = 2;  // HD scaling factor - restored for visual quality
 
 export const ARENA_CONFIG: IArenaConfig = {
     width: 375 * HD_SCALE,  // 750 HD width
@@ -17,7 +17,7 @@ export const BUBBLE_CONFIG = {
     SIZE: 32 * HD_SCALE,  // 64 HD
     GAP: 0,  // No gap - bubbles touch perfectly
     COLORS: 5,
-    POOL_SIZE: 150, // For object pooling
+    POOL_SIZE: 50, // OPTIMIZED: Reduced pool size for better iOS performance
     HEX_WIDTH: 32 * HD_SCALE,  // 64 HD
     HEX_HEIGHT: 28 * HD_SCALE, // 56 HD (SIZE * 0.866)
     ANIMATION_DURATION: 200,

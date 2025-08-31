@@ -49,30 +49,29 @@ public class PerformancePlugin: CAPPlugin {
     private func optimizeWebViewForGaming() {
         guard let webView = self.bridge?.webView as? WKWebView else { return }
         
-        // Configure WKWebView for maximum performance
+        // Match Safari's WebGL/Metal rendering configuration
         webView.configuration.preferences.javaScriptEnabled = true
-        webView.configuration.suppressesIncrementalRendering = false
         webView.configuration.allowsInlineMediaPlayback = true
         
-        // Enable hardware acceleration
-        webView.scrollView.layer.shouldRasterize = false
-        webView.scrollView.layer.drawsAsynchronously = true
-        
-        // Disable scroll view delays
-        webView.scrollView.delaysContentTouches = false
-        webView.scrollView.canCancelContentTouches = true
-        
-        // Set content mode for best performance
-        webView.contentMode = .redraw
-        
-        // Enable GPU acceleration
-        if #available(iOS 13.0, *) {
-            webView.scrollView.automaticallyAdjustsScrollIndicatorInsets = false
+        // Force GPU acceleration with Metal (like Safari)
+        if #available(iOS 14.0, *) {
+            // Enable GPU Process for better WebGL performance
+            webView.configuration.preferences.setValue(true, forKey: "acceleratedDrawingEnabled")
+            webView.configuration.preferences.setValue(true, forKey: "developerExtrasEnabled")
         }
         
-        // Remove all gesture recognizers that might interfere
+        // Disable all scrolling
+        webView.scrollView.isScrollEnabled = false
+        webView.scrollView.bounces = false
+        webView.scrollView.delaysContentTouches = false
+        
+        // Disable all zoom
         webView.scrollView.pinchGestureRecognizer?.isEnabled = false
-        webView.scrollView.panGestureRecognizer.minimumNumberOfTouches = 2
+        webView.scrollView.minimumZoomScale = 1.0
+        webView.scrollView.maximumZoomScale = 1.0
+        
+        // Ensure WebGL uses high performance GPU
+        webView.configuration.preferences.setValue(true, forKey: "WebGLEnabled")
     }
     
     // REMOVED - Too aggressive, causes overheating

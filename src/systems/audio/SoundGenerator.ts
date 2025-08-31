@@ -37,6 +37,9 @@ export class SoundGenerator {
     private ambientGain?: GainNode;
     private ambientFilter?: BiquadFilterNode;
     private isAmbientPlaying: boolean = false;
+    
+    // Cleanup timer reference to prevent memory leak
+    private cleanupTimerId?: number;
 
     constructor() {
         // Initialize Web Audio Context with fallback
@@ -920,7 +923,13 @@ export class SoundGenerator {
      * Start periodic cleanup timer
      */
     private startCleanupTimer(): void {
-        setInterval(() => {
+        // Clear any existing timer first
+        if (this.cleanupTimerId) {
+            clearInterval(this.cleanupTimerId);
+        }
+        
+        // Store timer ID for cleanup
+        this.cleanupTimerId = window.setInterval(() => {
             this.performCleanup();
         }, AUDIO_CONFIG.PERFORMANCE.CLEANUP_INTERVAL);
     }
@@ -1140,6 +1149,12 @@ export class SoundGenerator {
      * Destroy the sound generator
      */
     public destroy(): void {
+        // CRITICAL: Clear the cleanup timer to prevent memory leak
+        if (this.cleanupTimerId) {
+            clearInterval(this.cleanupTimerId);
+            this.cleanupTimerId = undefined;
+        }
+        
         this.stopAmbience();
         this.stopAllVoices();
         

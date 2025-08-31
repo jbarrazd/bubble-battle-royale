@@ -12,6 +12,8 @@ export class GridAttachmentSystem {
     private attachmentInProgress: boolean = false;
     private attachmentQueue: Array<{ bubble: Bubble; hexPos: IHexPosition; onComplete?: () => void }> = [];
     private matchDetectionSystem?: MatchDetectionSystem;
+    private spatialGrid: Map<string, Bubble[]> = new Map(); // Spatial partitioning for faster collision
+    private gridPositions: Map<string, Bubble> = new Map(); // Track positions
     
     constructor(scene: Scene, bubbleGrid: BubbleGrid) {
         this.scene = scene;
@@ -28,6 +30,7 @@ export class GridAttachmentSystem {
     public addGridBubble(bubble: Bubble): void {
         if (!this.gridBubbles.includes(bubble)) {
             this.gridBubbles.push(bubble);
+            this.updateSpatialGrid(); // Update spatial partitioning
         }
     }
     
@@ -38,11 +41,12 @@ export class GridAttachmentSystem {
         const index = this.gridBubbles.indexOf(bubble);
         if (index > -1) {
             this.gridBubbles.splice(index, 1);
+            this.updateSpatialGrid(); // Update spatial partitioning
         }
     }
     
     /**
-     * Check collision between projectile and grid bubbles
+     * Check collision between projectile and grid bubbles - OPTIMIZED
      */
     public checkCollision(projectile: Bubble): Bubble | null {
         const projectilePos = { x: projectile.x, y: projectile.y };
@@ -70,8 +74,10 @@ export class GridAttachmentSystem {
             return virtualBubble;
         }
         
-        // Check collision with existing bubbles
-        for (const gridBubble of this.gridBubbles) {
+        // OPTIMIZED: Only check nearby bubbles using spatial partitioning
+        const nearbyBubbles = this.getNearbyBubbles(projectilePos.x, projectilePos.y);
+        
+        for (const gridBubble of nearbyBubbles) {
             if (!gridBubble.visible) continue;
             
             const distance = Phaser.Math.Distance.Between(
@@ -86,6 +92,52 @@ export class GridAttachmentSystem {
         }
         
         return null;
+    }
+    
+    /**
+     * Get bubbles near a position using spatial partitioning
+     */
+    private getNearbyBubbles(x: number, y: number): Bubble[] {
+        // Use a simple grid-based spatial partitioning
+        const gridSize = BUBBLE_CONFIG.SIZE * 2; // Cell size
+        const cellX = Math.floor(x / gridSize);
+        const cellY = Math.floor(y / gridSize);
+        
+        const nearby: Bubble[] = [];
+        
+        // Check current cell and adjacent cells (3x3 grid)
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                const key = `${cellX + dx},${cellY + dy}`;
+                const cellBubbles = this.spatialGrid.get(key);
+                if (cellBubbles) {
+                    nearby.push(...cellBubbles);
+                }
+            }
+        }
+        
+        return nearby;
+    }
+    
+    /**
+     * Update spatial grid when bubbles are added/removed
+     */
+    private updateSpatialGrid(): void {
+        this.spatialGrid.clear();
+        const gridSize = BUBBLE_CONFIG.SIZE * 2;
+        
+        for (const bubble of this.gridBubbles) {
+            if (!bubble.visible) continue;
+            
+            const cellX = Math.floor(bubble.x / gridSize);
+            const cellY = Math.floor(bubble.y / gridSize);
+            const key = `${cellX},${cellY}`;
+            
+            if (!this.spatialGrid.has(key)) {
+                this.spatialGrid.set(key, []);
+            }
+            this.spatialGrid.get(key)!.push(bubble);
+        }
     }
     
     /**
@@ -236,23 +288,24 @@ export class GridAttachmentSystem {
     }
     
     /**
-     * Check if a hex position is occupied
+     * Check if a hex position is occupied - OPTIMIZED
      */
     private isPositionOccupied(hexPos: IHexPosition): boolean {
-        // Check both by grid position and by pixel proximity
-        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-        const threshold = BUBBLE_CONFIG.SIZE * 0.8; // 80% of bubble size
+        // OPTIMIZED: Use position map for O(1) lookup instead of O(n) iteration
+        const key = this.hexToKey(hexPos);
+        if (this.gridPositions.has(key)) {
+            const bubble = this.gridPositions.get(key);
+            return bubble ? bubble.visible : false;
+        }
         
-        return this.gridBubbles.some(bubble => {
+        // Fallback: Check by pixel proximity only for nearby bubbles
+        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
+        const threshold = BUBBLE_CONFIG.SIZE * 0.8;
+        const nearbyBubbles = this.getNearbyBubbles(pixelPos.x, pixelPos.y);
+        
+        return nearbyBubbles.some(bubble => {
             if (!bubble.visible) return false;
             
-            // Check by grid position
-            const pos = bubble.getGridPosition();
-            if (pos && pos.q === hexPos.q && pos.r === hexPos.r) {
-                return true;
-            }
-            
-            // Also check by pixel distance to catch misaligned bubbles
             const distance = Phaser.Math.Distance.Between(
                 bubble.x, bubble.y,
                 pixelPos.x, pixelPos.y
@@ -260,6 +313,13 @@ export class GridAttachmentSystem {
             
             return distance < threshold;
         });
+    }
+    
+    /**
+     * Convert hex position to string key
+     */
+    private hexToKey(hexPos: IHexPosition): string {
+        return `${hexPos.q},${hexPos.r}`;
     }
     
     /**
@@ -295,6 +355,10 @@ export class GridAttachmentSystem {
         
         // Set grid position BEFORE moving
         bubble.setGridPosition(hexPos);
+        
+        // Update position map for O(1) lookups
+        const key = this.hexToKey(hexPos);
+        this.gridPositions.set(key, bubble);
         
         // Add to grid bubbles immediately to prevent double-occupation
         this.addGridBubble(bubble);
@@ -598,6 +662,11 @@ export class GridAttachmentSystem {
         bubbles.forEach((bubble, index) => {
             // Remove from grid immediately
             this.removeGridBubble(bubble);
+            const oldPos = bubble.getGridPosition();
+            if (oldPos) {
+                const key = this.hexToKey(oldPos);
+                this.gridPositions.delete(key);
+            }
             bubble.setGridPosition(null);
             
             // Add slight random horizontal movement for natural falling
@@ -679,5 +748,13 @@ export class GridAttachmentSystem {
                 }
             });
         });
+    }
+    
+    /**
+     * Fast O(1) check if a grid position has a bubble
+     * Used for performance optimization in updateObjectiveShield
+     */
+    public hasGridPosition(gridKey: string): boolean {
+        return this.gridPositions.has(gridKey);
     }
 }

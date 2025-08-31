@@ -10,30 +10,12 @@ const config: CapacitorConfig = {
     androidScheme: 'https'
   },
   ios: {
-    // Disable iOS rubber band scrolling
+    // SIMPLIFIED: Minimal configuration like Safari
     scrollEnabled: false,
-    // Allow inline media playback
     allowsInlineMediaPlayback: true,
-    // Content configuration
-    contentInset: 'automatic',
-    // Disable swipe navigation
     allowsBackForwardNavigationGestures: false,
-    // Performance optimizations
-    limitsNavigationsToAppBoundDomains: true,
-    // Prefer the faster WKWebView
-    preferredContentMode: 0,
-    // WKWebView Configuration for better performance
-    configuration: {
-      preferences: {
-        javaScriptCanOpenWindowsAutomatically: false,
-        javaScriptEnabled: true
-      },
-      allowsInlineMediaPlayback: true,
-      mediaTypesRequiringUserActionForPlayback: [],
-      suppressesIncrementalRendering: false,
-      allowsAirPlayForMediaPlayback: false,
-      applicationNameForUserAgent: 'BubbleClash/1.0'
-    }
+    // REMOVED: preferredContentMode and other optimizations that may cause overhead
+    // Let iOS use default settings which work better
   },
   plugins: {
     Haptics: {

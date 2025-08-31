@@ -52,6 +52,12 @@
             image-rendering: auto;  /* Let browser handle HD rendering */
             image-rendering: high-quality;  /* Fallback for better quality */
             image-rendering: -webkit-optimize-contrast;  /* Safari/Chrome */
+            /* Critical iOS performance optimizations */
+            -webkit-transform: translateZ(0);  /* Force GPU acceleration */
+            -webkit-backface-visibility: hidden;  /* Prevent flicker */
+            -webkit-perspective: 1000;  /* Enable 3D acceleration */
+            will-change: transform;  /* Hint browser about animations */
+            transform: translate3d(0, 0, 0);  /* Force GPU layer */
         }
 
         #loading {

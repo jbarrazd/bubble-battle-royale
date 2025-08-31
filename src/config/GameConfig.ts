@@ -9,7 +9,11 @@ export function createGameConfig(scenes: any[]): IGameConfig {
     // Detect if running on iOS/Capacitor
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isCapacitor = (window as any).Capacitor !== undefined;
-    const isMobile = device.isMobile || isIOS || isCapacitor;
+    const isMobile = device.getCapabilities().isMobile || isIOS || isCapacitor;
+    
+    // PERFORMANCE: Use device pixel ratio for better performance on Capacitor
+    // This renders at native resolution instead of forcing 2x
+    const pixelRatio = (isCapacitor && window.devicePixelRatio) ? window.devicePixelRatio : 1;
     
     return {
         // Force WebGL for consistent rendering across all platforms
@@ -30,25 +34,16 @@ export function createGameConfig(scenes: any[]): IGameConfig {
                 gravity: { x: 0, y: 0 },
                 debug: false,
                 // iOS-optimized physics with interpolation
-                fps: 60,
-                timeScale: 1,
-                overlapBias: 4,
-                tileBias: 16,
-                forceX: false,
-                isPaused: false,
-                customUpdate: false
             }
         },
         fps: {
-            target: 120,  // 120 FPS for all platforms - it's a simple game
-            min: 60,
-            forceSetTimeOut: false,  // Use RAF for better performance
-            smoothStep: false,  // Disable for higher FPS
-            deltaHistory: 10,  // Smooth out delta time
-            panicMax: 120  // Prevent frame skipping
+            // iOS WKWebView is often capped at 60 FPS, desktop can do 120
+            target: (isCapacitor || isIOS) ? 60 : 120,
+            forceSetTimeOut: false  // Use RAF for better performance
         },
         render: {
-            antialias: true,  // Enable for better quality at 120 FPS
+            // PERFORMANCE: Optimize for iOS
+            antialias: false,  // Always disable for performance
             pixelArt: false,
             roundPixels: false,  // Let iOS handle pixel alignment
             transparent: false,
@@ -57,18 +52,24 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             premultipliedAlpha: true,
             failIfMajorPerformanceCaveat: false,
             powerPreference: 'high-performance',  // Request high-performance GPU
-            batchSize: isMobile ? 2048 : 4096,  // Optimize batch size for mobile
-            resolution: window.devicePixelRatio || 1,  // Full resolution
-            maxLights: 10,
+            batchSize: 4096,  // Increased for 120 FPS target
+            // Resolution should match the devicePixelRatio but capped at 2
+            // This ensures crisp rendering without overloading the GPU
+            resolution: Math.min(window.devicePixelRatio || 1, 2),
+            maxLights: 1,  // Minimum required for shader compilation
             maxTextures: -1,
             mipmapFilter: 'LINEAR',
-            desynchronized: false,  // Disable desynchronized for consistent rendering
+            // CRITICAL iOS PERFORMANCE
+            desynchronized: true,  // Better performance for 120 FPS
             autoMobilePipeline: false,  // Disable auto pipeline for consistency
-            multiTexture: true,  // Enable multi-texture support
-            // WebGL specific settings for consistency
-            antialiasSamples: 2,
+            multiTexture: true,  // Enable for better batching at 120 FPS
+            // WebGL specific settings
+            antialiasSamples: isCapacitor ? 0 : 2,  // No MSAA on iOS
             depth: false,  // We don't need depth buffer
-            stencil: false  // We don't need stencil buffer
+            stencil: false,  // We don't need stencil buffer
+            // iOS specific WebGL optimizations
+            webGLTimeout: 0,  // Disable WebGL timeout
+            forceWebGL1: false  // Use WebGL2 if available
         },
         scene: scenes,
         // iOS-specific optimizations
@@ -88,7 +89,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
 }
 
 // HD_SCALE: Factor to scale everything for HD quality
-export const HD_SCALE = 2;
+export const HD_SCALE = 2; // HD quality restored - keeping visual quality
 
 export const GAME_CONSTANTS = {
     BASE_WIDTH: 375 * HD_SCALE,  // 750 for HD

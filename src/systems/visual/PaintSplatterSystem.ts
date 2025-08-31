@@ -291,6 +291,20 @@ export class PaintSplatterSystem {
         // Add to tracking array
         this.splatters.push(graphics);
         
+        // PERFORMANCE: Aggressive cleanup to prevent memory issues
+        // Start cleanup earlier when approaching limit
+        if (this.splatters.length > this.config.maxSplatters * 0.7) {
+            // Remove oldest splatters more aggressively
+            const toRemove = Math.min(5, this.splatters.length - this.config.maxSplatters * 0.5);
+            for (let i = 0; i < toRemove; i++) {
+                const oldSplatter = this.splatters.shift();
+                if (oldSplatter) {
+                    this.scene.tweens.killTweensOf(oldSplatter);
+                    oldSplatter.destroy();
+                }
+            }
+        }
+        
         // Schedule fade out with configured timing
         this.scene.time.delayedCall(
             this.config.fadeStartDelay,

@@ -63,6 +63,18 @@ export class ArenaSystem {
     private opponentDangerLine?: Phaser.GameObjects.Graphics;
     private dangerWarningActive: boolean = false;
     private paintSplatterSystem?: PaintSplatterSystem;
+    private dangerCheckCounter: number = 0;
+    private readonly DANGER_CHECK_INTERVAL: number = 10;
+    
+    // Performance optimization: Cache objective shield state
+    private shieldCheckCounter: number = 0;
+    private readonly SHIELD_CHECK_INTERVAL: number = 15; // Check every 15 frames (~4 times per second at 60fps)
+    private cachedShieldState: boolean = false;
+    
+    // Performance optimization: Throttle aiming updates
+    private aimingCheckCounter: number = 0;
+    private readonly AIMING_CHECK_INTERVAL: number = 2; // Check every 2 frames for responsive aiming // Check every 10 frames instead of every frame
+    private lastAimAngle: number = 0;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -524,24 +536,27 @@ export class ArenaSystem {
         // Check if objective still exists (might be null after victory)
         if (!this.objective) return;
         
-        // Check if there are bubbles adjacent to objective
+        // OPTIMIZATION: Use spatial grid for faster neighbor checks
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
         const neighbors = this.bubbleGrid.getNeighbors(center);
         
         let hasAdjacentBubbles = false;
+        
+        // Use the grid attachment system's spatial grid for O(1) lookups
         for (const neighbor of neighbors) {
-            const hasBubble = this.bubbles.some(bubble => {
-                const pos = bubble.getGridPosition();
-                return pos && pos.q === neighbor.q && pos.r === neighbor.r;
-            });
-            
-            if (hasBubble) {
+            // Check if grid position has a bubble (much faster than iterating all bubbles)
+            const gridKey = `${neighbor.q},${neighbor.r}`;
+            if (this.gridAttachmentSystem.hasGridPosition(gridKey)) {
                 hasAdjacentBubbles = true;
                 break;
             }
         }
         
-        this.objective.setShielded(hasAdjacentBubbles);
+        // Only update shield if state changed (reduces unnecessary updates)
+        if (hasAdjacentBubbles !== this.cachedShieldState) {
+            this.cachedShieldState = hasAdjacentBubbles;
+            this.objective.setShielded(hasAdjacentBubbles);
+        }
     }
 
     public getZoneBounds(zone: ArenaZone): IZoneBounds | undefined {
@@ -565,25 +580,49 @@ export class ArenaSystem {
     }
 
     public update(time: number, delta: number): void {
-        // Update input manager
-        this.inputManager.update();
+        // OPTIMIZATION: Only update input every frame if pointer is active
+        const isPointerActive = this.inputManager.isPointerActive();
+        if (isPointerActive) {
+            this.inputManager.update();
+        } else {
+            // Check input less frequently when not actively aiming
+            this.aimingCheckCounter++;
+            if (this.aimingCheckCounter >= this.AIMING_CHECK_INTERVAL * 2) {
+                this.aimingCheckCounter = 0;
+                this.inputManager.update();
+            }
+        }
         
-        // Update launcher aiming based on input
-        this.updateLauncherAiming();
+        // OPTIMIZATION: Throttle launcher aiming updates
+        if (isPointerActive) {
+            // Update aiming more frequently when actively aiming
+            this.updateLauncherAiming();
+        } else {
+            // Update less frequently when idle
+            if (this.aimingCheckCounter === 0) {
+                this.updateLauncherAiming();
+            }
+        }
         
-        // Update shooting system
+        // Update shooting system (already optimized internally)
         this.shootingSystem?.update(delta);
         
-        // Update power-up systems
+        // Update power-up systems (only when active)
         this.powerUpActivation?.update(delta);
-        // Only update aiming mode system if a power-up is active
-        // (This will be controlled by PowerUpActivationSystem)
         
-        // Update objective shield
-        this.updateObjectiveShield();
+        // OPTIMIZATION: Throttle objective shield checks
+        this.shieldCheckCounter++;
+        if (this.shieldCheckCounter >= this.SHIELD_CHECK_INTERVAL) {
+            this.shieldCheckCounter = 0;
+            this.updateObjectiveShield();
+        }
         
-        // Check danger zone proximity
-        this.checkDangerZoneProximity();
+        // Check danger zone proximity only every N frames for performance
+        this.dangerCheckCounter++;
+        if (this.dangerCheckCounter >= this.DANGER_CHECK_INTERVAL) {
+            this.dangerCheckCounter = 0;
+            this.checkDangerZoneProximity();
+        }
         
         // Update unified feedback system
         this.unifiedFeedbackSystem?.update(delta);
@@ -603,8 +642,12 @@ export class ArenaSystem {
             165  // Max angle from vertical
         );
         
-        // Update launcher rotation
-        this.playerLauncher.setAimAngle(angle);
+        // Only update launcher rotation if angle has changed significantly (reduces unnecessary updates)
+        const angleDiff = Math.abs(angle - this.lastAimAngle);
+        if (angleDiff > 0.5) { // Only update if angle changed by more than 0.5 degrees
+            this.playerLauncher.setAimAngle(angle);
+            this.lastAimAngle = angle;
+        }
         
         // Show aiming feedback when pointer is active
         const isAiming = this.inputManager.isPointerActive();
@@ -1076,7 +1119,9 @@ export class ArenaSystem {
         // Check all grid bubbles
         const gridBubbles = this.gridAttachmentSystem.getGridBubbles();
         
-        for (const bubble of gridBubbles) {
+        // Use more efficient iteration with early exit
+        for (let i = 0; i < gridBubbles.length; i++) {
+            const bubble = gridBubbles[i];
             if (!bubble.visible) continue;
             
             // Check proximity to player danger zone
@@ -1084,6 +1129,7 @@ export class ArenaSystem {
             if (playerDistance < warningDistance && playerDistance > 0) {
                 nearDanger = true;
                 this.activateDangerWarning(this.playerDangerLine, true);
+                break; // Exit early once we find danger
             }
             
             // Check proximity to opponent danger zone
@@ -1091,6 +1137,7 @@ export class ArenaSystem {
             if (opponentDistance < warningDistance && opponentDistance > 0) {
                 nearDanger = true;
                 this.activateDangerWarning(this.opponentDangerLine, false);
+                break; // Exit early once we find danger
             }
         }
         

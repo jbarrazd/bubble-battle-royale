@@ -5,6 +5,7 @@ import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
 import { PremiumBubbleSound } from '@/systems/audio/PremiumBubbleSound';
 import { Z_LAYERS } from '@/config/ArenaConfig';
+import { TweenOptimizer } from '@/systems/visual/TweenOptimizer';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
@@ -18,6 +19,7 @@ export class GameScene extends Scene {
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
     private isPaused: boolean = false;
+    private tweenOptimizer!: TweenOptimizer;
 
     constructor() {
         super({ key: SceneKeys.GAME });
@@ -44,6 +46,10 @@ export class GameScene extends Scene {
             this.backgroundMusic = undefined;
         }
         
+        // Set isCapacitor flag in registry for global access
+        const isCapacitor = !!(window as any).Capacitor;
+        this.game.registry.set('isCapacitor', isCapacitor);
+        
         this.sceneManager = SceneManager.getInstance();
         this.sceneManager.setCurrentScene(SceneKeys.GAME);
         this.performanceMonitor = new PerformanceMonitor();
@@ -55,6 +61,9 @@ export class GameScene extends Scene {
         try {
             // Set a visible background color first
             this.cameras.main.setBackgroundColor('#3498db');
+            
+            // Initialize TweenOptimizer for performance
+            this.tweenOptimizer = new TweenOptimizer(this);
             
             console.log('GameScene: Creating background...');
             this.createBackground();
@@ -108,18 +117,15 @@ export class GameScene extends Scene {
             if (this.cache.audio.exists('background-music')) {
                 this.backgroundMusic = this.sound.add('background-music', {
                     loop: true,
-                    volume: 0.3  // Lower volume so it doesn't overpower sound effects
+                    volume: 0.3
                 });
-                
-                // Start playing the background music
                 this.backgroundMusic.play();
                 console.log('GameScene: Background music started');
             } else {
-                console.log('GameScene: Background music not found, continuing without it');
+                console.warn('GameScene: Background music not found in cache');
             }
         } catch (error) {
-            console.error('GameScene: Failed to start background music:', error);
-            // Continue without background music
+            console.error('GameScene: Failed to create background music:', error);
         }
     }
 
@@ -511,8 +517,8 @@ export class GameScene extends Scene {
         const now = performance.now();
         const elapsed = now - this.lastFPSUpdate;
         
-        // Update FPS every 500ms for stability
-        if (elapsed >= 500) {
+        // Update FPS every 1000ms to reduce overhead when targeting 120 FPS
+        if (elapsed >= 1000) {
             const fps = Math.round((this.frameCount * 1000) / elapsed);
             this.fpsText.setText(`FPS: ${fps}`);
             

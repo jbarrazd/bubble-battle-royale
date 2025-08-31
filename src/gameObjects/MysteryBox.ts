@@ -325,4 +325,29 @@ export class MysteryBox extends Phaser.GameObjects.Container {
     public isCollected(): boolean {
         return this.collected;
     }
+    
+    /**
+     * Clean destroy method to prevent memory leaks
+     */
+    public override destroy(): void {
+        // Clean up timers
+        if (this.particleTimer) {
+            this.particleTimer.destroy();
+            this.particleTimer = undefined;
+        }
+        
+        // Stop tweens
+        if (this.floatTween) {
+            this.floatTween.stop();
+            this.floatTween = undefined;
+        }
+        
+        // Kill all tweens on this object
+        this.scene.tweens.killTweensOf(this);
+        if (this.glowEffect) {
+            this.scene.tweens.killTweensOf(this.glowEffect);
+        }
+        
+        super.destroy();
+    }
 }
