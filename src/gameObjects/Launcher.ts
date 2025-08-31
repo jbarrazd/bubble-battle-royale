@@ -64,6 +64,8 @@ export class Launcher extends Phaser.GameObjects.Container {
     private readyIndicator?: Phaser.GameObjects.Arc;
     private queueContainer?: Phaser.GameObjects.Container;
     private nextBubbleFrame?: Phaser.GameObjects.Graphics;
+    private nextBubbleGraphics?: Phaser.GameObjects.Graphics;
+    private secondBubbleGraphics?: Phaser.GameObjects.Graphics;
     
     // === ARSENAL INTEGRATION ===
     private arsenalSlots: ArsenalSlot[] = [];
@@ -379,59 +381,167 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     /**
-     * MOBILE-OPTIMIZED: Renders queue bubble with perfect mobile visibility
+     * MOBILE-OPTIMIZED: Renders queue bubbles with perfect mobile visibility
      */
     private renderEnhancedQueueBubbles(): void {
-        if (!this.queueBackground) return;
+        if (!this.queueBackground || !this.queueContainer) return;
         
-        // Show next bubble with optimal mobile sizing and clarity
+        // Initial render of bubbles
         if (this.nextBubbleColors.length > 0) {
-            const color = this.nextBubbleColors[0];
-            
-            // Mobile-first bubble sizing - larger and clearer
-            const x = 0; // Perfectly centered
-            const y = 0; // Perfectly centered
-            const radius = 11; // Increased from 10 for better mobile visibility
-            const alpha = 1.0; // Full opacity for maximum clarity
-            
-            this.renderEnhancedQueueBubble(x, y, radius, alpha, color);
+            this.createNextBubble(this.nextBubbleColors[0]);
         }
         
-        // Clean mobile design - single next bubble only
+        if (this.nextBubbleColors.length > 1) {
+            this.createSecondBubble(this.nextBubbleColors[1]);
+        }
     }
-
+    
     /**
-     * MOBILE-FIRST: Renders queue bubble with maximum clarity and visual hierarchy
+     * Create the main next bubble
      */
-    private renderEnhancedQueueBubble(x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
-        if (!this.queueBackground) return;
+    private createNextBubble(color: BubbleColor): void {
+        if (!this.queueContainer) return;
         
+        const bubbleGraphics = this.scene.add.graphics();
+        this.queueContainer.add(bubbleGraphics);
+        this.nextBubbleGraphics = bubbleGraphics;
+        
+        // Set initial scale to 0 for animation
+        bubbleGraphics.setScale(0);
+        
+        // Draw the large bubble
+        const radius = 25;
+        this.drawQueueBubble(bubbleGraphics, 0, 0, radius, 1.0, color);
+        
+        // Animate appearance
+        this.scene.tweens.add({
+            targets: bubbleGraphics,
+            scale: 1,
+            duration: 300,
+            ease: 'Back.easeOut'
+        });
+    }
+    
+    /**
+     * Create the small second bubble
+     */
+    private createSecondBubble(color: BubbleColor): void {
+        if (!this.queueContainer) return;
+        
+        const bubbleGraphics = this.scene.add.graphics();
+        this.queueContainer.add(bubbleGraphics);
+        this.secondBubbleGraphics = bubbleGraphics;
+        
+        // Set initial scale to 0 for animation
+        bubbleGraphics.setScale(0);
+        
+        // Draw the small bubble
+        const radius = 12;
+        this.drawSmallQueueBubble(bubbleGraphics, 0, 0, radius, 0.85, color);
+        
+        // Animate appearance
+        this.scene.tweens.add({
+            targets: bubbleGraphics,
+            scale: 1,
+            duration: 300,
+            delay: 100, // Slight delay after the first bubble
+            ease: 'Back.easeOut'
+        });
+    }
+    
+    /**
+     * Reset all queue bubbles
+     */
+    private resetQueueBubbles(): void {
+        if (this.nextBubbleGraphics) {
+            this.scene.tweens.add({
+                targets: this.nextBubbleGraphics,
+                alpha: 0,
+                scale: 0.5,
+                duration: 150,
+                ease: 'Power2.In',
+                onComplete: () => {
+                    this.nextBubbleGraphics?.destroy();
+                    this.nextBubbleGraphics = undefined;
+                }
+            });
+        }
+        
+        if (this.secondBubbleGraphics) {
+            this.scene.tweens.add({
+                targets: this.secondBubbleGraphics,
+                alpha: 0,
+                scale: 0.5,
+                duration: 150,
+                ease: 'Power2.In',
+                onComplete: () => {
+                    this.secondBubbleGraphics?.destroy();
+                    this.secondBubbleGraphics = undefined;
+                }
+            });
+        }
+    }
+    
+    /**
+     * Draw queue bubble on graphics object
+     */
+    private drawQueueBubble(graphics: Phaser.GameObjects.Graphics, x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
         const bubbleTheme = this.getBubbleColors(color);
         
-        // Mobile-optimized bubble with high contrast
-        this.queueBackground.fillStyle(bubbleTheme.primary, alpha);
-        this.queueBackground.fillCircle(x, y, radius);
+        graphics.fillStyle(Phaser.Display.Color.GetColor32(
+            bubbleTheme.primary >> 16 & 0xFF,
+            bubbleTheme.primary >> 8 & 0xFF,
+            bubbleTheme.primary & 0xFF,
+            alpha
+        ));
+        graphics.fillCircle(x, y, radius);
         
-        // Strong border for mobile definition - thicker for better visibility
-        this.queueBackground.lineStyle(4 * HD_SCALE, bubbleTheme.dark, alpha * 0.9);  // HD line width
-        this.queueBackground.strokeCircle(x, y, radius);
+        graphics.lineStyle(2 * HD_SCALE, bubbleTheme.dark, alpha * 0.9);
+        graphics.strokeCircle(x, y, radius);
         
-        // Enhanced 3D highlight - more prominent for mobile
-        this.queueBackground.fillStyle(bubbleTheme.light, alpha * 0.9);
-        this.queueBackground.fillCircle(x - (2.5 * HD_SCALE), y - (2.5 * HD_SCALE), radius * 0.35);
+        graphics.fillStyle(Phaser.Display.Color.GetColor32(
+            bubbleTheme.light >> 16 & 0xFF,
+            bubbleTheme.light >> 8 & 0xFF,
+            bubbleTheme.light & 0xFF,
+            alpha * 0.9
+        ));
+        graphics.fillCircle(x - 2, y - 2, radius * 0.35);
         
-        // Premium inner glow - more visible on mobile
-        this.queueBackground.fillStyle(bubbleTheme.accent, alpha * 0.3);
-        this.queueBackground.fillCircle(x, y, radius * 0.6);
-        
-        // Clear "NEXT" indicator ring - mobile-friendly
-        this.queueBackground.lineStyle(3 * HD_SCALE, bubbleTheme.accent, alpha * 0.8);  // HD line width
-        this.queueBackground.strokeCircle(x, y, radius + (3 * HD_SCALE));
-        
-        // Additional mobile clarity ring
-        this.queueBackground.lineStyle(0.5 * HD_SCALE, 0xffffff, alpha * 0.3);
-        this.queueBackground.strokeCircle(x, y, radius + (1 * HD_SCALE));
+        graphics.fillStyle(Phaser.Display.Color.GetColor32(
+            bubbleTheme.accent >> 16 & 0xFF,
+            bubbleTheme.accent >> 8 & 0xFF,
+            bubbleTheme.accent & 0xFF,
+            alpha * 0.3
+        ));
+        graphics.fillCircle(x, y, radius * 0.6);
     }
+    
+    /**
+     * Draw small queue bubble on graphics object
+     */
+    private drawSmallQueueBubble(graphics: Phaser.GameObjects.Graphics, x: number, y: number, radius: number, alpha: number, color: BubbleColor): void {
+        const bubbleTheme = this.getBubbleColors(color);
+        
+        graphics.fillStyle(Phaser.Display.Color.GetColor32(
+            bubbleTheme.primary >> 16 & 0xFF,
+            bubbleTheme.primary >> 8 & 0xFF,
+            bubbleTheme.primary & 0xFF,
+            alpha
+        ));
+        graphics.fillCircle(x, y, radius);
+        
+        graphics.lineStyle(1 * HD_SCALE, bubbleTheme.dark, alpha * 0.8);
+        graphics.strokeCircle(x, y, radius);
+        
+        graphics.fillStyle(Phaser.Display.Color.GetColor32(
+            bubbleTheme.light >> 16 & 0xFF,
+            bubbleTheme.light >> 8 & 0xFF,
+            bubbleTheme.light & 0xFF,
+            alpha * 0.7
+        ));
+        graphics.fillCircle(x - 1, y - 1, radius * 0.3);
+    }
+
 
     /**
      * Renders premium glow effects
@@ -1045,27 +1155,50 @@ export class Launcher extends Phaser.GameObjects.Container {
     public updateQueueColors(colors: BubbleColor[]): void {
         this.nextBubbleColors = colors;
         
-        // Enhanced queue update with better visibility
-        if (this.queueContainer) {
+        if (!this.queueContainer) return;
+        
+        // Simple approach: always recreate the bubbles with proper colors
+        // Fade out existing bubbles
+        if (this.nextBubbleGraphics) {
             this.scene.tweens.add({
-                targets: this.queueContainer,
-                scaleX: { from: 1, to: 1.1, to: 1 },
-                scaleY: { from: 1, to: 1.1, to: 1 },
-                duration: 400,
-                ease: 'Elastic.Out',
+                targets: this.nextBubbleGraphics,
+                alpha: 0,
+                scale: 0.5,
+                duration: 150,
+                ease: 'Power2.In',
                 onComplete: () => {
-                    this.renderEnhancedQueue();
+                    this.nextBubbleGraphics?.destroy();
+                    this.nextBubbleGraphics = undefined;
                 }
             });
-            
-            // Flash effect to draw attention to queue update
+        }
+        
+        if (this.secondBubbleGraphics) {
+            // Make the second bubble grow and fade
             this.scene.tweens.add({
-                targets: this.queueContainer,
-                alpha: { from: 1, to: 0.7, to: 1 },
+                targets: this.secondBubbleGraphics,
+                alpha: 0,
+                scale: 1.8,
                 duration: 200,
-                ease: 'Power2.InOut'
+                ease: 'Power2.Out',
+                onComplete: () => {
+                    this.secondBubbleGraphics?.destroy();
+                    this.secondBubbleGraphics = undefined;
+                }
             });
         }
+        
+        // Create new bubbles after a short delay
+        this.scene.time.delayedCall(200, () => {
+            if (colors.length > 0) {
+                this.createNextBubble(colors[0]);
+            }
+            if (colors.length > 1) {
+                this.scene.time.delayedCall(100, () => {
+                    this.createSecondBubble(colors[1]);
+                });
+            }
+        });
     }
 
     // === PRIVATE ANIMATION METHODS - ENHANCED ===
