@@ -131,75 +131,400 @@ export class SoundGenerator {
     }
 
     /**
-     * Generate simple, pleasant bubble pop sound
+     * Generate convincing water bubble pop sound
      */
     public generateBubblePop(color?: BubbleColor): string {
         if (this.muted) return 'muted';
         
-        // Create a unique voice ID
         const voiceId = `pop_${this.voiceIdCounter++}`;
         
         try {
-            // Simple frequency mapping for different colors
-            const colorFrequencies: { [key: number]: number } = {
-                [BubbleColor.RED]: 600,      // Lower frequencies for warmer feel
-                [BubbleColor.BLUE]: 800,   
-                [BubbleColor.GREEN]: 1000,  
-                [BubbleColor.YELLOW]: 1200, 
-                [BubbleColor.PURPLE]: 1400  
-            };
-            
-            const baseFrequency = color ? (colorFrequencies[color] || 800) : 800;
-            // Add slight random variation
-            const frequency = baseFrequency * (0.9 + Math.random() * 0.2);
-            
             const currentTime = this.audioContext.currentTime;
             
-            // Simple sine wave pop
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
+            // Create a more water-like pop using multiple components
             
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(frequency * 1.5, currentTime);
-            // Quick pitch drop for pop effect
-            oscillator.frequency.exponentialRampToValueAtTime(frequency * 0.5, currentTime + 0.04);
+            // 1. Low frequency thump (the initial pressure release)
+            const thumpOsc = this.audioContext.createOscillator();
+            const thumpGain = this.audioContext.createGain();
+            thumpOsc.type = 'sine';
+            thumpOsc.frequency.setValueAtTime(150, currentTime);
+            thumpOsc.frequency.exponentialRampToValueAtTime(40, currentTime + 0.03);
             
-            // Simple envelope - quick attack, quick decay
-            gainNode.gain.setValueAtTime(0, currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.15, currentTime + 0.002); // 2ms attack
-            gainNode.gain.exponentialRampToValueAtTime(0.01, currentTime + 0.05); // 50ms total
-            gainNode.gain.linearRampToValueAtTime(0, currentTime + 0.06);
+            thumpGain.gain.setValueAtTime(0, currentTime);
+            thumpGain.gain.linearRampToValueAtTime(0.2, currentTime + 0.001);
+            thumpGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.03);
             
-            // Connect
-            oscillator.connect(gainNode);
-            gainNode.connect(this.masterGainNode);
+            // 2. Mid frequency click (the actual pop)
+            const clickOsc = this.audioContext.createOscillator();
+            const clickGain = this.audioContext.createGain();
+            const clickFilter = this.audioContext.createBiquadFilter();
+            clickFilter.type = 'bandpass';
+            clickFilter.frequency.value = 2000;
+            clickFilter.Q.value = 1;
             
-            // Play
-            oscillator.start(currentTime);
-            oscillator.stop(currentTime + 0.06);
+            clickOsc.type = 'square';
+            clickOsc.frequency.setValueAtTime(1500 + Math.random() * 500, currentTime);
+            
+            clickGain.gain.setValueAtTime(0, currentTime);
+            clickGain.gain.linearRampToValueAtTime(0.1, currentTime + 0.0005);
+            clickGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.01);
+            
+            // 3. High frequency splash (water droplet scatter)
+            const splashOsc = this.audioContext.createOscillator();
+            const splashGain = this.audioContext.createGain();
+            splashOsc.type = 'triangle';
+            splashOsc.frequency.setValueAtTime(4000 + Math.random() * 2000, currentTime);
+            splashOsc.frequency.exponentialRampToValueAtTime(1000, currentTime + 0.05);
+            
+            splashGain.gain.setValueAtTime(0, currentTime);
+            splashGain.gain.linearRampToValueAtTime(0.05, currentTime + 0.002);
+            splashGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.04);
+            
+            // Connect everything
+            thumpOsc.connect(thumpGain);
+            thumpGain.connect(this.masterGainNode);
+            
+            clickOsc.connect(clickFilter);
+            clickFilter.connect(clickGain);
+            clickGain.connect(this.masterGainNode);
+            
+            splashOsc.connect(splashGain);
+            splashGain.connect(this.masterGainNode);
+            
+            // Start all oscillators
+            thumpOsc.start(currentTime);
+            thumpOsc.stop(currentTime + 0.04);
+            
+            clickOsc.start(currentTime);
+            clickOsc.stop(currentTime + 0.015);
+            
+            splashOsc.start(currentTime + 0.002);
+            splashOsc.stop(currentTime + 0.05);
             
             // Cleanup
-            oscillator.onended = () => {
-                oscillator.disconnect();
-                gainNode.disconnect();
+            const cleanup = () => {
+                thumpOsc.disconnect();
+                thumpGain.disconnect();
+                clickOsc.disconnect();
+                clickFilter.disconnect();
+                clickGain.disconnect();
+                splashOsc.disconnect();
+                splashGain.disconnect();
                 this.activeVoices.delete(voiceId);
             };
             
-            // Store reference
-            const voice: IAudioVoice = {
-                oscillator: oscillator,
-                gainNode: gainNode,
-                startTime: currentTime,
-                isActive: true,
-                id: voiceId
-            };
-            this.activeVoices.set(voiceId, voice);
+            thumpOsc.onended = cleanup;
             
             return voiceId;
             
         } catch (error) {
             console.error('SoundGenerator: Failed to create pop sound:', error);
             return 'error';
+        }
+    }
+    
+    /**
+     * Generate modern, complex combo achievement sound
+     */
+    public generateComboSound(type: 'good' | 'great' | 'amazing' | 'perfect'): string {
+        if (this.muted) return 'muted';
+        
+        const voiceId = `combo_${this.voiceIdCounter++}`;
+        
+        try {
+            const currentTime = this.audioContext.currentTime;
+            
+            // Create complex layered sounds based on combo level
+            switch(type) {
+                case 'good':
+                    this.createGoodComboSound(currentTime, voiceId);
+                    break;
+                case 'great':
+                    this.createGreatComboSound(currentTime, voiceId);
+                    break;
+                case 'amazing':
+                    this.createAmazingComboSound(currentTime, voiceId);
+                    break;
+                case 'perfect':
+                    this.createPerfectComboSound(currentTime, voiceId);
+                    break;
+            }
+            
+            return voiceId;
+            
+        } catch (error) {
+            console.error('SoundGenerator: Failed to create combo sound:', error);
+            return 'error';
+        }
+    }
+    
+    private createGoodComboSound(currentTime: number, voiceId: string): void {
+        // Modern synth sweep with filter modulation
+        const osc1 = this.audioContext.createOscillator();
+        const osc2 = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        // Detuned saw waves for richness
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(220, currentTime);
+        osc2.frequency.setValueAtTime(221, currentTime); // Slight detune
+        
+        // Filter sweep
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(200, currentTime);
+        filter.frequency.exponentialRampToValueAtTime(2000, currentTime + 0.1);
+        filter.frequency.exponentialRampToValueAtTime(500, currentTime + 0.3);
+        filter.Q.value = 5;
+        
+        // Volume envelope
+        gain.gain.setValueAtTime(0, currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.3);
+        
+        // Connect
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGainNode);
+        
+        // Play
+        osc1.start(currentTime);
+        osc1.stop(currentTime + 0.3);
+        osc2.start(currentTime);
+        osc2.stop(currentTime + 0.3);
+        
+        // Impact layer
+        this.addImpactLayer(currentTime, 0.15);
+    }
+    
+    private createGreatComboSound(currentTime: number, voiceId: string): void {
+        // Layered synth with pitch bend and resonance
+        for (let i = 0; i < 3; i++) {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            
+            osc.type = 'square';
+            const baseFreq = 330 * (1 + i * 0.5);
+            osc.frequency.setValueAtTime(baseFreq, currentTime);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 1.5, currentTime + 0.1);
+            osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.8, currentTime + 0.4);
+            
+            filter.type = 'bandpass';
+            filter.frequency.value = 1000 + i * 500;
+            filter.Q.value = 10;
+            
+            gain.gain.setValueAtTime(0, currentTime);
+            gain.gain.linearRampToValueAtTime(0.15 / (i + 1), currentTime + 0.02 * (i + 1));
+            gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.4);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGainNode);
+            
+            osc.start(currentTime + i * 0.02);
+            osc.stop(currentTime + 0.5);
+        }
+        
+        // Add shimmer
+        this.addShimmerEffect(currentTime, 0.2);
+        this.addImpactLayer(currentTime, 0.2);
+    }
+    
+    private createAmazingComboSound(currentTime: number, voiceId: string): void {
+        // Complex FM synthesis with multiple carriers
+        const carrier1 = this.audioContext.createOscillator();
+        const carrier2 = this.audioContext.createOscillator();
+        const modulator = this.audioContext.createOscillator();
+        const modGain = this.audioContext.createGain();
+        const carrierGain = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        // FM synthesis setup
+        modulator.frequency.value = 440;
+        modGain.gain.setValueAtTime(100, currentTime);
+        modGain.gain.exponentialRampToValueAtTime(500, currentTime + 0.1);
+        modGain.gain.exponentialRampToValueAtTime(50, currentTime + 0.5);
+        
+        carrier1.frequency.value = 220;
+        carrier2.frequency.value = 330;
+        
+        // Filter with automation
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(500, currentTime);
+        filter.frequency.exponentialRampToValueAtTime(5000, currentTime + 0.15);
+        filter.frequency.exponentialRampToValueAtTime(1000, currentTime + 0.5);
+        filter.Q.value = 8;
+        
+        // Main envelope
+        carrierGain.gain.setValueAtTime(0, currentTime);
+        carrierGain.gain.linearRampToValueAtTime(0.25, currentTime + 0.02);
+        carrierGain.gain.setValueAtTime(0.25, currentTime + 0.2);
+        carrierGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.6);
+        
+        // Connect FM
+        modulator.connect(modGain);
+        modGain.connect(carrier1.frequency);
+        modGain.connect(carrier2.frequency);
+        
+        carrier1.connect(filter);
+        carrier2.connect(filter);
+        filter.connect(carrierGain);
+        carrierGain.connect(this.masterGainNode);
+        
+        // Start
+        modulator.start(currentTime);
+        carrier1.start(currentTime);
+        carrier2.start(currentTime);
+        modulator.stop(currentTime + 0.6);
+        carrier1.stop(currentTime + 0.6);
+        carrier2.stop(currentTime + 0.6);
+        
+        // Add multiple layers
+        this.addShimmerEffect(currentTime, 0.3);
+        this.addImpactLayer(currentTime, 0.3);
+        this.addResonanceLayer(currentTime);
+    }
+    
+    private createPerfectComboSound(currentTime: number, voiceId: string): void {
+        // Epic multi-layered synthesis
+        
+        // Layer 1: Deep bass impact
+        const bassOsc = this.audioContext.createOscillator();
+        const bassGain = this.audioContext.createGain();
+        bassOsc.type = 'sine';
+        bassOsc.frequency.setValueAtTime(55, currentTime);
+        bassGain.gain.setValueAtTime(0, currentTime);
+        bassGain.gain.linearRampToValueAtTime(0.4, currentTime + 0.02);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.5);
+        bassOsc.connect(bassGain);
+        bassGain.connect(this.masterGainNode);
+        bassOsc.start(currentTime);
+        bassOsc.stop(currentTime + 0.5);
+        
+        // Layer 2: Harmonic sweep
+        for (let harmonic = 1; harmonic <= 5; harmonic++) {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            
+            osc.type = 'triangle';
+            const freq = 440 * harmonic;
+            osc.frequency.setValueAtTime(freq * 0.5, currentTime);
+            osc.frequency.exponentialRampToValueAtTime(freq, currentTime + 0.1);
+            osc.frequency.setValueAtTime(freq, currentTime + 0.3);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.5, currentTime + 0.6);
+            
+            filter.type = 'bandpass';
+            filter.frequency.value = freq;
+            filter.Q.value = 20;
+            
+            gain.gain.setValueAtTime(0, currentTime);
+            gain.gain.linearRampToValueAtTime(0.1 / harmonic, currentTime + 0.05 * harmonic);
+            gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.8);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGainNode);
+            
+            osc.start(currentTime);
+            osc.stop(currentTime + 0.8);
+        }
+        
+        // Layer 3: Sparkling top
+        this.addSparkleChain(currentTime);
+        this.addShimmerEffect(currentTime, 0.4);
+        this.addImpactLayer(currentTime, 0.35);
+        this.addResonanceLayer(currentTime);
+    }
+    
+    private addImpactLayer(currentTime: number, volume: number): void {
+        // Sub bass punch
+        const impact = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        impact.type = 'sine';
+        impact.frequency.setValueAtTime(80, currentTime);
+        impact.frequency.exponentialRampToValueAtTime(30, currentTime + 0.1);
+        gain.gain.setValueAtTime(volume, currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.1);
+        impact.connect(gain);
+        gain.connect(this.masterGainNode);
+        impact.start(currentTime);
+        impact.stop(currentTime + 0.15);
+    }
+    
+    private addShimmerEffect(currentTime: number, volume: number): void {
+        // High frequency shimmer
+        const shimmer = this.audioContext.createOscillator();
+        const gain = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        shimmer.type = 'sawtooth';
+        shimmer.frequency.setValueAtTime(3000, currentTime);
+        shimmer.frequency.exponentialRampToValueAtTime(6000, currentTime + 0.2);
+        
+        filter.type = 'highpass';
+        filter.frequency.value = 3000;
+        
+        gain.gain.setValueAtTime(0, currentTime);
+        gain.gain.linearRampToValueAtTime(volume * 0.5, currentTime + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.3);
+        
+        shimmer.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGainNode);
+        shimmer.start(currentTime);
+        shimmer.stop(currentTime + 0.3);
+    }
+    
+    private addResonanceLayer(currentTime: number): void {
+        // Resonant filter sweep
+        const noise = this.audioContext.createBufferSource();
+        const noiseBuffer = this.audioContext.createBuffer(1, this.audioContext.sampleRate * 0.3, this.audioContext.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) {
+            noiseData[i] = (Math.random() * 2 - 1) * 0.1;
+        }
+        noise.buffer = noiseBuffer;
+        
+        const filter = this.audioContext.createBiquadFilter();
+        const gain = this.audioContext.createGain();
+        
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(500, currentTime);
+        filter.frequency.exponentialRampToValueAtTime(4000, currentTime + 0.2);
+        filter.Q.value = 20;
+        
+        gain.gain.setValueAtTime(0.15, currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, currentTime + 0.3);
+        
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGainNode);
+        noise.start(currentTime);
+        noise.stop(currentTime + 0.3);
+    }
+    
+    private addSparkleChain(currentTime: number): void {
+        // Chain of sparkles
+        for (let i = 0; i < 8; i++) {
+            const sparkle = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            
+            sparkle.type = 'sine';
+            sparkle.frequency.value = 2000 + i * 500;
+            
+            const startTime = currentTime + i * 0.05;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.05, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.1);
+            
+            sparkle.connect(gain);
+            gain.connect(this.masterGainNode);
+            sparkle.start(startTime);
+            sparkle.stop(startTime + 0.15);
         }
     }
     

@@ -207,23 +207,26 @@ export class SoundSystem {
     private onMatchCompleted(data: { count: number; combo: number }): void {
         this.currentCombo = data.combo;
         
-        // Additional effects for large matches
-        if (data.count >= 6) {
-            // Screen shake is handled by the game, but we can add extra sound
-            setTimeout(() => {
-                this.soundGenerator.generateBubbleAttach(); // Echo effect
-            }, 100);
+        if (this.settings.muted) return;
+        
+        // Play different combo sounds based on match size
+        if (data.count >= 7) {
+            // PERFECT combo - epic sound
+            this.soundGenerator.generateComboSound('perfect');
+        } else if (data.count >= 6) {
+            // AMAZING combo
+            this.soundGenerator.generateComboSound('amazing');
+        } else if (data.count >= 5) {
+            // GREAT combo
+            this.soundGenerator.generateComboSound('great');
+        } else if (data.count >= 4) {
+            // GOOD combo
+            this.soundGenerator.generateComboSound('good');
         }
     }
 
     private onBubbleExploded(data: { x: number; y: number; color: number; comboMultiplier: number }): void {
-        // Visual explosion is handled elsewhere, this is for audio sync
-        if (data.comboMultiplier >= 5) {
-            // Extra impact for large combos
-            setTimeout(() => {
-                this.soundGenerator.generateUIClick(); // Subtle additional sound
-            }, 50);
-        }
+        // Skip additional sounds - let the main pop sounds handle it
     }
     
     private onBubblesPopped(data: { color: number; count: number }): void {
