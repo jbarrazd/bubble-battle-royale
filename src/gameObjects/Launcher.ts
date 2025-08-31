@@ -128,8 +128,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.isOpponent = (zone === ArenaZone.OPPONENT);
         
         // MOBILE-FIRST POSITIONING: Optimized for 375x667px mobile screens
-        this.BUBBLE_POSITION_Y = -35 * HD_SCALE;  // Scaled position
-        this.QUEUE_POSITION_Y = 5 * HD_SCALE;     // Scaled position
+        this.BUBBLE_POSITION_Y = -20 * HD_SCALE;  // Closer position for compact design
+        this.QUEUE_POSITION_Y = 15 * HD_SCALE;     // Closer to chamber for integrated look
         
         if (this.isOpponent) {
             this.currentAngle = 90;
@@ -256,28 +256,49 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.platformGraphics.clear();
         
-        // Create a unified launcher body
-        const bodyWidth = 56 * HD_SCALE;
-        const bodyHeight = Math.abs(this.BUBBLE_POSITION_Y - this.QUEUE_POSITION_Y) + (48 * HD_SCALE);
-        const centerY = (this.BUBBLE_POSITION_Y + this.QUEUE_POSITION_Y) / 2;
+        // Create an integrated launcher design
+        const topY = this.BUBBLE_POSITION_Y;
+        const bottomY = this.QUEUE_POSITION_Y;
+        const height = Math.abs(bottomY - topY);
         
-        // Main launcher body - capsule shape
+        // Central connecting column
+        const columnWidth = 35 * HD_SCALE;
+        
+        // Draw connecting tube
         this.platformGraphics.fillGradientStyle(
             this.currentTheme.platform.top,
             this.currentTheme.platform.top,
             this.currentTheme.platform.bottom,
             this.currentTheme.platform.bottom,
-            1, 1, 0.95, 0.95
+            1, 1, 0.8, 0.8
         );
-        this.platformGraphics.fillRoundedRect(-bodyWidth/2, centerY - bodyHeight/2, bodyWidth, bodyHeight, 28 * HD_SCALE);
+        this.platformGraphics.fillRoundedRect(
+            -columnWidth/2, 
+            topY + (10 * HD_SCALE), 
+            columnWidth, 
+            height - (20 * HD_SCALE), 
+            12 * HD_SCALE
+        );
         
-        // Outer rim
-        this.platformGraphics.lineStyle(4 * HD_SCALE, this.currentTheme.platform.rim, 0.9);
-        this.platformGraphics.strokeRoundedRect(-bodyWidth/2, centerY - bodyHeight/2, bodyWidth, bodyHeight, 28 * HD_SCALE);
+        // Side rails for depth
+        this.platformGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.platform.rim, 0.6);
+        this.platformGraphics.strokeRoundedRect(
+            -columnWidth/2, 
+            topY + (10 * HD_SCALE), 
+            columnWidth, 
+            height - (20 * HD_SCALE), 
+            12 * HD_SCALE
+        );
         
-        // Inner chamber track
-        this.platformGraphics.fillStyle(0x0a0a0a, 0.5);
-        this.platformGraphics.fillRoundedRect(-20 * HD_SCALE, centerY - bodyHeight/2 + (8 * HD_SCALE), 40 * HD_SCALE, bodyHeight - (16 * HD_SCALE), 16 * HD_SCALE);
+        // Inner track
+        this.platformGraphics.fillStyle(0x0a0a0a, 0.4);
+        this.platformGraphics.fillRoundedRect(
+            -columnWidth/2 + (6 * HD_SCALE), 
+            topY + (15 * HD_SCALE), 
+            columnWidth - (12 * HD_SCALE), 
+            height - (30 * HD_SCALE), 
+            8 * HD_SCALE
+        );
     }
 
     /**
@@ -288,29 +309,39 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.chamberGraphics.clear();
         
-        // Chamber that sits on top of the launcher body
-        const chamberRadius = 26 * HD_SCALE;
-        const innerRadius = 18 * HD_SCALE;
+        // Chamber - more prominent than queue
+        const chamberRadius = 24 * HD_SCALE;
+        const innerRadius = 16 * HD_SCALE;
         
-        // Outer ring
-        this.chamberGraphics.fillStyle(this.currentTheme.chamber.outerTop, 0.8);
+        // Gradient background
+        this.chamberGraphics.fillGradientStyle(
+            this.currentTheme.chamber.outerTop,
+            this.currentTheme.chamber.outerTop,
+            this.currentTheme.chamber.outerBottom,
+            this.currentTheme.chamber.outerBottom,
+            1, 1, 0.9, 0.9
+        );
         this.chamberGraphics.fillCircle(0, 0, chamberRadius);
         
-        // Main rim
+        // Strong rim for the chamber
         this.chamberGraphics.lineStyle(3 * HD_SCALE, this.currentTheme.chamber.rim, 1);
         this.chamberGraphics.strokeCircle(0, 0, chamberRadius);
         
-        // Inner chamber where bubble sits - darker
-        this.chamberGraphics.fillStyle(0x0a0a0a, 0.8);
+        // Inner chamber where bubble sits
+        this.chamberGraphics.fillStyle(0x0a0a0a, 0.9);
         this.chamberGraphics.fillCircle(0, 0, innerRadius);
         
         // Inner rim accent
-        this.chamberGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.chamber.innerRim, 0.6);
+        this.chamberGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.chamber.innerRim, 0.8);
         this.chamberGraphics.strokeCircle(0, 0, innerRadius);
+        
+        // Power indicator ring
+        this.chamberGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.chamber.highlight, 0.5);
+        this.chamberGraphics.strokeCircle(0, 0, innerRadius + (3 * HD_SCALE));
         
         // Highlight dot
         this.chamberGraphics.fillStyle(this.currentTheme.chamber.highlight, 0.4);
-        this.chamberGraphics.fillCircle(-6 * HD_SCALE, -6 * HD_SCALE, 3 * HD_SCALE);
+        this.chamberGraphics.fillCircle(-5 * HD_SCALE, -5 * HD_SCALE, 3 * HD_SCALE);
     }
 
     /**
@@ -321,25 +352,27 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         this.queueBackground.clear();
         
-        // Queue chamber that sits at bottom of launcher body
-        const queueRadius = 26 * HD_SCALE;
-        const innerRadius = 18 * HD_SCALE;
+        // Smaller, more integrated queue base
+        const platformRadius = 26 * HD_SCALE;  // Match chamber size
+        const innerRadius = 22 * HD_SCALE;
         
-        // Outer ring
-        this.queueBackground.fillStyle(this.currentTheme.platform.top, 0.8);
-        this.queueBackground.fillCircle(0, 0, queueRadius);
+        // Base platform gradient - subtle
+        this.queueBackground.fillGradientStyle(
+            this.currentTheme.platform.top,
+            this.currentTheme.platform.top,
+            this.currentTheme.platform.bottom,
+            this.currentTheme.platform.bottom,
+            1, 1, 0.6, 0.6
+        );
+        this.queueBackground.fillCircle(0, 0, platformRadius);
         
-        // Main rim
-        this.queueBackground.lineStyle(3 * HD_SCALE, this.currentTheme.platform.rim, 1);
-        this.queueBackground.strokeCircle(0, 0, queueRadius);
+        // Platform rim - subtle
+        this.queueBackground.lineStyle(2 * HD_SCALE, this.currentTheme.platform.rim, 0.6);
+        this.queueBackground.strokeCircle(0, 0, platformRadius);
         
-        // Inner chamber for bubble - darker
-        this.queueBackground.fillStyle(0x0a0a0a, 0.8);
+        // Inner loading area
+        this.queueBackground.fillStyle(0x0a0a0a, 0.4);
         this.queueBackground.fillCircle(0, 0, innerRadius);
-        
-        // Inner accent
-        this.queueBackground.lineStyle(2 * HD_SCALE, this.currentTheme.platform.highlight, 0.6);
-        this.queueBackground.strokeCircle(0, 0, innerRadius);
         
         // Render queue bubbles with enhanced mobile sizing
         this.renderEnhancedQueueBubbles();
@@ -409,8 +442,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Set initial scale to 0 for animation
         bubbleGraphics.setScale(0);
         
-        // Draw the large bubble
-        const radius = 25;
+        // Draw the large bubble - fill the available space
+        const radius = 40;  // 80px diameter with HD_SCALE, fills the 88px inner area
         this.drawQueueBubble(bubbleGraphics, 0, 0, radius, 1.0, color);
         
         // Animate appearance
@@ -435,8 +468,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         // Set initial scale to 0 for animation
         bubbleGraphics.setScale(0);
         
-        // Draw the small bubble
-        const radius = 12;
+        // Draw the small bubble - visible in center
+        const radius = 18;  // 36px diameter with HD_SCALE, good visibility
         this.drawSmallQueueBubble(bubbleGraphics, 0, 0, radius, 0.85, color);
         
         // Animate appearance
