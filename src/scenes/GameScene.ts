@@ -3,14 +3,15 @@ import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
-import { RealisticBubbleSound } from '@/systems/audio/RealisticBubbleSound';
+import { PremiumBubbleSound } from '@/systems/audio/PremiumBubbleSound';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
-    private soundSystem!: RealisticBubbleSound;
+    private soundSystem!: PremiumBubbleSound;
+    private backgroundMusic: Phaser.Sound.BaseSound | undefined;
     // fpsText removed for clean production UI
     // debugText removed for clean production UI
     // scoreText removed - using player-specific scores
@@ -26,10 +27,22 @@ export class GameScene extends Scene {
         
         // Cannon sprite loading disabled - using procedural graphics
         // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
+        
+        // Load background music
+        // Note: Place background_music.mp3 in public/assets/audio/
+        this.load.audio('background-music', 'assets/audio/background_music.mp3');
     }
 
     public init(_data: ISceneData): void {
         console.log('GameScene: Initializing game arena...');
+        
+        // Clean up any existing background music before reinitializing
+        if (this.backgroundMusic) {
+            this.backgroundMusic.stop();
+            this.backgroundMusic.destroy();
+            this.backgroundMusic = undefined;
+        }
+        
         this.sceneManager = SceneManager.getInstance();
         this.sceneManager.setCurrentScene(SceneKeys.GAME);
         this.performanceMonitor = new PerformanceMonitor();
@@ -47,6 +60,9 @@ export class GameScene extends Scene {
             
             console.log('GameScene: Initializing sound system...');
             this.createSoundSystem();
+            
+            console.log('GameScene: Starting background music...');
+            this.createBackgroundMusic();
             
             console.log('GameScene: Creating arena...');
             this.createArena();
@@ -70,11 +86,39 @@ export class GameScene extends Scene {
 
     private createSoundSystem(): void {
         try {
-            this.soundSystem = new RealisticBubbleSound(this);
+            this.soundSystem = new PremiumBubbleSound(this);
             console.log('GameScene: Sound system initialized successfully');
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
             // Continue without sound system - game should still be playable
+        }
+    }
+    
+    private createBackgroundMusic(): void {
+        try {
+            // Stop any existing background music first to prevent overlapping
+            if (this.backgroundMusic) {
+                this.backgroundMusic.stop();
+                this.backgroundMusic.destroy();
+                this.backgroundMusic = undefined;
+            }
+            
+            // Check if the audio file was loaded successfully
+            if (this.cache.audio.exists('background-music')) {
+                this.backgroundMusic = this.sound.add('background-music', {
+                    loop: true,
+                    volume: 0.3  // Lower volume so it doesn't overpower sound effects
+                });
+                
+                // Start playing the background music
+                this.backgroundMusic.play();
+                console.log('GameScene: Background music started');
+            } else {
+                console.log('GameScene: Background music not found, continuing without it');
+            }
+        } catch (error) {
+            console.error('GameScene: Failed to start background music:', error);
+            // Continue without background music
         }
     }
 
@@ -233,6 +277,16 @@ export class GameScene extends Scene {
         // M key to toggle mute
         this.input.keyboard?.on('keydown-M', () => {
             const muted = this.soundSystem?.toggleMute();
+            
+            // Also mute/unmute background music
+            if (this.backgroundMusic) {
+                if (muted) {
+                    this.backgroundMusic.pause();
+                } else {
+                    this.backgroundMusic.resume();
+                }
+            }
+            
             console.log(`Audio ${muted ? 'muted' : 'unmuted'}`);
         });
         
@@ -254,9 +308,11 @@ export class GameScene extends Scene {
         
         if (this.isPaused) {
             this.physics.pause();
+            this.backgroundMusic?.pause();
             this.showPauseOverlay();
         } else {
             this.physics.resume();
+            this.backgroundMusic?.resume();
             this.hidePauseOverlay();
         }
     }
@@ -309,6 +365,13 @@ export class GameScene extends Scene {
     }
 
     private returnToMenu(): void {
+        // Properly cleanup background music
+        if (this.backgroundMusic) {
+            this.backgroundMusic.stop();
+            this.backgroundMusic.destroy();
+            this.backgroundMusic = undefined;
+        }
+        
         this.arenaSystem?.destroy();
         this.soundSystem?.destroy();
         this.sceneManager.transitionTo(SceneKeys.MENU);
@@ -326,6 +389,13 @@ export class GameScene extends Scene {
     }
 
     public shutdown(): void {
+        // Properly cleanup background music
+        if (this.backgroundMusic) {
+            this.backgroundMusic.stop();
+            this.backgroundMusic.destroy();
+            this.backgroundMusic = undefined;
+        }
+        
         this.arenaSystem?.destroy();
         this.soundSystem?.destroy();
         this.performanceMonitor?.reset();
