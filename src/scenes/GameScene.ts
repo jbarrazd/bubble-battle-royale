@@ -272,10 +272,12 @@ export class GameScene extends Scene {
             this.soundSystem.playAttachSound();
         });
         
-        // Match found event - sound disabled per user request
-        this.events.on('match-found', () => {
-            // Match and combo sounds disabled - user preference
-            // Previously played match sounds based on matchSize
+        // Match found event - using new explosion sound system
+        this.events.on('match-found', (data: any) => {
+            // New sophisticated explosion sounds that scale with match size
+            if (data && data.matchSize) {
+                this.soundSystem.playMatchSound(data.matchSize);
+            }
         });
         
         // Power-up activated event

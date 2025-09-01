@@ -6,6 +6,7 @@
 import { Scene } from 'phaser';
 import { SoundGenerator } from './SoundGenerator';
 import { HapticManager } from './HapticManager';
+import { ExplosionSoundSystem } from './ExplosionSoundSystem';
 import { AUDIO_CONFIG, SoundEventType, MatchSize } from '@/config/AudioConfig';
 
 export interface ISoundSystemSettings {
@@ -29,6 +30,7 @@ export class SoundSystem {
     private scene: Scene;
     private soundGenerator: SoundGenerator;
     private hapticManager: HapticManager;
+    private explosionSystem: ExplosionSoundSystem;
     
     // Settings
     private settings: ISoundSystemSettings = {
@@ -56,6 +58,7 @@ export class SoundSystem {
         this.scene = scene;
         this.soundGenerator = new SoundGenerator();
         this.hapticManager = new HapticManager();
+        this.explosionSystem = new ExplosionSoundSystem();
         
         console.log('SoundSystem: About to initialize...');
         this.initialize();
@@ -149,7 +152,8 @@ export class SoundSystem {
         
         try {
             await this.soundGenerator.ensureContextRunning();
-            console.log('SoundSystem: Audio context activated after user interaction');
+            await this.explosionSystem.ensureContextRunning();
+            console.log('SoundSystem: Audio contexts activated after user interaction');
             
             // Test sound to confirm audio is working
             setTimeout(() => {
@@ -193,13 +197,15 @@ export class SoundSystem {
     }
 
     private onMatchFound(data: IMatchData): void {
-        const matchSize = Math.max(3, Math.min(data.matchSize, 7)) as MatchSize;
+        const matchSize = Math.max(3, Math.min(data.matchSize, 10));
         
-        // Play combo sound
-        this.soundGenerator.generateComboSound(matchSize);
+        // Play sophisticated explosion sound instead of combo sound
+        if (!this.settings.muted) {
+            this.explosionSystem.playExplosion(matchSize, data.combo || 0);
+        }
         
         // Haptic feedback scaled with match size
-        this.hapticManager.matchFound(matchSize);
+        this.hapticManager.matchFound(matchSize as MatchSize);
         
         this.trackEvent('match-found');
     }
@@ -222,22 +228,8 @@ export class SoundSystem {
             this.hapticManager.matchFound(3);
         }
         
-        if (this.settings.muted) return;
-        
-        // Play different combo sounds based on match size
-        if (data.count >= 7) {
-            // PERFECT combo - epic sound
-            this.soundGenerator.generateComboSound('perfect');
-        } else if (data.count >= 6) {
-            // AMAZING combo
-            this.soundGenerator.generateComboSound('amazing');
-        } else if (data.count >= 5) {
-            // GREAT combo
-            this.soundGenerator.generateComboSound('great');
-        } else if (data.count >= 4) {
-            // GOOD combo
-            this.soundGenerator.generateComboSound('good');
-        }
+        // Explosion sounds are now handled in onMatchFound with the new ExplosionSoundSystem
+        // This provides better timing and more sophisticated audio
     }
 
     private onBubbleExploded(data: { x: number; y: number; color: number; comboMultiplier: number }): void {
@@ -574,6 +566,7 @@ export class SoundSystem {
         // Destroy components
         this.soundGenerator.destroy();
         this.hapticManager.destroy();
+        this.explosionSystem.destroy();
         
         // Stop background music
         if (this.backgroundMusic) {
