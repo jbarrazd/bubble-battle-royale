@@ -313,6 +313,16 @@ export class GameScene extends Scene {
             this.soundSystem.playBubblesDropSound();
         });
         
+        // Mystery box collected event
+        this.events.on('mystery-box-collected', () => {
+            this.soundSystem.playSuccessObjectiveSound();
+        });
+        
+        // Objective hit event (when hitting the treasure chest)
+        this.events.on('objective-hit', () => {
+            this.soundSystem.playSuccessObjectiveSound();
+        });
+        
         console.log('GameScene: Sound events connected');
     }
 

@@ -829,6 +829,9 @@ export class ArenaSystem {
             // console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
             // console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
             
+            // Call the hit method on the objective to trigger sound and animation
+            this.objective.hit();
+            
             // Mark game as over immediately to prevent multiple triggers
             this.gameOver = true;
             

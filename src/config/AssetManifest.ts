@@ -17,6 +17,7 @@ export const ASSET_KEYS = {
         COMBO_5_PLUS: 'combo-5-plus',
         COMBO_CELEBRATION: 'combo-celebration',
         ARSENAL_PICKUP: 'arsenal-pickup',
+        SUCCESS_OBJECTIVE: 'success-objective',
         VICTORY: 'victory',
         DEFEAT: 'defeat',
         BACKGROUND_MUSIC: 'background-music'
@@ -95,6 +96,12 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.AUDIO.ARSENAL_PICKUP,
                 url: 'assets/sounds/arsenal-pickup.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.SUCCESS_OBJECTIVE,
+                url: 'assets/sounds/success-objective.mp3',
                 type: 'audio',
                 data: {}
             },

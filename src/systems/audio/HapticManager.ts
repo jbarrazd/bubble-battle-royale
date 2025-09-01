@@ -66,15 +66,20 @@ export class HapticManager {
      * Initialize pattern cache for performance
      */
     private initializePatternCache(): void {
-        const patterns = AUDIO_CONFIG.HAPTICS;
+        // Define haptic patterns
+        const patterns = {
+            LIGHT: 10,
+            MEDIUM: 20,
+            STRONG: 30
+        };
         
-        this.patternCache.set('light', patterns.LIGHT.pattern);
-        this.patternCache.set('medium', patterns.MEDIUM.pattern);
-        this.patternCache.set('strong', patterns.STRONG.pattern);
-        this.patternCache.set('doubleTap', patterns.DOUBLE_TAP.pattern);
-        this.patternCache.set('victory', patterns.VICTORY.pattern);
-        this.patternCache.set('defeat', patterns.DEFEAT.pattern);
-        this.patternCache.set('powerUp', patterns.POWER_UP.pattern);
+        this.patternCache.set('light', patterns.LIGHT);
+        this.patternCache.set('medium', patterns.MEDIUM);
+        this.patternCache.set('strong', patterns.STRONG);
+        this.patternCache.set('doubleTap', [50, 50, 50]);
+        this.patternCache.set('victory', [100, 50, 100, 50, 200]);
+        this.patternCache.set('defeat', [200, 100, 200]);
+        this.patternCache.set('powerUp', [30, 30, 30, 30]);
     }
 
     /**
@@ -208,8 +213,8 @@ export class HapticManager {
                 return false;
             }
         }
-        const baseIntensity = AUDIO_CONFIG.HAPTICS.COMBO_BASE;
-        const multiplier = AUDIO_CONFIG.HAPTICS.COMBO_MULTIPLIER;
+        const baseIntensity = 30;
+        const multiplier = 10;
         const intensity = Math.min(baseIntensity + (comboSize * multiplier), 100);
         
         return this.vibrate(intensity);

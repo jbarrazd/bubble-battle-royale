@@ -17,7 +17,7 @@ export class RealSoundSystem {
         shoot: 0.3,
         attach: 0.4,
         combo: 0.6,
-        celebration: 0.8,
+        celebration: 1.0,  // Maximum volume for celebration
         arsenal: 0.5,
         victory: 0.9,
         background: 0.2
@@ -89,12 +89,10 @@ export class RealSoundSystem {
             // Play combo 5+ slower and quieter for more dramatic effect
             this.playSound(soundKey, volume, 0.85); // 30% quieter, 15% slower
             
-            // Play celebration for really big combos
-            if (size >= 7) {
-                setTimeout(() => {
-                    this.playSound(ASSET_KEYS.AUDIO.COMBO_CELEBRATION, this.volumes.celebration * 0.7); // Also quieter
-                }, 200);
-            }
+            // ALWAYS play celebration for 5+ combos (not just 7+)
+            setTimeout(() => {
+                this.playSound(ASSET_KEYS.AUDIO.COMBO_CELEBRATION, this.volumes.celebration); // Full celebration volume
+            }, 200);
         } else {
             return; // No sound for less than 3
         }
@@ -113,6 +111,14 @@ export class RealSoundSystem {
     public playArsenalPickupSound(): void {
         if (this.muted) return;
         this.playSound(ASSET_KEYS.AUDIO.ARSENAL_PICKUP, this.volumes.arsenal);
+    }
+
+    /**
+     * Play success objective sound (for mystery box/treasure chest)
+     */
+    public playSuccessObjectiveSound(): void {
+        if (this.muted) return;
+        this.playSound(ASSET_KEYS.AUDIO.SUCCESS_OBJECTIVE, this.volumes.arsenal * 1.2); // Slightly louder for impact
     }
 
     /**

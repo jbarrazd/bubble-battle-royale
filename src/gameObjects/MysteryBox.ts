@@ -191,6 +191,9 @@ export class MysteryBox extends Phaser.GameObjects.Container {
             this.particleTimer.destroy();
         }
         
+        // Play success objective sound
+        this.scene.events.emit('mystery-box-collected');
+        
         // Play collection animation
         this.playRevealAnimation();
         

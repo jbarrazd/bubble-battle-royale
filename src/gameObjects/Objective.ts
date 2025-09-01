@@ -338,6 +338,9 @@ export class Objective extends Phaser.GameObjects.Container {
     public hit(damage: number = 1): void {
         this.health -= damage;
         
+        // Play success objective sound when hit
+        this.scene.events.emit('objective-hit');
+        
         // Impact animation
         this.scene.tweens.add({
             targets: this,
