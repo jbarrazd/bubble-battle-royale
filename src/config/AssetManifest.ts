@@ -6,7 +6,9 @@ export const ASSET_KEYS = {
         BUBBLE: 'bubble',
         BACKGROUND: 'background',
         BUTTON: 'button',
-        PARTICLE: 'particle'
+        PARTICLE: 'particle',
+        PLANET: 'planet',
+        BUBBLE_PLANET: 'bubble_planet'
     },
     AUDIO: {
         BUBBLE_SHOOT: 'bubble-shoot',
@@ -46,6 +48,18 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.IMAGES.BACKGROUND,
                 url: 'assets/images/background-placeholder.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.PLANET,
+                url: 'assets/sprites/planeta.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.BUBBLE_PLANET,
+                url: 'assets/sprites/bubble_planet.png',
                 type: 'image',
                 data: {}
             }
