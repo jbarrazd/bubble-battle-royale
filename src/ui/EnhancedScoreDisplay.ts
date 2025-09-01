@@ -52,8 +52,8 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         // Clean positioning with HD scaling
         const padding = 15 * HD_SCALE;
         const bottomOffset = 30 * HD_SCALE;
-        const containerWidth = 90 * HD_SCALE;
-        const containerHeight = 50 * HD_SCALE;
+        const containerWidth = 70 * HD_SCALE;  // Reduced from 90
+        const containerHeight = 40 * HD_SCALE;  // Reduced from 50
         
         const x = padding;
         const y = this.scene.cameras.main.height - bottomOffset - containerHeight;
@@ -68,24 +68,24 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         bg.strokeRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
         
         // Player label
-        this.playerNameText = this.scene.add.text(10 * HD_SCALE, 8 * HD_SCALE, 'PLAYER', {
-            fontSize: `${9 * HD_SCALE}px`,
+        this.playerNameText = this.scene.add.text(8 * HD_SCALE, 6 * HD_SCALE, 'PLAYER', {
+            fontSize: `${7 * HD_SCALE}px`,  // Reduced from 9
             color: '#16C79A',
             fontFamily: 'Arial',
             fontStyle: 'bold'
         });
         
         // Score text
-        this.playerScoreText = this.scene.add.text(10 * HD_SCALE, 22 * HD_SCALE, '0', {
-            fontSize: `${16 * HD_SCALE}px`,
+        this.playerScoreText = this.scene.add.text(8 * HD_SCALE, 18 * HD_SCALE, '0', {
+            fontSize: `${12 * HD_SCALE}px`,  // Reduced from 16
             color: '#FFFFFF',
             fontFamily: 'Arial Black',
             fontStyle: 'bold'
         });
         
         // Lead indicator (simple crown emoji)
-        this.playerLeadIndicator = this.scene.add.text(containerWidth - 20 * HD_SCALE, containerHeight / 2, '👑', {
-            fontSize: `${12 * HD_SCALE}px`,
+        this.playerLeadIndicator = this.scene.add.text(containerWidth - 15 * HD_SCALE, containerHeight / 2, '👑', {
+            fontSize: `${9 * HD_SCALE}px`,  // Reduced from 12
             fontFamily: 'Arial'
         });
         this.playerLeadIndicator.setOrigin(0.5);
@@ -99,8 +99,8 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         // Clean positioning with HD scaling
         const padding = 15 * HD_SCALE;
         const topOffset = 35 * HD_SCALE;
-        const containerWidth = 90 * HD_SCALE;
-        const containerHeight = 50 * HD_SCALE;
+        const containerWidth = 70 * HD_SCALE;  // Reduced from 90
+        const containerHeight = 40 * HD_SCALE;  // Reduced from 50
         
         const x = this.scene.cameras.main.width - padding - containerWidth;
         const y = topOffset;
@@ -115,8 +115,8 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         bg.strokeRoundedRect(0, 0, containerWidth, containerHeight, 8 * HD_SCALE);
         
         // Opponent label
-        this.opponentNameText = this.scene.add.text(containerWidth - 10 * HD_SCALE, 8 * HD_SCALE, 'OPPONENT', {
-            fontSize: `${9 * HD_SCALE}px`,
+        this.opponentNameText = this.scene.add.text(containerWidth - 8 * HD_SCALE, 6 * HD_SCALE, 'OPPONENT', {
+            fontSize: `${7 * HD_SCALE}px`,  // Reduced from 9
             color: '#F45866',
             fontFamily: 'Arial',
             fontStyle: 'bold'
@@ -124,8 +124,8 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         this.opponentNameText.setOrigin(1, 0);
         
         // Score text
-        this.opponentScoreText = this.scene.add.text(containerWidth - 10 * HD_SCALE, 22 * HD_SCALE, '0', {
-            fontSize: `${16 * HD_SCALE}px`,
+        this.opponentScoreText = this.scene.add.text(containerWidth - 8 * HD_SCALE, 18 * HD_SCALE, '0', {
+            fontSize: `${12 * HD_SCALE}px`,  // Reduced from 16
             color: '#FFFFFF',
             fontFamily: 'Arial Black',
             fontStyle: 'bold'
@@ -133,8 +133,8 @@ export class EnhancedScoreDisplay extends Phaser.GameObjects.Container {
         this.opponentScoreText.setOrigin(1, 0);
         
         // Lead indicator (simple crown emoji)
-        this.opponentLeadIndicator = this.scene.add.text(20 * HD_SCALE, containerHeight / 2, '👑', {
-            fontSize: `${12 * HD_SCALE}px`,
+        this.opponentLeadIndicator = this.scene.add.text(15 * HD_SCALE, containerHeight / 2, '👑', {
+            fontSize: `${9 * HD_SCALE}px`,  // Reduced from 12
             fontFamily: 'Arial'
         });
         this.opponentLeadIndicator.setOrigin(0.5);

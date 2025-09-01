@@ -8,18 +8,18 @@ export const ARENA_CONFIG: IArenaConfig = {
     playerZoneHeight: 267 * HD_SCALE,    // 667.5 Ultra HD
     opponentZoneHeight: 267 * HD_SCALE,  // 667.5 Ultra HD
     objectiveZoneHeight: 133 * HD_SCALE, // 332.5 Ultra HD
-    bubbleSize: 32 * HD_SCALE,  // 80 Ultra HD
-    objectiveSize: 32 * HD_SCALE, // 80 Ultra HD
-    launcherOffset: 50 * HD_SCALE  // 125 Ultra HD
+    bubbleSize: 28 * HD_SCALE,  // 70 Ultra HD (reduced from 32)
+    objectiveSize: 28 * HD_SCALE, // 70 Ultra HD (reduced from 32)
+    launcherOffset: 45 * HD_SCALE  // 112.5 Ultra HD (reduced from 50)
 };
 
 export const BUBBLE_CONFIG = {
-    SIZE: 32 * HD_SCALE,  // 80 Ultra HD
+    SIZE: 28 * HD_SCALE,  // 70 Ultra HD (reduced from 32)
     GAP: 0,  // No gap - bubbles touch perfectly
     COLORS: 5,
     POOL_SIZE: 50, // OPTIMIZED: Reduced pool size for better iOS performance
-    HEX_WIDTH: 32 * HD_SCALE,  // 80 Ultra HD
-    HEX_HEIGHT: 28 * HD_SCALE, // 70 Ultra HD (SIZE * 0.866)
+    HEX_WIDTH: 28 * HD_SCALE,  // 70 Ultra HD (reduced)
+    HEX_HEIGHT: 24 * HD_SCALE, // 60 Ultra HD (SIZE * 0.866)
     ANIMATION_DURATION: 200,
     FALL_SPEED: 500 * HD_SCALE  // 1250 Ultra HD
 };

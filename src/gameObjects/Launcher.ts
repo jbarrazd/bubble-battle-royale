@@ -97,17 +97,18 @@ export class Launcher extends Phaser.GameObjects.Container {
     private readonly QUEUE_POSITION_Y: number;
     
     // === ARSENAL POSITIONING ===
+    // Better spacing: more separation between slots
     private readonly ARSENAL_POSITIONS_PLAYER = [
-        { x: 80 * HD_SCALE, y: -35 * HD_SCALE },     // Scaled positions
-        { x: 125 * HD_SCALE, y: -35 * HD_SCALE },
-        { x: 170 * HD_SCALE, y: -35 * HD_SCALE }
+        { x: 70 * HD_SCALE, y: -35 * HD_SCALE },     // First slot with good separation
+        { x: 110 * HD_SCALE, y: -35 * HD_SCALE },    // 40 unit spacing between slots
+        { x: 150 * HD_SCALE, y: -35 * HD_SCALE }     // More spread out
     ];
     private readonly ARSENAL_POSITIONS_OPPONENT = [
-        { x: -80 * HD_SCALE, y: -35 * HD_SCALE },    // Scaled positions
-        { x: -125 * HD_SCALE, y: -35 * HD_SCALE },
-        { x: -170 * HD_SCALE, y: -35 * HD_SCALE }
+        { x: -70 * HD_SCALE, y: -35 * HD_SCALE },    // Mirror positions for opponent
+        { x: -110 * HD_SCALE, y: -35 * HD_SCALE },
+        { x: -150 * HD_SCALE, y: -35 * HD_SCALE }
     ];
-    private readonly SLOT_SIZE = 36 * HD_SCALE;  // Scaled slot size
+    private readonly SLOT_SIZE = 25 * HD_SCALE;  // Further reduced for better spacing
     
     // Power-up icons
     private powerUpIcons: Record<PowerUpType, string> = {
@@ -1414,9 +1415,8 @@ export class Launcher extends Phaser.GameObjects.Container {
         this.arsenalContainer = this.scene.add.container(0, 0);
         this.add(this.arsenalContainer);
         
-        // Create energy conduits layer
-        this.energyConduits = this.scene.add.graphics();
-        this.arsenalContainer.add(this.energyConduits);
+        // Create the horizontal chamber design first
+        this.createArsenalChamber();
         
         // Use appropriate positions based on player/opponent
         const positions = this.isOpponent ? 
@@ -1432,8 +1432,174 @@ export class Launcher extends Phaser.GameObjects.Container {
             }
         });
         
-        // Position arsenal at same depth as launcher components
-        this.arsenalContainer.setDepth(1);
+        // Position arsenal at higher depth to ensure visibility
+        this.arsenalContainer.setDepth(100);
+    }
+    
+    private createArsenalChamber(): void {
+        if (!this.arsenalContainer || !this.currentTheme) return;
+        
+        const chamberGraphics = this.scene.add.graphics();
+        
+        // Calculate bounds for horizontal chamber
+        const startX = this.isOpponent ? -70 * HD_SCALE : 70 * HD_SCALE;
+        const endX = this.isOpponent ? -150 * HD_SCALE : 150 * HD_SCALE;
+        const chamberY = -35 * HD_SCALE;
+        const chamberHeight = 40 * HD_SCALE;
+        const chamberWidth = Math.abs(endX - startX) + 40 * HD_SCALE;
+        const chamberX = Math.min(startX, endX) - 18 * HD_SCALE;
+        
+        // === LAYER 1: Base Platform (like launcher) ===
+        // Outer shadow/glow
+        chamberGraphics.fillStyle(0x000000, 0.5);
+        chamberGraphics.fillRoundedRect(
+            chamberX - 3,
+            chamberY - chamberHeight/2 - 3,
+            chamberWidth + 6,
+            chamberHeight + 6,
+            15 * HD_SCALE
+        );
+        
+        // Main platform base
+        const gradient = chamberGraphics.fillGradientStyle(
+            this.currentTheme.platform.base,
+            this.currentTheme.platform.base,
+            this.currentTheme.secondary,
+            this.currentTheme.secondary,
+            0.7
+        );
+        chamberGraphics.fillRoundedRect(
+            chamberX,
+            chamberY - chamberHeight/2,
+            chamberWidth,
+            chamberHeight,
+            12 * HD_SCALE
+        );
+        
+        // === LAYER 2: Inner Chamber Details ===
+        // Inner recessed area
+        chamberGraphics.fillStyle(this.currentTheme.chamber.inner, 0.4);
+        chamberGraphics.fillRoundedRect(
+            chamberX + 4 * HD_SCALE,
+            chamberY - chamberHeight/2 + 4 * HD_SCALE,
+            chamberWidth - 8 * HD_SCALE,
+            chamberHeight - 8 * HD_SCALE,
+            10 * HD_SCALE
+        );
+        
+        // === LAYER 3: Tech Details ===
+        // Tech panels between slots
+        const slotSpacing = 40 * HD_SCALE;
+        for (let i = 0; i < 2; i++) {
+            const panelX = startX + (i + 0.5) * slotSpacing * (this.isOpponent ? -1 : 1);
+            
+            // Panel background
+            chamberGraphics.fillStyle(this.currentTheme.platform.detail, 0.3);
+            chamberGraphics.fillRect(
+                panelX - 8 * HD_SCALE,
+                chamberY - 10 * HD_SCALE,
+                16 * HD_SCALE,
+                20 * HD_SCALE
+            );
+            
+            // Panel lines
+            chamberGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.glow.pulse, 0.4);
+            chamberGraphics.lineBetween(
+                panelX - 6 * HD_SCALE,
+                chamberY,
+                panelX + 6 * HD_SCALE,
+                chamberY
+            );
+        }
+        
+        // === LAYER 4: Premium Borders & Rims ===
+        // Outer rim
+        chamberGraphics.lineStyle(3 * HD_SCALE, this.currentTheme.platform.rim, 1);
+        chamberGraphics.strokeRoundedRect(
+            chamberX,
+            chamberY - chamberHeight/2,
+            chamberWidth,
+            chamberHeight,
+            12 * HD_SCALE
+        );
+        
+        // Inner rim detail
+        chamberGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.chamber.detail, 0.6);
+        chamberGraphics.strokeRoundedRect(
+            chamberX + 4 * HD_SCALE,
+            chamberY - chamberHeight/2 + 4 * HD_SCALE,
+            chamberWidth - 8 * HD_SCALE,
+            chamberHeight - 8 * HD_SCALE,
+            10 * HD_SCALE
+        );
+        
+        // === CONNECTING TUBE (Premium Design) ===
+        const tubeStartX = this.isOpponent ? -35 * HD_SCALE : 35 * HD_SCALE;
+        const tubeEndX = startX - (this.isOpponent ? -18 : 18) * HD_SCALE;
+        const tubeY = chamberY;
+        const tubeHeight = 24 * HD_SCALE;
+        
+        // Tube shadow
+        chamberGraphics.fillStyle(0x000000, 0.3);
+        chamberGraphics.fillRect(
+            Math.min(tubeStartX, tubeEndX) - 1,
+            tubeY - tubeHeight/2 - 1,
+            Math.abs(tubeEndX - tubeStartX) + 2,
+            tubeHeight + 2
+        );
+        
+        // Tube main body
+        chamberGraphics.fillStyle(this.currentTheme.platform.base, 0.6);
+        chamberGraphics.fillRect(
+            Math.min(tubeStartX, tubeEndX),
+            tubeY - tubeHeight/2,
+            Math.abs(tubeEndX - tubeStartX),
+            tubeHeight
+        );
+        
+        // Tube inner detail
+        chamberGraphics.fillStyle(this.currentTheme.chamber.inner, 0.3);
+        chamberGraphics.fillRect(
+            Math.min(tubeStartX, tubeEndX) + 2,
+            tubeY - tubeHeight/2 + 2,
+            Math.abs(tubeEndX - tubeStartX) - 4,
+            tubeHeight - 4
+        );
+        
+        // Tube borders
+        chamberGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.platform.rim, 0.9);
+        chamberGraphics.lineBetween(tubeStartX, tubeY - tubeHeight/2, tubeEndX, tubeY - tubeHeight/2);
+        chamberGraphics.lineBetween(tubeStartX, tubeY + tubeHeight/2, tubeEndX, tubeY + tubeHeight/2);
+        
+        // Energy flow lines in tube
+        chamberGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.glow.pulse, 0.5);
+        for (let i = 0; i < 3; i++) {
+            const lineY = tubeY - tubeHeight/2 + (i + 1) * (tubeHeight / 4);
+            chamberGraphics.setLineDash([5 * HD_SCALE, 5 * HD_SCALE]);
+            chamberGraphics.lineBetween(tubeStartX, lineY, tubeEndX, lineY);
+        }
+        chamberGraphics.setLineDash([]);
+        
+        // === DECORATIVE ELEMENTS ===
+        // Corner accents
+        chamberGraphics.lineStyle(2 * HD_SCALE, this.currentTheme.glow.loaded, 0.4);
+        // Top left
+        chamberGraphics.lineBetween(
+            chamberX,
+            chamberY - chamberHeight/2 + 10 * HD_SCALE,
+            chamberX + 10 * HD_SCALE,
+            chamberY - chamberHeight/2
+        );
+        // Top right
+        chamberGraphics.lineBetween(
+            chamberX + chamberWidth - 10 * HD_SCALE,
+            chamberY - chamberHeight/2,
+            chamberX + chamberWidth,
+            chamberY - chamberHeight/2 + 10 * HD_SCALE
+        );
+        
+        this.arsenalContainer.add(chamberGraphics);
+        chamberGraphics.setDepth(-1); // Behind slots
     }
     
     private createArsenalSlot(position: { x: number, y: number }, index: number): ArsenalSlot {
@@ -1450,7 +1616,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         // Create power-up icon
         const icon = this.scene.add.text(0, 0, '', {
-            fontSize: `${20 * HD_SCALE}px`,
+            fontSize: `${14 * HD_SCALE}px`,  // Further reduced for smaller slots
             fontFamily: 'Arial'
         });
         icon.setOrigin(0.5);
@@ -1462,7 +1628,7 @@ export class Launcher extends Phaser.GameObjects.Container {
             this.SLOT_SIZE/2 - 2,
             '',
             {
-                fontSize: `${9 * HD_SCALE}px`,
+                fontSize: `${6 * HD_SCALE}px`,  // Further reduced for smaller slots
                 fontFamily: 'Arial Black',
                 color: '#FFFFFF',
                 stroke: '#000000',
@@ -1542,31 +1708,86 @@ export class Launcher extends Phaser.GameObjects.Container {
         
         if (!this.currentTheme) return;
         
-        // Use launcher theme colors
         const colors = {
             primary: this.currentTheme.primary,
             secondary: this.currentTheme.secondary,
             glow: this.currentTheme.glow.pulse,
-            rim: this.currentTheme.platform.rim
+            rim: this.currentTheme.platform.rim,
+            detail: this.currentTheme.chamber.detail
         };
         
-        // Background matching launcher style
+        // === LAYER 1: Shadow/Depth ===
         graphics.fillStyle(0x000000, 0.4);
-        graphics.fillRoundedRect(-halfSize - (2 * HD_SCALE), -halfSize - (2 * HD_SCALE), size + (4 * HD_SCALE), size + (4 * HD_SCALE), 8 * HD_SCALE);
+        graphics.fillCircle(2, 3, halfSize + 2);
         
-        // Inner background with theme color
-        graphics.fillStyle(colors.secondary, 0.3);
-        graphics.fillRoundedRect(-halfSize, -halfSize, size, size, 6 * HD_SCALE);
+        // === LAYER 2: Outer Ring (Mechanical) ===
+        graphics.fillStyle(this.currentTheme.platform.base, 0.7);
+        graphics.fillCircle(0, 0, halfSize + 1);
         
-        // Border matching launcher theme
-        graphics.lineStyle(4 * HD_SCALE, isActive ? 0xFFD700 : colors.rim, isActive ? 1 : 0.8);  // HD line width
-        graphics.strokeRoundedRect(-halfSize, -halfSize, size, size, 6 * HD_SCALE);
+        // === LAYER 3: Main Chamber ===
+        graphics.fillStyle(this.currentTheme.chamber.inner, 0.8);
+        graphics.fillCircle(0, 0, halfSize - 2);
         
-        // Inner glow effect
-        if (isActive) {
-            graphics.lineStyle(2 * HD_SCALE, 0xFFFFFF, 0.4);  // HD line width
-            graphics.strokeRoundedRect(-halfSize + (2 * HD_SCALE), -halfSize + (2 * HD_SCALE), size - (4 * HD_SCALE), size - (4 * HD_SCALE), 4 * HD_SCALE);
+        // === LAYER 4: Inner Core ===
+        graphics.fillStyle(colors.secondary, 0.2);
+        graphics.fillCircle(0, 0, halfSize - 5 * HD_SCALE);
+        
+        // === LAYER 5: Tech Details ===
+        // Radial lines (like launcher queue)
+        graphics.lineStyle(0.5 * HD_SCALE, colors.detail, 0.3);
+        for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 * i) / 8;
+            const innerR = halfSize - 8 * HD_SCALE;
+            const outerR = halfSize - 3 * HD_SCALE;
+            graphics.lineBetween(
+                Math.cos(angle) * innerR,
+                Math.sin(angle) * innerR,
+                Math.cos(angle) * outerR,
+                Math.sin(angle) * outerR
+            );
         }
+        
+        // === LAYER 6: Premium Rims ===
+        // Outer rim
+        graphics.lineStyle(2 * HD_SCALE, isActive ? 0xFFD700 : colors.rim, isActive ? 1 : 0.8);
+        graphics.strokeCircle(0, 0, halfSize);
+        
+        // Middle rim
+        graphics.lineStyle(1 * HD_SCALE, colors.detail, 0.5);
+        graphics.strokeCircle(0, 0, halfSize - 3 * HD_SCALE);
+        
+        // Inner rim
+        graphics.lineStyle(1 * HD_SCALE, colors.rim, 0.3);
+        graphics.strokeCircle(0, 0, halfSize - 6 * HD_SCALE);
+        
+        // === LAYER 7: Active State Premium Effects ===
+        if (isActive) {
+            // Outer glow ring
+            graphics.lineStyle(4 * HD_SCALE, 0xFFD700, 0.2);
+            graphics.strokeCircle(0, 0, halfSize + 3 * HD_SCALE);
+            
+            // Middle glow
+            graphics.lineStyle(2 * HD_SCALE, 0xFFD700, 0.4);
+            graphics.strokeCircle(0, 0, halfSize + 1 * HD_SCALE);
+            
+            // Inner bright core
+            graphics.fillStyle(0xFFFFFF, 0.1);
+            graphics.fillCircle(0, 0, halfSize - 7 * HD_SCALE);
+            
+            // Highlight arc (like launcher)
+            graphics.lineStyle(1 * HD_SCALE, 0xFFFFFF, 0.6);
+            graphics.arc(0, 0, halfSize - 4 * HD_SCALE, -Math.PI * 0.7, -Math.PI * 0.3, false);
+            graphics.strokePath();
+        }
+        
+        // === LAYER 8: Glossy Highlight ===
+        graphics.fillStyle(0xFFFFFF, 0.15);
+        graphics.fillEllipse(
+            -halfSize * 0.3,
+            -halfSize * 0.4,
+            halfSize * 0.6,
+            halfSize * 0.4
+        );
     }
     
     private createKeyHintBadge(key: number): Phaser.GameObjects.Container {
@@ -1579,7 +1800,7 @@ export class Launcher extends Phaser.GameObjects.Container {
         bg.setStrokeStyle(1 * HD_SCALE, 0x000000, 1);
         
         const text = this.scene.add.text(0, 0, `${key}`, {
-            fontSize: `${9 * HD_SCALE}px`,
+            fontSize: `${6 * HD_SCALE}px`,  // Further reduced for smaller slots
             fontFamily: 'Arial Black',
             color: '#000000'
         });
