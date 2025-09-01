@@ -18,6 +18,7 @@ export const ASSET_KEYS = {
         COMBO_CELEBRATION: 'combo-celebration',
         ARSENAL_PICKUP: 'arsenal-pickup',
         VICTORY: 'victory',
+        DEFEAT: 'defeat',
         BACKGROUND_MUSIC: 'background-music'
     },
     ATLASES: {
@@ -100,6 +101,12 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.AUDIO.VICTORY,
                 url: 'assets/sounds/victory.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.DEFEAT,
+                url: 'assets/sounds/defeat.mp3',
                 type: 'audio',
                 data: {}
             },

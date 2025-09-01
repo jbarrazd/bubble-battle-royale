@@ -24,6 +24,7 @@ All sound files are located in `/public/assets/sounds/`:
 - **combo-celebration.mp3** - Extra celebration for 7+ combos
 - **arsenal-pickup.mp3** - When collecting arsenal items
 - **victory.mp3** - Victory sound
+- **defeat.mp3** - Defeat/lose game sound
 
 ## Usage
 

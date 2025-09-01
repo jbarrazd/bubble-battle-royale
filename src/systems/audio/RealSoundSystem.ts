@@ -124,12 +124,11 @@ export class RealSoundSystem {
     }
 
     /**
-     * Play defeat sound (using victory sound at lower volume)
+     * Play defeat sound
      */
     public playDefeatSound(): void {
         if (this.muted) return;
-        // Use victory sound at lower volume for defeat
-        this.playSound(ASSET_KEYS.AUDIO.VICTORY, this.volumes.victory * 0.5);
+        this.playSound(ASSET_KEYS.AUDIO.DEFEAT, this.volumes.victory * 0.7);
     }
 
     /**
