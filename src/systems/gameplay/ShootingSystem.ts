@@ -385,6 +385,9 @@ export class ShootingSystem {
             if (this.gridAttachmentSystem) {
                 const hitBubble = this.gridAttachmentSystem.checkCollision(projectile.bubble);
                 if (hitBubble) {
+                    // Play attach sound immediately on collision detection
+                    this.scene.events.emit('bubble-attach-collision');
+                    
                     // Find attachment position
                     const attachPos = this.gridAttachmentSystem.findAttachmentPosition(
                         projectile.bubble, 

@@ -372,6 +372,8 @@ export class GridAttachmentSystem {
         // Use shorter duration for closer distances
         const duration = Math.min(200, Math.max(50, distance * 0.5));
         
+        // Sound is now played earlier in ShootingSystem on collision detection
+        
         this.scene.tweens.add({
             targets: bubble,
             x: pixelPos.x,

@@ -3,7 +3,7 @@ import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
-import { PremiumBubbleSound } from '@/systems/audio/PremiumBubbleSound';
+import { RealSoundSystem } from '@/systems/audio/RealSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { TweenOptimizer } from '@/systems/visual/TweenOptimizer';
 
@@ -11,7 +11,7 @@ export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
-    private soundSystem!: PremiumBubbleSound;
+    private soundSystem!: RealSoundSystem;
     private backgroundMusic: Phaser.Sound.BaseSound | undefined;
     private fpsText!: Phaser.GameObjects.Text;
     private frameCount: number = 0;
@@ -96,7 +96,7 @@ export class GameScene extends Scene {
 
     private createSoundSystem(): void {
         try {
-            this.soundSystem = new PremiumBubbleSound(this);
+            this.soundSystem = new RealSoundSystem(this);
             console.log('GameScene: Sound system initialized successfully');
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
@@ -113,16 +113,14 @@ export class GameScene extends Scene {
                 this.backgroundMusic = undefined;
             }
             
-            // Check if the audio file was loaded successfully
-            if (this.cache.audio.exists('background-music')) {
-                this.backgroundMusic = this.sound.add('background-music', {
-                    loop: true,
-                    volume: 0.3
-                });
-                this.backgroundMusic.play();
-                console.log('GameScene: Background music started');
-            } else {
-                console.warn('GameScene: Background music not found in cache');
+            // Use the sound system to play background music
+            if (this.soundSystem) {
+                this.backgroundMusic = this.soundSystem.playBackgroundMusic();
+                if (this.backgroundMusic) {
+                    console.log('GameScene: Background music started');
+                } else {
+                    console.log('GameScene: No background music available');
+                }
             }
         } catch (error) {
             console.error('GameScene: Failed to create background music:', error);
@@ -267,14 +265,24 @@ export class GameScene extends Scene {
             this.soundSystem.playShootSound();
         });
         
-        // Bubble attach event
+        // Bubble attach event (for game logic)
         this.events.on('bubble-attached', () => {
+            // Game logic handled elsewhere
+        });
+        
+        // Bubble attach collision event (plays at exact collision moment)
+        this.events.on('bubble-attach-collision', () => {
             this.soundSystem.playAttachSound();
         });
         
-        // Match found event - using new explosion sound system
+        // Bubble attach sound event (backup for other attach cases)
+        this.events.on('bubble-attached-sound', () => {
+            // Already played on collision
+        });
+        
+        // Match found event - play combo sounds
         this.events.on('match-found', (data: any) => {
-            // New sophisticated explosion sounds that scale with match size
+            // Play real MP3 combo sounds based on match size
             if (data && data.matchSize) {
                 this.soundSystem.playMatchSound(data.matchSize);
             }
@@ -298,6 +306,11 @@ export class GameScene extends Scene {
         // Defeat event
         this.events.on('defeat', () => {
             this.soundSystem.playDefeatSound();
+        });
+        
+        // Floating bubbles drop event
+        this.events.on('floating-bubbles-drop', () => {
+            this.soundSystem.playBubblesDropSound();
         });
         
         console.log('GameScene: Sound events connected');

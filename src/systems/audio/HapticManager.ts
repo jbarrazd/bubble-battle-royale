@@ -1,11 +1,12 @@
 /**
- * HapticManager - Professional Mobile Haptic Feedback System
- * Provides contextual vibration patterns for enhanced mobile UX
+ * HapticManager - Mobile Haptic Feedback System
+ * Provides vibration feedback for mobile devices
  */
 
-import { AUDIO_CONFIG, HapticIntensity } from '@/config/AudioConfig';
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
+
+export type HapticIntensity = 'light' | 'medium' | 'strong';
 
 export interface IHapticPattern {
     pattern: number | number[];

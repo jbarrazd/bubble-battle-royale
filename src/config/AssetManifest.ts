@@ -9,12 +9,16 @@ export const ASSET_KEYS = {
         PARTICLE: 'particle'
     },
     AUDIO: {
-        BUBBLE_POP: 'bubble_pop',
-        COMBO: 'combo',
+        BUBBLE_SHOOT: 'bubble-shoot',
+        BUBBLE_ATTACH: 'bubble-attach',
+        BUBBLES_DROP: 'bubbles-drop',
+        COMBO_3: 'combo-3',
+        COMBO_4: 'combo-4',
+        COMBO_5_PLUS: 'combo-5-plus',
+        COMBO_CELEBRATION: 'combo-celebration',
+        ARSENAL_PICKUP: 'arsenal-pickup',
         VICTORY: 'victory',
-        DEFEAT: 'defeat',
-        MENU_MUSIC: 'menu_music',
-        GAME_MUSIC: 'game_music'
+        BACKGROUND_MUSIC: 'background-music'
     },
     ATLASES: {
         UI: 'ui_atlas',
@@ -44,7 +48,68 @@ export function createAssetManifest(): IAssetManifest {
                 data: {}
             }
         ],
-        audio: [],
+        audio: [
+            {
+                key: ASSET_KEYS.AUDIO.BUBBLE_SHOOT,
+                url: 'assets/sounds/bubble-shoot.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.BUBBLE_ATTACH,
+                url: 'assets/sounds/bubbles-attach.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.BUBBLES_DROP,
+                url: 'assets/sounds/bubbles-drop.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.COMBO_3,
+                url: 'assets/sounds/combo-3.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.COMBO_4,
+                url: 'assets/sounds/combo-4.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.COMBO_5_PLUS,
+                url: 'assets/sounds/combo-5-plus.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.COMBO_CELEBRATION,
+                url: 'assets/sounds/combo-celebration.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.ARSENAL_PICKUP,
+                url: 'assets/sounds/arsenal-pickup.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.VICTORY,
+                url: 'assets/sounds/victory.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.BACKGROUND_MUSIC,
+                url: 'assets/sounds/background-music.mp3',
+                type: 'audio',
+                data: {}
+            }
+        ],
         atlases: [],
         json: []
     };
