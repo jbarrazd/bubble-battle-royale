@@ -287,17 +287,14 @@ export class BackgroundSystem {
     }
 
     private createAmbientParticles(): void {
-        // Create theme-specific particle effects
-        let particleCount = this.config.quality === 'ultra' ? 30 : 15;
-        let delay = 200;
+        // Adjusted particles for better visuals without hurting FPS
+        let particleCount = this.config.quality === 'ultra' ? 8 : 4;
+        let delay = 500; // Slower creation
         
-        // Adjust particles for different themes
-        if (this.currentTheme.particleType === 'leaves') {
-            particleCount = this.config.quality === 'ultra' ? 40 : 25;
-            delay = 150; // More frequent
-        } else if (this.currentTheme.particleType === 'stars') {
-            particleCount = this.config.quality === 'ultra' ? 50 : 30; // More stars needed
-            delay = 100; // Faster creation for stars
+        // More stars for space theme, positioned on left side
+        if (this.currentTheme.particleType === 'stars') {
+            particleCount = this.config.quality === 'ultra' ? 20 : 12; // More stars for ambiance
+            delay = 200; // Faster star creation
         }
         
         for (let i = 0; i < particleCount; i++) {
@@ -306,10 +303,10 @@ export class BackgroundSystem {
             });
         }
         
-        // Add secondary effects for ultra quality
-        if (this.config.quality === 'ultra') {
-            this.createSecondaryEffect();
-        }
+        // Secondary effects disabled for performance
+        // if (this.config.quality === 'ultra') {
+        //     this.createSecondaryEffect();
+        // }
     }
 
     private createThemeParticle(): void {
@@ -425,11 +422,24 @@ export class BackgroundSystem {
                 break;
                 
             case 'stars':
-                // Deep space - realistic stars
+                // Deep space - realistic stars everywhere except planet area (top-right)
                 const starSize = Phaser.Math.FloatBetween(0.5, 2) * HD_SCALE;
+                let starX = Phaser.Math.Between(0, this.width);
+                let starY = Phaser.Math.Between(0, this.height);
+                
+                // Avoid the planet area (top-right)
+                if (starX > this.width * 0.7 && starY < this.height * 0.3) {
+                    // If in planet area, move it elsewhere
+                    if (Phaser.Math.Between(0, 1) === 0) {
+                        starX = Phaser.Math.Between(0, this.width * 0.7); // Move left
+                    } else {
+                        starY = Phaser.Math.Between(this.height * 0.3, this.height); // Move down
+                    }
+                }
+                
                 particle = this.scene.add.circle(
-                    Phaser.Math.Between(0, this.width),
-                    Phaser.Math.Between(0, this.height),
+                    starX,
+                    starY,
                     starSize,
                     0xffffff,
                     Phaser.Math.FloatBetween(0.5, 0.9) // Start visible
@@ -727,150 +737,84 @@ export class BackgroundSystem {
     }
     
     private createBackgroundPlanet(): void {
-        // Create a dual planet system - Earth and Bubble Planet
+        // Earth planet with slow approach effect - like traveling towards it
         
-        // 1. Realistic Earth (smaller, more distant)
         if (this.scene.textures.exists('planet')) {
-            const earthX = this.width * 0.15;
-            const earthY = this.height * 0.75;
-            const earthScale = 0.06 * HD_SCALE; // Even smaller, more distant
+            const earthX = this.width * 0.85; // Slightly more to the right
+            const earthY = this.height * 0.15;
+            const startScale = 0.3; // Start small - far away
+            const endScale = 1.8; // Grow much larger - very close to Earth
             
             const earth = this.scene.add.image(earthX, earthY, 'planet');
-            earth.setScale(earthScale);
-            earth.setAlpha(0.10); // Very subtle
-            earth.setDepth(-998); // Even farther back
+            earth.setScale(startScale);
+            earth.setAlpha(0.25); // Start less visible when far
+            earth.setDepth(-998); // Far back
             
-            // Slow orbit-like movement
+            // Approaching Earth effect - like traveling towards it
             this.scene.tweens.add({
                 targets: earth,
-                x: earthX + (30 * HD_SCALE),
-                y: earthY - (20 * HD_SCALE),
-                duration: 40000,
+                scale: { from: startScale, to: endScale }, // From small to large
+                alpha: { from: 0.25, to: 0.45 }, // More visible as we approach
+                duration: 120000, // 2 minutes to reach maximum size
+                ease: 'Linear', // Linear for now to ensure it's working
+                repeat: -1, // Loop forever
+                yoyo: true, // Go back and forth
+                onComplete: () => {
+                    // After reaching Earth, slowly drift away again
+                    this.scene.tweens.add({
+                        targets: earth,
+                        scale: startScale,
+                        alpha: 0.3,
+                        duration: 240000, // 4 minutes to go back
+                        ease: 'Cubic.easeOut',
+                        onComplete: () => {
+                            // Restart the approach
+                            this.createBackgroundPlanet();
+                            earth.destroy();
+                        }
+                    });
+                }
+            });
+            
+            // Subtle floating motion throughout
+            this.scene.tweens.add({
+                targets: earth,
+                y: earthY + (10 * HD_SCALE),
+                x: earthX - (5 * HD_SCALE), // Also drift slightly horizontally
+                duration: 50000,
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.easeInOut'
             });
             
-            // Very slow rotation
+            // Very slow rotation to add realism
             this.scene.tweens.add({
                 targets: earth,
                 angle: 360,
-                duration: 480000, // 8 minutes - much slower
+                duration: 900000, // 15 minutes for one rotation
                 repeat: -1,
                 ease: 'Linear'
             });
             
             this.ambientElements.push(earth);
-            console.log('Earth planet loaded in background');
+            console.log('Earth planet loaded with approach effect');
         }
-        
-        // 2. Bubble Planet (larger, main feature)
-        if (this.scene.textures.exists('bubble_planet')) {
-            const bubbleX = this.width * 0.82;
-            const bubbleY = this.height * 0.22;
-            const bubbleScale = 0.10 * HD_SCALE; // Smaller to be more in background
-            
-            const bubblePlanet = this.scene.add.image(bubbleX, bubbleY, 'bubble_planet');
-            bubblePlanet.setScale(bubbleScale);
-            bubblePlanet.setAlpha(0.06); // Barely visible
-            bubblePlanet.setDepth(-997);
-            
-            // Extremely slow rotation for bubble planet - barely noticeable
-            this.scene.tweens.add({
-                targets: bubblePlanet,
-                angle: -360,
-                duration: 1800000, // 30 minutes - extremely slow, barely noticeable
-                repeat: -1,
-                ease: 'Linear'
-            });
-            
-            // Floating motion
-            this.scene.tweens.add({
-                targets: bubblePlanet,
-                y: bubbleY + (10 * HD_SCALE),
-                duration: 20000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-            
-            // Subtle scale breathing for magical effect
-            this.scene.tweens.add({
-                targets: bubblePlanet,
-                scale: bubbleScale * 1.05,
-                duration: 15000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-            
-            this.ambientElements.push(bubblePlanet);
-            console.log('Bubble planet loaded as main feature');
-        }
-        
-        // 3. Create floating bubbles between planets (ambient effect)
-        this.createFloatingBubblesBetweenPlanets();
     }
     
     private createFloatingBubblesBetweenPlanets(): void {
-        // Add some floating bubbles that travel between the two planets
-        const createTravelingBubble = () => {
-            const startLeft = Phaser.Math.Between(0, 1) === 0;
-            const startX = startLeft ? this.width * 0.15 : this.width * 0.82;
-            const startY = startLeft ? this.height * 0.75 : this.height * 0.22;
-            const endX = startLeft ? this.width * 0.82 : this.width * 0.15;
-            const endY = startLeft ? this.height * 0.22 : this.height * 0.75;
-            
-            const bubble = this.scene.add.circle(
-                startX,
-                startY,
-                Phaser.Math.Between(2, 5) * HD_SCALE,
-                Phaser.Math.RND.pick([0x00ffcc, 0x00aaff, 0xff66cc]),
-                0.3
-            );
-            bubble.setDepth(-985);
-            bubble.setBlendMode(Phaser.BlendModes.ADD);
-            this.ambientElements.push(bubble);
-            
-            // Travel between planets
-            this.scene.tweens.add({
-                targets: bubble,
-                x: endX,
-                y: endY,
-                alpha: { from: 0, to: 0.3, yoyo: true },
-                scale: { from: 1, to: 0.5 },
-                duration: Phaser.Math.Between(30000, 45000),
-                ease: 'Sine.easeInOut',
-                onComplete: () => {
-                    bubble.destroy();
-                    this.ambientElements = this.ambientElements.filter(e => e !== bubble);
-                }
-            });
-        };
-        
-        // Create initial bubbles
-        for (let i = 0; i < 3; i++) {
-            this.scene.time.delayedCall(i * 5000, createTravelingBubble);
-        }
-        
-        // Continue creating bubbles occasionally
-        this.scene.time.addEvent({
-            delay: 15000,
-            callback: createTravelingBubble,
-            loop: true
-        });
+        // Removed for performance - no floating bubbles between planets
     }
     
     private createShootingStarTimer(): void {
-        // First shooting star after 5 seconds
-        this.scene.time.delayedCall(5000, () => {
+        // First shooting star after 3 seconds
+        this.scene.time.delayedCall(3000, () => {
             this.createShootingStar();
             console.log('Creating first shooting star');
         });
         
-        // Create recurring shooting stars
+        // Create well-spaced shooting stars
         const createNextStar = () => {
-            const delay = Phaser.Math.Between(12000, 25000); // Random delay
+            const delay = Phaser.Math.Between(8000, 15000); // Good spacing between stars
             this.scene.time.delayedCall(delay, () => {
                 if (this.scene && this.scene.scene.isActive()) {
                     this.createShootingStar();
@@ -884,7 +828,7 @@ export class BackgroundSystem {
     }
     
     private createShootingStar(): void {
-        // Create a realistic shooting star with gradient trail
+        // Create shooting stars across the screen
         const startX = Phaser.Math.Between(0, this.width * 0.6);
         const startY = Phaser.Math.Between(0, this.height * 0.4);
         
@@ -914,7 +858,7 @@ export class BackgroundSystem {
         shootingContainer.setAngle(35); // Natural angle
         this.ambientElements.push(shootingContainer);
         
-        // Quick, subtle animation
+        // Normal shooting star animation
         const endX = startX + Phaser.Math.Between(300, 450);
         const endY = startY + Phaser.Math.Between(150, 250);
         
