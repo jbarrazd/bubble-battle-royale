@@ -9,7 +9,8 @@ export const ASSET_KEYS = {
         PARTICLE: 'particle',
         PLANET: 'planet',
         BUBBLE_PLANET: 'bubble_planet',
-        UFO: 'ufo'
+        UFO: 'ufo',
+        SPACE_OBJECTIVE: 'space_objective'
     },
     AUDIO: {
         BUBBLE_SHOOT: 'bubble-shoot',
@@ -65,6 +66,12 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.IMAGES.UFO,
                 url: 'assets/sprites/ufo.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_OBJECTIVE,
+                url: 'assets/sprites/space_objective.png',
                 type: 'image',
                 data: {}
             },

@@ -317,15 +317,9 @@ export class ArenaSystem {
         const centerX = this.scene.cameras.main.centerX;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Create UFO delivery animation
+        // Create UFO delivery animation for Deep Space theme
         this.createUFODelivery(centerX, centerY, () => {
-            // Create objective after UFO animation
-            this.objective = new Objective(this.scene, {
-                x: centerX,
-                y: centerY,
-                size: this.config.objectiveSize,
-                health: 1
-            });
+            // Space objective is now created during the tractor beam animation
         });
     }
     
@@ -413,8 +407,8 @@ export class ArenaSystem {
                     onComplete: () => {
                         // Show and animate tractor beam
                         this.animateTractorBeam(ufo, targetX, startY, targetY, () => {
-                            // Create the objective
-                            onComplete();
+                            // Space objective is created during beam animation
+                            if (onComplete) onComplete();
                             
                             // UFO departure - fly up towards planet!
                             engineGlow.stop();
@@ -575,7 +569,313 @@ export class ArenaSystem {
         });
     }
     
+    private createSpaceObjectiveWithMaterialization(x: number, y: number): void {
+        // Check if space objective texture exists, if not use regular objective
+        if (!this.scene.textures.exists('space_objective')) {
+            console.log('Space objective texture not found, creating regular objective');
+            // Fallback to regular objective
+            this.objective = new Objective(this.scene, {
+                x: x,
+                y: y,
+                size: this.config.objectiveSize,
+                health: 1
+            });
+            return;
+        }
+        
+        console.log('Creating space objective with materialization at', x, y);
+        
+        // Create container first
+        const objectiveContainer = this.scene.add.container(x, y);
+        objectiveContainer.setSize(this.config.objectiveSize, this.config.objectiveSize);
+        objectiveContainer.setDepth(Z_LAYERS.OBJECTIVE);
+        
+        // Start with container invisible for materialization
+        objectiveContainer.setAlpha(0);
+        objectiveContainer.setScale(0.1);
+        
+        // Create the space tech orb at 0,0 relative to container
+        const spaceObjective = this.scene.add.image(0, 0, 'space_objective');
+        spaceObjective.setScale(0.22);
+        objectiveContainer.add(spaceObjective);
+        
+        // Gradual materialization animation
+        this.scene.tweens.add({
+            targets: objectiveContainer,
+            alpha: 1,
+            scale: 1,
+            duration: 1200,
+            ease: 'Power2.easeOut',
+            onComplete: () => {
+                // Add slow rotation animation for the tech orb
+                this.scene.tweens.add({
+                    targets: spaceObjective,
+                    angle: 360,
+                    duration: 15000,
+                    repeat: -1,
+                    ease: 'Linear'
+                });
+                
+                // Add subtle floating animation to the container
+                this.scene.tweens.add({
+                    targets: objectiveContainer,
+                    y: y - 3,
+                    duration: 3000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+                
+                // Add pulsing scale effect
+                this.scene.tweens.add({
+                    targets: spaceObjective,
+                    scale: { from: 0.22, to: 0.24 },
+                    duration: 2000,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        });
+        
+        // Create glow effect graphics
+        const glowGraphics = this.scene.add.graphics();
+        objectiveContainer.add(glowGraphics);
+        objectiveContainer.sendToBack(glowGraphics);
+        
+        // Animate glow during materialization
+        let glowAlpha = 0;
+        const glowAnimation = this.scene.time.addEvent({
+            delay: 16,
+            callback: () => {
+                glowAlpha = Math.min(1, glowAlpha + 0.02);
+                glowGraphics.clear();
+                
+                // Outer glow
+                glowGraphics.fillStyle(0x00ffff, 0.05 * glowAlpha);
+                glowGraphics.fillCircle(0, 0, 60);
+                glowGraphics.fillStyle(0x00ffff, 0.1 * glowAlpha);
+                glowGraphics.fillCircle(0, 0, 45);
+                glowGraphics.fillStyle(0xffffff, 0.15 * glowAlpha);
+                glowGraphics.fillCircle(0, 0, 30);
+            },
+            loop: true
+        });
+        
+        // Stop glow animation after materialization
+        this.scene.time.delayedCall(1200, () => {
+            glowAnimation.destroy();
+            
+            // Animate glow effect with pulsing
+            this.scene.time.addEvent({
+                delay: 16,
+                callback: () => {
+                    const time = this.scene.time.now / 1000;
+                    const pulse = Math.sin(time * 2) * 0.3 + 0.7;
+                    
+                    glowGraphics.clear();
+                    
+                    // Outer glow
+                    glowGraphics.fillStyle(0x00ffff, 0.05 * pulse);
+                    glowGraphics.fillCircle(0, 0, 60);
+                    glowGraphics.fillStyle(0x00ffff, 0.1 * pulse);
+                    glowGraphics.fillCircle(0, 0, 45);
+                    glowGraphics.fillStyle(0xffffff, 0.15 * pulse);
+                    glowGraphics.fillCircle(0, 0, 30);
+                },
+                loop: true
+            });
+        });
+        
+        // Create energy particles that materialize with the objective
+        const energyParticles = this.scene.add.particles(0, 0, 'particle', {
+            scale: { start: 0.4, end: 0.05 },
+            alpha: { start: 0, end: 0.8 },
+            tint: [0x00ffff, 0x0099ff, 0xffffff],
+            blendMode: 'ADD',
+            lifespan: 2000,
+            speedY: { min: -15, max: -5 },
+            speedX: { min: -5, max: 5 },
+            quantity: 1,
+            frequency: 150,
+            emitting: false
+        });
+        objectiveContainer.add(energyParticles);
+        
+        // Start emitting particles after initial materialization
+        this.scene.time.delayedCall(600, () => {
+            energyParticles.start();
+        });
+        
+        // Create orbiting particles
+        const orbitParticles = this.scene.add.particles(0, 0, 'particle', {
+            scale: { start: 0.3, end: 0.1 },
+            alpha: { start: 0, end: 0.6 },
+            tint: 0x00ffff,
+            blendMode: 'ADD',
+            lifespan: 3000,
+            quantity: 1,
+            frequency: 500,
+            emitting: false
+        });
+        objectiveContainer.add(orbitParticles);
+        
+        // Animate orbiting particles after materialization
+        let orbitAngle = 0;
+        this.scene.time.delayedCall(800, () => {
+            this.scene.time.addEvent({
+                delay: 16,
+                callback: () => {
+                    orbitAngle += 0.02;
+                    const radius = 50;
+                    orbitParticles.setPosition(
+                        Math.cos(orbitAngle) * radius,
+                        Math.sin(orbitAngle) * radius
+                    );
+                    if (orbitAngle > Math.PI * 2) {
+                        if (orbitParticles && orbitParticles.active) {
+                            orbitParticles.emitParticle();
+                        }
+                        orbitAngle = 0;
+                    }
+                },
+                loop: true
+            });
+        });
+        
+        // Add hit method for bubble collisions
+        objectiveContainer.hit = (damage: number = 1) => {
+            // Simple flash effect without margin
+            spaceObjective.setTint(0xffffff);
+            this.scene.time.delayedCall(100, () => {
+                spaceObjective.clearTint();
+            });
+            
+            // Emit extra particles on hit
+            if (energyParticles && energyParticles.active) {
+                energyParticles.explode(10);
+            }
+        };
+        
+        // Add playVictoryAnimation method
+        objectiveContainer.playVictoryAnimation = (onComplete?: () => void) => {
+            // Stop regular animations
+            if (energyParticles && energyParticles.active) energyParticles.stop();
+            if (orbitParticles && orbitParticles.active) orbitParticles.stop();
+            
+            // Portal implosion effect - pull in then explode
+            this.scene.tweens.add({
+                targets: spaceObjective,
+                scale: 0.35,
+                angle: '+=360',
+                duration: 400,
+                ease: 'Power2.easeIn',
+                onComplete: () => {
+                    // Then collapse
+                    this.scene.tweens.add({
+                        targets: spaceObjective,
+                        scale: 0,
+                        angle: '+=180',
+                        duration: 300,
+                        ease: 'Power2.easeIn'
+                    });
+                    
+                    // Big flash
+                    const flash = this.scene.add.circle(x, y, 50, 0xffffff, 1);
+                    flash.setDepth(Z_LAYERS.OBJECTIVE + 100);
+                    this.scene.tweens.add({
+                        targets: flash,
+                        scale: { from: 0.5, to: 2 },
+                        alpha: { from: 1, to: 0 },
+                        duration: 500,
+                        ease: 'Power2.easeOut',
+                        onComplete: () => {
+                            flash.destroy();
+                        }
+                    });
+                    
+                    // Victory particles explosion
+                    const victoryParticles = this.scene.add.particles(x, y, 'particle', {
+                        scale: { start: 0.5, end: 0 },
+                        alpha: { start: 1, end: 0 },
+                        tint: [0x00ffff, 0x9966ff, 0xffffff, 0xffff00],
+                        blendMode: 'ADD',
+                        lifespan: 1000,
+                        speed: { min: 150, max: 300 },
+                        quantity: 50,
+                        emitting: false
+                    });
+                    victoryParticles.setDepth(Z_LAYERS.OBJECTIVE + 99);
+                    victoryParticles.explode(50);
+                    
+                    // Cleanup and callback
+                    this.scene.time.delayedCall(500, () => {
+                        if (energyParticles && energyParticles.active) energyParticles.destroy();
+                        if (orbitParticles && orbitParticles.active) orbitParticles.destroy();
+                        if (glowGraphics) glowGraphics.destroy();
+                        if (objectiveContainer && objectiveContainer.active) objectiveContainer.destroy();
+                        
+                        this.scene.time.delayedCall(500, () => {
+                            if (victoryParticles && victoryParticles.active) victoryParticles.destroy();
+                        });
+                        
+                        if (onComplete) onComplete();
+                    });
+                }
+            });
+        };
+        
+        // Add setShielded method
+        objectiveContainer.setShielded = (shielded: boolean) => {
+            if (shielded) {
+                // Create hexagonal shield
+                const shield = this.scene.add.graphics();
+                shield.lineStyle(2, 0x00ffff, 0.8);
+                shield.fillStyle(0x00ffff, 0.1);
+                
+                // Draw hexagon
+                const size = 60;
+                const points = [];
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i;
+                    points.push(new Phaser.Geom.Point(
+                        Math.cos(angle) * size,
+                        Math.sin(angle) * size
+                    ));
+                }
+                
+                shield.beginPath();
+                shield.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    shield.lineTo(points[i].x, points[i].y);
+                }
+                shield.closePath();
+                shield.fillPath();
+                shield.strokePath();
+                
+                objectiveContainer.add(shield);
+                objectiveContainer.shield = shield;
+                
+                // Animate shield
+                this.scene.tweens.add({
+                    targets: shield,
+                    rotation: Math.PI * 2,
+                    duration: 10000,
+                    repeat: -1,
+                    ease: 'Linear'
+                });
+            } else if (objectiveContainer.shield) {
+                objectiveContainer.shield.destroy();
+                objectiveContainer.shield = null;
+            }
+        };
+        
+        this.objective = objectiveContainer as any;
+    }
+    
     private animateTractorBeam(ufo: Phaser.GameObjects.Image, x: number, y: number, targetY: number, onComplete: () => void): void {
+        // Create space objective container early but hidden
+        let spaceObjectiveCreated = false;
         // Calculate beam position to connect perfectly with UFO
         const beamStartY = ufo.y + 30; // Start from UFO bottom
         const beamHeight = targetY - beamStartY;
@@ -727,50 +1027,49 @@ export class ArenaSystem {
                     loop: true
                 });
                 
-                // After beam animation, materialize chest
+                // Start materializing the space objective during beam animation
+                this.scene.time.delayedCall(600, () => {
+                    if (!spaceObjectiveCreated) {
+                        spaceObjectiveCreated = true;
+                        // Create the space objective with materialization effect
+                        this.createSpaceObjectiveWithMaterialization(x, targetY);
+                    }
+                });
+                
+                // After beam animation, finish materialization
                 this.scene.time.delayedCall(1800, () => {
                     beamPulse.destroy();
                     beamParticles.stop();
                     spiralParticles.stop();
                     
-                    // Create materialization effect
-                    const chestGlow = this.scene.add.graphics();
-                    chestGlow.fillStyle(0xffffff, 0);
-                    chestGlow.fillCircle(x, targetY, 40);
-                    chestGlow.setDepth(1000);
+                    // Create final flash effect
+                    const finalGlow = this.scene.add.graphics();
+                    finalGlow.fillStyle(0x00ffff, 0);
+                    finalGlow.fillCircle(x, targetY, 40);
+                    finalGlow.setDepth(1000);
                     
-                    // Materialize with bright flash
+                    // Final materialization flash
                     this.scene.tweens.add({
-                        targets: chestGlow,
-                        alpha: { from: 0, to: 1 },
-                        scale: { from: 0.5, to: 1.5 },
-                        duration: 200,
+                        targets: finalGlow,
+                        alpha: { from: 0.8, to: 0 },
+                        scale: { from: 0.5, to: 2 },
+                        duration: 400,
                         ease: 'Power2.easeOut',
                         onComplete: () => {
-                            // Flash and fade
-                            this.scene.tweens.add({
-                                targets: chestGlow,
-                                alpha: 0,
-                                scale: 2,
-                                duration: 300,
-                                ease: 'Power2.easeOut',
-                                onComplete: () => {
-                                    chestGlow.destroy();
-                                }
-                            });
-                            
-                            // Fade out beam
-                            this.scene.tweens.add({
-                                targets: beamContainer,
-                                alpha: 0,
-                                duration: 500,
-                                onComplete: () => {
-                                    if (beamContainer && beamContainer.active) {
-                                        beamContainer.destroy();
-                                    }
-                                    onComplete();
-                                }
-                            });
+                            finalGlow.destroy();
+                        }
+                    });
+                    
+                    // Fade out beam
+                    this.scene.tweens.add({
+                        targets: beamContainer,
+                        alpha: 0,
+                        duration: 500,
+                        onComplete: () => {
+                            if (beamContainer && beamContainer.active) {
+                                beamContainer.destroy();
+                            }
+                            onComplete();
                         }
                     });
                 });
