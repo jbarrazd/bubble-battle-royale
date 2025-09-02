@@ -72,10 +72,6 @@ export function createGameConfig(scenes: any[]): IGameConfig {
         },
         scene: scenes,
         // iOS-specific optimizations
-        audio: {
-            disableWebAudio: false,
-            noAudio: false
-        },
         input: {
             activePointers: 2,  // Support multi-touch
             smoothFactor: 0,

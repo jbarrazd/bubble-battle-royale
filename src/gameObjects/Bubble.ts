@@ -9,6 +9,7 @@ export class Bubble extends Phaser.GameObjects.Container {
     private secondaryHighlight?: Phaser.GameObjects.Arc;
     private shadowSprite?: Phaser.GameObjects.Arc;
     private rimLight?: Phaser.GameObjects.Arc;
+    private patternSprite?: Phaser.GameObjects.Graphics;
     private gridPosition: IHexPosition | null = null;
     private color: BubbleColor;
     private isSpecial: boolean = false;
@@ -42,11 +43,10 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.rimLight.setStrokeStyle(3, this.getLighterColor(color), 0.6);
         
         // 5. Simple highlight without blend mode
-        this.highlightSprite = scene.add.ellipse(
+        this.highlightSprite = scene.add.circle(
             -radius * 0.35,
             -radius * 0.4,
-            radius * 0.75,
-            radius * 0.55,
+            radius * 0.4,
             0xFFFFFF,
             0.3
         );
@@ -65,6 +65,9 @@ export class Bubble extends Phaser.GameObjects.Container {
         // 7. Ultra HD border for crisp definition
         this.bubbleSprite.setStrokeStyle(3, this.getDarkerColor(color), 1);
         
+        // 8. Pattern sprite for colorblind patterns
+        this.patternSprite = scene.add.graphics();
+        
         // Add all elements in proper order for best visual effect
         this.add([
             this.shadowSprite,
@@ -72,7 +75,8 @@ export class Bubble extends Phaser.GameObjects.Container {
             this.innerGradient,
             this.rimLight,
             this.highlightSprite,
-            this.secondaryHighlight
+            this.secondaryHighlight,
+            this.patternSprite
         ]);
         
         this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
@@ -87,7 +91,9 @@ export class Bubble extends Phaser.GameObjects.Container {
     private addIdleAnimation(): void {
         // DISABLED - No idle animations to keep bubbles static
         // Only animate highlight shimmer if needed
-        if (this.highlightSprite && false) { // Disabled for now
+        return; // Early return to disable
+        /* Disabled animation code
+        if (this.highlightSprite) {
             this.scene.tweens.add({
                 targets: this.highlightSprite,
                 alpha: { from: 0.4, to: 0.6 },
@@ -98,6 +104,7 @@ export class Bubble extends Phaser.GameObjects.Container {
                 delay: Math.random() * 1000
             });
         }
+        */
     }
 
     public setGridPosition(hex: IHexPosition | null): void {

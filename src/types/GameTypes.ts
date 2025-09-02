@@ -24,6 +24,7 @@ export interface IGameConfig {
         forceSetTimeOut: boolean;
     };
     render?: any;
+    input?: any;
     scene: Scene[];
 }
 
