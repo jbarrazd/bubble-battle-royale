@@ -471,13 +471,90 @@ export class ArenaSystem {
                                     }
                                 },
                                 onComplete: () => {
-                                    ufo.destroy();
-                                    trailParticles.destroy();
-                                    engineGlow.destroy();
+                                    // Create classic star twinkle effect at UFO's final position
+                                    const flashX = this.scene.cameras.main.width * 0.85;
+                                    const flashY = this.scene.cameras.main.height * 0.15;
+                                    
+                                    // Play shine sound when twinkle appears
+                                    try {
+                                        const shineSound = this.scene.sound.add('shine', {
+                                            volume: 0.15,
+                                            rate: 1.0
+                                        });
+                                        shineSound.play();
+                                    } catch (e) {
+                                        console.log('Shine sound not loaded');
+                                    }
+                                    
+                                    // Create star graphics for the classic 4-point star twinkle
+                                    const starGraphics = this.scene.add.graphics();
+                                    starGraphics.setDepth(1001);
+                                    
+                                    // Animate star twinkle
+                                    let starScale = 0;
+                                    let starAlpha = 1;
+                                    
+                                    const starTween = this.scene.tweens.add({
+                                        targets: { scale: 0, alpha: 1 },
+                                        scale: { from: 0, to: 1 },
+                                        alpha: { from: 1, to: 0 },
+                                        duration: 400,
+                                        ease: 'Back.easeOut',
+                                        onUpdate: (tween) => {
+                                            starScale = tween.getValue();
+                                            starAlpha = 1 - tween.progress;
+                                            
+                                            starGraphics.clear();
+                                            starGraphics.lineStyle(2, 0xffffff, starAlpha);
+                                            
+                                            // Draw horizontal line
+                                            const lineLength = 20 * starScale;
+                                            starGraphics.beginPath();
+                                            starGraphics.moveTo(flashX - lineLength, flashY);
+                                            starGraphics.lineTo(flashX + lineLength, flashY);
+                                            starGraphics.strokePath();
+                                            
+                                            // Draw vertical line
+                                            starGraphics.beginPath();
+                                            starGraphics.moveTo(flashX, flashY - lineLength);
+                                            starGraphics.lineTo(flashX, flashY + lineLength);
+                                            starGraphics.strokePath();
+                                            
+                                            // Add thin diagonal lines for extra sparkle
+                                            starGraphics.lineStyle(1, 0xffffff, starAlpha * 0.7);
+                                            const diagLength = lineLength * 0.7;
+                                            
+                                            // Diagonal 1
+                                            starGraphics.beginPath();
+                                            starGraphics.moveTo(flashX - diagLength, flashY - diagLength);
+                                            starGraphics.lineTo(flashX + diagLength, flashY + diagLength);
+                                            starGraphics.strokePath();
+                                            
+                                            // Diagonal 2
+                                            starGraphics.beginPath();
+                                            starGraphics.moveTo(flashX - diagLength, flashY + diagLength);
+                                            starGraphics.lineTo(flashX + diagLength, flashY - diagLength);
+                                            starGraphics.strokePath();
+                                            
+                                            // Central bright dot
+                                            starGraphics.fillStyle(0xffffff, starAlpha);
+                                            starGraphics.fillCircle(flashX, flashY, 2 * starScale);
+                                        },
+                                        onComplete: () => {
+                                            starGraphics.destroy();
+                                        }
+                                    });
+                                    
+                                    // Destroy UFO after flash starts
+                                    if (ufo && ufo.active) ufo.destroy();
+                                    if (trailParticles && trailParticles.active) trailParticles.destroy();
+                                    if (engineGlow && engineGlow.active) engineGlow.destroy();
                                     
                                     // Cleanup after delay
                                     this.scene.time.delayedCall(1000, () => {
-                                        departParticles.destroy();
+                                        if (departParticles && departParticles.active) {
+                                            departParticles.destroy();
+                                        }
                                     });
                                 }
                             });
@@ -688,7 +765,9 @@ export class ArenaSystem {
                                 alpha: 0,
                                 duration: 500,
                                 onComplete: () => {
-                                    beamContainer.destroy();
+                                    if (beamContainer && beamContainer.active) {
+                                        beamContainer.destroy();
+                                    }
                                     onComplete();
                                 }
                             });

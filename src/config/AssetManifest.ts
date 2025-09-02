@@ -25,6 +25,7 @@ export const ASSET_KEYS = {
         UFO_SOUND: 'ufo-sound',
         UFO_ARRIVES: 'ufo-arrives',
         CHEST_ARRIVAL: 'chest-arrival',
+        SHINE: 'shine',
         DEFEAT: 'defeat',
         BACKGROUND_MUSIC: 'background-music'
     },
@@ -150,6 +151,12 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.AUDIO.CHEST_ARRIVAL,
                 url: 'assets/audio/chest-arrival.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.SHINE,
+                url: 'assets/audio/shine.mp3',
                 type: 'audio',
                 data: {}
             },
