@@ -77,6 +77,7 @@ export enum SceneKeys {
     BOOT = 'BootScene',
     PRELOAD = 'PreloadScene',
     MENU = 'MenuScene',
+    THEME_SELECT = 'ThemeSelectScene',
     GAME = 'GameScene',
     VICTORY = 'VictoryScene',
     SHOP = 'ShopScene'

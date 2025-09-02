@@ -6,12 +6,14 @@ import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
 import { RealSoundSystem } from '@/systems/audio/RealSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { TweenOptimizer } from '@/systems/visual/TweenOptimizer';
+import { BackgroundSystem } from '@/systems/visual/BackgroundSystem';
 
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
     private soundSystem!: RealSoundSystem;
+    private backgroundSystem!: BackgroundSystem;
     private backgroundMusic: Phaser.Sound.BaseSound | undefined;
     private fpsText!: Phaser.GameObjects.Text;
     private frameCount: number = 0;
@@ -36,7 +38,7 @@ export class GameScene extends Scene {
         this.load.audio('background-music', 'assets/audio/background_music.mp3');
     }
 
-    public init(_data: ISceneData): void {
+    public init(data: ISceneData): void {
         console.log('GameScene: Initializing game arena...');
         
         // Clean up any existing background music before reinitializing
@@ -44,6 +46,11 @@ export class GameScene extends Scene {
             this.backgroundMusic.stop();
             this.backgroundMusic.destroy();
             this.backgroundMusic = undefined;
+        }
+        
+        // Store theme selection if provided
+        if (data && (data as any).theme) {
+            this.registry.set('gameTheme', (data as any).theme);
         }
         
         // Set isCapacitor flag in registry for global access
@@ -128,31 +135,26 @@ export class GameScene extends Scene {
     }
 
     private createBackground(): void {
-        const width = this.cameras.main.width;
-        const height = this.cameras.main.height;
+        // Detect device performance for quality settings
+        const isCapacitor = this.registry.get('isCapacitor');
+        const quality = isCapacitor ? 'medium' : 'high'; // Lower quality on mobile for performance
         
-        console.log(`GameScene: Creating elegant procedural background`);
+        // Get selected theme or default to ocean
+        const selectedTheme = this.registry.get('gameTheme') || this.registry.get('selectedTheme') || 'ocean';
         
-        // Create vertical gradient background using fillGradientStyle
-        const bgGraphics = this.add.graphics();
+        // Create the new advanced background system
+        this.backgroundSystem = new BackgroundSystem(this, {
+            theme: selectedTheme as any,
+            quality: quality,
+            enableParticles: true,
+            enableAnimation: true
+        });
         
-        // Create gradient from dark blue to deeper blue
-        // fillGradientStyle(topLeftColor, topRightColor, bottomLeftColor, bottomRightColor, alpha)
-        bgGraphics.fillGradientStyle(
-            0x1a1a2e, 0x1a1a2e,  // Top: base dark blue
-            0x0d2854, 0x0d2854,  // Bottom: deeper blue
-            1                     // Full opacity
-        );
-        bgGraphics.fillRect(0, 0, width, height);
-        bgGraphics.setDepth(Z_LAYERS.BACKGROUND);
-        
-        // Add subtle geometric pattern overlay
-        this.createGeometricPattern(width, height);
-        
-        // Add subtle particle effect
-        this.createAmbientParticles(width, height);
+        console.log(`GameScene: Created advanced background system with ${selectedTheme} theme and ${quality} quality`);
     }
     
+    // Old methods commented out - replaced by BackgroundSystem
+    /*
     private createGeometricPattern(width: number, height: number): void {
         const patternGraphics = this.add.graphics();
         
@@ -237,6 +239,7 @@ export class GameScene extends Scene {
             });
         }
     }
+    */
 
     private createArena(): void {
         try {
@@ -437,6 +440,50 @@ export class GameScene extends Scene {
             console.log(`Audio ${muted ? 'muted' : 'unmuted'}`);
         });
         
+        // O key to test UFO delivery animation
+        this.input.keyboard?.on('keydown-O', () => {
+            console.log('Testing UFO delivery animation...');
+            
+            // Get center position for the UFO animation
+            const centerX = this.cameras.main.centerX;
+            const centerY = this.cameras.main.centerY;
+            
+            // Trigger the UFO delivery animation
+            if (this.arenaSystem) {
+                // Call the UFO delivery method directly for testing
+                (this.arenaSystem as any).createUFODelivery(centerX, centerY, () => {
+                    console.log('UFO delivery animation complete');
+                });
+            }
+        });
+        
+        // Number keys 5-9 to change background themes (for testing)
+        if (!this.registry.get('isCapacitor')) { // Only on desktop for testing
+            this.input.keyboard?.on('keydown-FIVE', () => {
+                this.backgroundSystem?.setTheme('ocean');
+                console.log('Background theme: Ocean');
+            });
+            
+            this.input.keyboard?.on('keydown-SIX', () => {
+                this.backgroundSystem?.setTheme('sunset');
+                console.log('Background theme: Sunset');
+            });
+            
+            this.input.keyboard?.on('keydown-SEVEN', () => {
+                this.backgroundSystem?.setTheme('forest');
+                console.log('Background theme: Forest');
+            });
+            
+            this.input.keyboard?.on('keydown-EIGHT', () => {
+                this.backgroundSystem?.setTheme('space');
+                console.log('Background theme: Space');
+            });
+            
+            this.input.keyboard?.on('keydown-NINE', () => {
+                this.backgroundSystem?.setTheme('aurora');
+                console.log('Background theme: Aurora');
+            });
+        }
     }
 
     private testBubblePop(): void {
@@ -572,6 +619,7 @@ export class GameScene extends Scene {
         
         this.arenaSystem?.destroy();
         this.soundSystem?.destroy();
+        this.backgroundSystem?.destroy();
         this.performanceMonitor?.reset();
     }
 }

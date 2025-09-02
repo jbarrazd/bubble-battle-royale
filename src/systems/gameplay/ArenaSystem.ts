@@ -317,11 +317,350 @@ export class ArenaSystem {
         const centerX = this.scene.cameras.main.centerX;
         const centerY = this.scene.cameras.main.centerY;
         
-        this.objective = new Objective(this.scene, {
-            x: centerX,
-            y: centerY,
-            size: this.config.objectiveSize,
-            health: 1
+        // Create UFO delivery animation
+        this.createUFODelivery(centerX, centerY, () => {
+            // Create objective after UFO animation
+            this.objective = new Objective(this.scene, {
+                x: centerX,
+                y: centerY,
+                size: this.config.objectiveSize,
+                health: 1
+            });
+        });
+    }
+    
+    private createUFODelivery(targetX: number, targetY: number, onComplete: () => void): void {
+        // Check if UFO asset exists
+        if (!this.scene.textures.exists('ufo')) {
+            // Fallback to immediate creation if no UFO
+            onComplete();
+            return;
+        }
+        
+        const ufoScale = 0.35; // Larger UFO for better visibility
+        const startX = -200; // Start off-screen left
+        const startY = targetY - 100; // Slightly lower position
+        
+        // Create UFO
+        const ufo = this.scene.add.image(startX, startY, 'ufo');
+        ufo.setScale(ufoScale);
+        ufo.setDepth(1000); // Above everything
+        
+        // Play UFO arrival sound
+        let ufoArrivalSound: Phaser.Sound.BaseSound | null = null;
+        let ufoSound: Phaser.Sound.BaseSound | null = null;
+        
+        try {
+            ufoArrivalSound = this.scene.sound.add('ufo-arrives', {
+                volume: 0.5,
+                rate: 1.0  // Normal speed for arrival
+            });
+            ufoArrivalSound.play();
+        } catch (e) {
+            console.log('UFO arrival sound not loaded');
+        }
+        
+        // Create UFO trail particles for entry
+        const trailParticles = this.scene.add.particles(0, 0, 'particle', {
+            follow: ufo,
+            followOffset: { x: -30, y: 0 },
+            scale: { start: 0.3, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            tint: [0x00ffff, 0x00ff99, 0xffff00],
+            blendMode: 'ADD',
+            lifespan: 500,
+            quantity: 2,
+            frequency: 50,
+            emitting: true
+        });
+        trailParticles.setDepth(999);
+        
+        // UFO engine glow
+        const engineGlow = this.scene.add.particles(0, 0, 'particle', {
+            follow: ufo,
+            followOffset: { x: 0, y: 20 },
+            scale: { start: 0.4, end: 0.1 },
+            alpha: { start: 0.8, end: 0 },
+            tint: 0xffaa00,
+            blendMode: 'ADD',
+            lifespan: 300,
+            speedY: { min: 20, max: 40 },
+            speedX: { min: -10, max: 10 },
+            quantity: 3,
+            frequency: 30,
+            emitting: false
+        });
+        engineGlow.setDepth(998);
+        
+        // UFO entry animation with bounce
+        this.scene.tweens.add({
+            targets: ufo,
+            x: targetX,
+            duration: 1200,
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Stop trail and start engine
+                trailParticles.stop();
+                engineGlow.start();
+                
+                // Small bounce on arrival
+                this.scene.tweens.add({
+                    targets: ufo,
+                    y: startY - 10,
+                    duration: 200,
+                    yoyo: true,
+                    ease: 'Quad.easeOut',
+                    onComplete: () => {
+                        // Show and animate tractor beam
+                        this.animateTractorBeam(ufo, targetX, startY, targetY, () => {
+                            // Create the objective
+                            onComplete();
+                            
+                            // UFO departure - fly up towards planet!
+                            engineGlow.stop();
+                            
+                            // Add delay before playing UFO departure sound
+                            this.scene.time.delayedCall(800, () => {
+                                // Play UFO departure sound after delay
+                                try {
+                                    ufoSound = this.scene.sound.add('ufo-sound', {
+                                        volume: 0.5,
+                                        rate: 0.9  // Adjusted rate for dramatic effect
+                                    });
+                                    ufoSound.play();
+                                } catch (e) {
+                                    console.log('UFO sound not loaded');
+                                }
+                            });
+                            
+                            // Create departure particles
+                            const departParticles = this.scene.add.particles(targetX, startY, 'particle', {
+                                scale: { start: 0.5, end: 0 },
+                                alpha: { start: 1, end: 0 },
+                                tint: [0xffff00, 0xff9900],
+                                blendMode: 'ADD',
+                                lifespan: 1000,
+                                speedY: { min: 50, max: 100 },
+                                speedX: { min: -30, max: 30 },
+                                quantity: 10,
+                                emitting: false
+                            });
+                            departParticles.setDepth(999);
+                            departParticles.explode(20);
+                            
+                            // UFO flies up towards planet (top-right where Earth is)
+                            this.scene.tweens.add({
+                                targets: ufo,
+                                x: this.scene.cameras.main.width * 0.85,
+                                y: this.scene.cameras.main.height * 0.15, // Go to planet position
+                                scale: 0.05, // Shrink as it goes to planet
+                                duration: 2000,
+                                ease: 'Quad.easeIn',
+                                delay: 300,
+                                onStart: () => {
+                                    // Fade out UFO sound
+                                    if (ufoSound) {
+                                        this.scene.tweens.add({
+                                            targets: ufoSound,
+                                            volume: 0,
+                                            duration: 1500,
+                                            onComplete: () => {
+                                                ufoSound?.stop();
+                                            }
+                                        });
+                                    }
+                                },
+                                onComplete: () => {
+                                    ufo.destroy();
+                                    trailParticles.destroy();
+                                    engineGlow.destroy();
+                                    
+                                    // Cleanup after delay
+                                    this.scene.time.delayedCall(1000, () => {
+                                        departParticles.destroy();
+                                    });
+                                }
+                            });
+                        });
+                    }
+                });
+            }
+        });
+        
+        // Add hovering motion to UFO
+        this.scene.tweens.add({
+            targets: ufo,
+            y: startY + 8,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    private animateTractorBeam(ufo: Phaser.GameObjects.Image, x: number, y: number, targetY: number, onComplete: () => void): void {
+        // Calculate beam position to connect perfectly with UFO
+        const beamStartY = ufo.y + 30; // Start from UFO bottom
+        const beamHeight = targetY - beamStartY;
+        
+        // Create main beam container
+        const beamContainer = this.scene.add.container(x, beamStartY);
+        beamContainer.setDepth(999);
+        
+        // Create beam base graphics
+        const beamBase = this.scene.add.graphics();
+        beamContainer.add(beamBase);
+        
+        // Create particle emitters for beam effect
+        const beamParticles = this.scene.add.particles(0, 0, 'particle', {
+            x: 0,
+            y: { min: 0, max: beamHeight },
+            scale: { start: 0.6, end: 0.1 },
+            alpha: { start: 0.7, end: 0 },
+            tint: [0xffff00, 0xffcc00, 0xffffcc],
+            blendMode: 'ADD',
+            lifespan: 800,
+            speedX: { min: -20, max: 20 },
+            speedY: 0,
+            quantity: 3,
+            frequency: 50,
+            emitting: false
+        });
+        beamContainer.add(beamParticles);
+        
+        // Create spiraling energy particles
+        const spiralParticles = this.scene.add.particles(0, 0, 'particle', {
+            x: 0,
+            y: 0,
+            scale: { start: 0.4, end: 0.05 },
+            alpha: { start: 1, end: 0 },
+            tint: 0xffff99,
+            blendMode: 'ADD',
+            lifespan: 1200,
+            quantity: 2,
+            frequency: 80,
+            emitting: false
+        });
+        beamContainer.add(spiralParticles);
+        
+        // Animate beam expansion
+        beamContainer.setScale(0, 0);
+        beamContainer.setAlpha(0);
+        
+        this.scene.tweens.add({
+            targets: beamContainer,
+            scaleX: 1,
+            scaleY: 1,
+            alpha: 1,
+            duration: 400,
+            ease: 'Power2.easeOut',
+            onComplete: () => {
+                // Start particle emissions
+                beamParticles.start();
+                spiralParticles.start();
+                
+                // Play chest arrival sound when beam particles start
+                try {
+                    const chestArrivalSound = this.scene.sound.add('chest-arrival', {
+                        volume: 0.5,
+                        rate: 1.0
+                    });
+                    chestArrivalSound.play();
+                } catch (e) {
+                    console.log('Chest arrival sound not loaded');
+                }
+                
+                // Animate beam with real-time updates
+                let time = 0;
+                const beamPulse = this.scene.time.addEvent({
+                    delay: 16,
+                    callback: () => {
+                        time += 0.03;
+                        beamBase.clear();
+                        
+                        // Only draw a subtle glow effect, no triangles
+                        const pulse = Math.sin(time * 3) * 0.2 + 0.8;
+                        
+                        // Draw vertical beam lines instead of triangles
+                        for (let i = 0; i < 5; i++) {
+                            const offset = (i - 2) * 15;
+                            const alpha = (0.3 - Math.abs(i - 2) * 0.1) * pulse;
+                            
+                            beamBase.lineStyle(3, 0xffff00, alpha);
+                            beamBase.beginPath();
+                            beamBase.moveTo(offset * 0.3, 0);
+                            beamBase.lineTo(offset, beamHeight);
+                            beamBase.strokePath();
+                            
+                            beamBase.lineStyle(2, 0xffffcc, alpha * 0.7);
+                            beamBase.beginPath();
+                            beamBase.moveTo(offset * 0.3, 0);
+                            beamBase.lineTo(offset, beamHeight);
+                            beamBase.strokePath();
+                        }
+                        
+                        // Add circular glow at bottom
+                        beamBase.fillStyle(0xffff00, 0.1 * pulse);
+                        beamBase.fillCircle(0, beamHeight, 60);
+                        beamBase.fillStyle(0xffffcc, 0.2 * pulse);
+                        beamBase.fillCircle(0, beamHeight, 40);
+                        
+                        // Update spiral particle positions
+                        const spiralAngle = time * 4;
+                        spiralParticles.setParticleSpeed(
+                            Math.cos(spiralAngle) * 30,
+                            beamHeight / 1.2
+                        );
+                    },
+                    loop: true
+                });
+                
+                // After beam animation, materialize chest
+                this.scene.time.delayedCall(1800, () => {
+                    beamPulse.destroy();
+                    beamParticles.stop();
+                    spiralParticles.stop();
+                    
+                    // Create materialization effect
+                    const chestGlow = this.scene.add.graphics();
+                    chestGlow.fillStyle(0xffffff, 0);
+                    chestGlow.fillCircle(x, targetY, 40);
+                    chestGlow.setDepth(1000);
+                    
+                    // Materialize with bright flash
+                    this.scene.tweens.add({
+                        targets: chestGlow,
+                        alpha: { from: 0, to: 1 },
+                        scale: { from: 0.5, to: 1.5 },
+                        duration: 200,
+                        ease: 'Power2.easeOut',
+                        onComplete: () => {
+                            // Flash and fade
+                            this.scene.tweens.add({
+                                targets: chestGlow,
+                                alpha: 0,
+                                scale: 2,
+                                duration: 300,
+                                ease: 'Power2.easeOut',
+                                onComplete: () => {
+                                    chestGlow.destroy();
+                                }
+                            });
+                            
+                            // Fade out beam
+                            this.scene.tweens.add({
+                                targets: beamContainer,
+                                alpha: 0,
+                                duration: 500,
+                                onComplete: () => {
+                                    beamContainer.destroy();
+                                    onComplete();
+                                }
+                            });
+                        }
+                    });
+                });
+            }
         });
     }
 

@@ -8,7 +8,8 @@ export const ASSET_KEYS = {
         BUTTON: 'button',
         PARTICLE: 'particle',
         PLANET: 'planet',
-        BUBBLE_PLANET: 'bubble_planet'
+        BUBBLE_PLANET: 'bubble_planet',
+        UFO: 'ufo'
     },
     AUDIO: {
         BUBBLE_SHOOT: 'bubble-shoot',
@@ -21,6 +22,9 @@ export const ASSET_KEYS = {
         ARSENAL_PICKUP: 'arsenal-pickup',
         SUCCESS_OBJECTIVE: 'success-objective',
         VICTORY: 'victory',
+        UFO_SOUND: 'ufo-sound',
+        UFO_ARRIVES: 'ufo-arrives',
+        CHEST_ARRIVAL: 'chest-arrival',
         DEFEAT: 'defeat',
         BACKGROUND_MUSIC: 'background-music'
     },
@@ -54,6 +58,12 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.IMAGES.PLANET,
                 url: 'assets/sprites/planeta.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.UFO,
+                url: 'assets/sprites/ufo.png',
                 type: 'image',
                 data: {}
             },
@@ -122,6 +132,24 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.AUDIO.VICTORY,
                 url: 'assets/sounds/victory.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.UFO_SOUND,
+                url: 'assets/audio/ufo-sound.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.UFO_ARRIVES,
+                url: 'assets/audio/ufo-arrives.mp3',
+                type: 'audio',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.AUDIO.CHEST_ARRIVAL,
+                url: 'assets/audio/chest-arrival.mp3',
                 type: 'audio',
                 data: {}
             },

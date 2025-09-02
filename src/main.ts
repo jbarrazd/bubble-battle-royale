@@ -3,6 +3,7 @@ import { createGameConfig } from '@config/GameConfig';
 import { BootScene } from '@scenes/BootScene';
 import { PreloadScene } from '@scenes/PreloadScene';
 import { MenuScene } from '@scenes/MenuScene';
+import { ThemeSelectScene } from '@scenes/ThemeSelectScene';
 import { GameScene } from '@scenes/GameScene';
 import { CapacitorOptimizations } from '@utils/capacitorOptimizations';
 import { Capacitor } from '@capacitor/core';
@@ -55,6 +56,7 @@ class BubbleBattleRoyale {
             BootScene,
             PreloadScene,
             MenuScene,
+            ThemeSelectScene,
             GameScene
         ];
         console.log('Scenes prepared:', scenes.map(s => s.name));

@@ -241,13 +241,13 @@ export class MenuScene extends Scene {
     }
 
     private startGame(): void {
-        console.log('Starting game...');
+        console.log('Opening theme selection...');
         this.tweens.add({
             targets: this.buttons,
             alpha: 0,
             duration: 300,
             onComplete: () => {
-                this.sceneManager.transitionTo(SceneKeys.GAME);
+                this.sceneManager.transitionTo(SceneKeys.THEME_SELECT);
             }
         });
     }
