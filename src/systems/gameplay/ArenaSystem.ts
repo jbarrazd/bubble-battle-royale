@@ -352,7 +352,7 @@ export class ArenaSystem {
         
         try {
             ufoArrivalSound = this.scene.sound.add('ufo-arrives', {
-                volume: 0.5,
+                volume: 0.2,
                 rate: 1.0  // Normal speed for arrival
             });
             ufoArrivalSound.play();
@@ -366,7 +366,7 @@ export class ArenaSystem {
             followOffset: { x: -30, y: 0 },
             scale: { start: 0.3, end: 0 },
             alpha: { start: 0.6, end: 0 },
-            tint: [0x00ffff, 0x00ff99, 0xffff00],
+            tint: [0xffffff, 0x00ffff, 0xaaffff],  // White, cyan, light cyan for UFO trail
             blendMode: 'ADD',
             lifespan: 500,
             quantity: 2,
@@ -381,7 +381,7 @@ export class ArenaSystem {
             followOffset: { x: 0, y: 20 },
             scale: { start: 0.4, end: 0.1 },
             alpha: { start: 0.8, end: 0 },
-            tint: 0xffaa00,
+            tint: 0x00ffff,  // Bright cyan for UFO engine
             blendMode: 'ADD',
             lifespan: 300,
             speedY: { min: 20, max: 40 },
@@ -424,7 +424,7 @@ export class ArenaSystem {
                                 // Play UFO departure sound after delay
                                 try {
                                     ufoSound = this.scene.sound.add('ufo-sound', {
-                                        volume: 0.5,
+                                        volume: 0.2,
                                         rate: 0.9  // Adjusted rate for dramatic effect
                                     });
                                     ufoSound.play();
@@ -437,7 +437,7 @@ export class ArenaSystem {
                             const departParticles = this.scene.add.particles(targetX, startY, 'particle', {
                                 scale: { start: 0.5, end: 0 },
                                 alpha: { start: 1, end: 0 },
-                                tint: [0xffff00, 0xff9900],
+                                tint: [0xffffff, 0x00ffff],  // White and cyan for departure
                                 blendMode: 'ADD',
                                 lifespan: 1000,
                                 speedY: { min: 50, max: 100 },
@@ -517,7 +517,7 @@ export class ArenaSystem {
             y: { min: 0, max: beamHeight },
             scale: { start: 0.6, end: 0.1 },
             alpha: { start: 0.7, end: 0 },
-            tint: [0xffff00, 0xffcc00, 0xffffcc],
+            tint: [0xffffff, 0x00ffff, 0x66ddff],  // White, cyan, light blue for tractor beam
             blendMode: 'ADD',
             lifespan: 800,
             speedX: { min: -20, max: 20 },
@@ -534,7 +534,7 @@ export class ArenaSystem {
             y: 0,
             scale: { start: 0.4, end: 0.05 },
             alpha: { start: 1, end: 0 },
-            tint: 0xffff99,
+            tint: 0xffffff,  // Pure white for beam spiral
             blendMode: 'ADD',
             lifespan: 1200,
             quantity: 2,
@@ -562,7 +562,7 @@ export class ArenaSystem {
                 // Play chest arrival sound when beam particles start
                 try {
                     const chestArrivalSound = this.scene.sound.add('chest-arrival', {
-                        volume: 0.5,
+                        volume: 0.25,
                         rate: 1.0
                     });
                     chestArrivalSound.play();
@@ -578,32 +578,67 @@ export class ArenaSystem {
                         time += 0.03;
                         beamBase.clear();
                         
-                        // Only draw a subtle glow effect, no triangles
-                        const pulse = Math.sin(time * 3) * 0.2 + 0.8;
+                        // Enhanced tractor beam effect
+                        const pulse = Math.sin(time * 3) * 0.3 + 0.7;
+                        const wave = Math.sin(time * 2) * 0.2;
                         
-                        // Draw vertical beam lines instead of triangles
-                        for (let i = 0; i < 5; i++) {
-                            const offset = (i - 2) * 15;
-                            const alpha = (0.3 - Math.abs(i - 2) * 0.1) * pulse;
+                        // Draw cone shape with gradient effect
+                        const topWidth = 20;
+                        const bottomWidth = 60;
+                        
+                        // Main beam cone with gradient
+                        beamBase.fillStyle(0x00ffff, 0.05 * pulse);
+                        beamBase.beginPath();
+                        beamBase.moveTo(-topWidth, 0);
+                        beamBase.lineTo(topWidth, 0);
+                        beamBase.lineTo(bottomWidth, beamHeight);
+                        beamBase.lineTo(-bottomWidth, beamHeight);
+                        beamBase.closePath();
+                        beamBase.fillPath();
+                        
+                        // Inner bright cone
+                        beamBase.fillStyle(0xffffff, 0.03 * pulse);
+                        beamBase.beginPath();
+                        beamBase.moveTo(-topWidth * 0.5, 0);
+                        beamBase.lineTo(topWidth * 0.5, 0);
+                        beamBase.lineTo(bottomWidth * 0.7, beamHeight);
+                        beamBase.lineTo(-bottomWidth * 0.7, beamHeight);
+                        beamBase.closePath();
+                        beamBase.fillPath();
+                        
+                        // Draw energy rings moving down
+                        for (let i = 0; i < 8; i++) {
+                            const ringY = ((time * 50 + i * beamHeight / 8) % beamHeight);
+                            const ringRadius = topWidth + (bottomWidth - topWidth) * (ringY / beamHeight);
+                            const ringAlpha = (1 - ringY / beamHeight) * 0.3 * pulse;
                             
-                            beamBase.lineStyle(3, 0xffff00, alpha);
-                            beamBase.beginPath();
-                            beamBase.moveTo(offset * 0.3, 0);
-                            beamBase.lineTo(offset, beamHeight);
-                            beamBase.strokePath();
+                            beamBase.lineStyle(2, 0x00ffff, ringAlpha);
+                            beamBase.strokeCircle(0, ringY, ringRadius);
+                            beamBase.lineStyle(1, 0xffffff, ringAlpha * 0.5);
+                            beamBase.strokeCircle(0, ringY, ringRadius * 0.8);
+                        }
+                        
+                        // Spiraling energy lines
+                        for (let i = 0; i < 3; i++) {
+                            const angle = (time * 2 + i * Math.PI * 2 / 3);
+                            const startX = Math.cos(angle) * topWidth * 0.8;
+                            const endX = Math.cos(angle + wave) * bottomWidth * 0.9;
                             
-                            beamBase.lineStyle(2, 0xffffcc, alpha * 0.7);
+                            beamBase.lineStyle(2, 0x66ddff, 0.4 * pulse);
                             beamBase.beginPath();
-                            beamBase.moveTo(offset * 0.3, 0);
-                            beamBase.lineTo(offset, beamHeight);
+                            beamBase.moveTo(startX, 0);
+                            beamBase.lineTo(endX, beamHeight);
                             beamBase.strokePath();
                         }
                         
-                        // Add circular glow at bottom
-                        beamBase.fillStyle(0xffff00, 0.1 * pulse);
-                        beamBase.fillCircle(0, beamHeight, 60);
-                        beamBase.fillStyle(0xffffcc, 0.2 * pulse);
-                        beamBase.fillCircle(0, beamHeight, 40);
+                        // Bottom impact glow with ripples
+                        const ripple = Math.sin(time * 5) * 0.1 + 0.9;
+                        beamBase.fillStyle(0x00ffff, 0.15 * pulse);
+                        beamBase.fillCircle(0, beamHeight, 70 * ripple);
+                        beamBase.fillStyle(0xffffff, 0.25 * pulse);
+                        beamBase.fillCircle(0, beamHeight, 45 * ripple);
+                        beamBase.fillStyle(0x00ffff, 0.1 * pulse);
+                        beamBase.fillCircle(0, beamHeight, 90 * ripple);
                         
                         // Update spiral particle positions
                         const spiralAngle = time * 4;
