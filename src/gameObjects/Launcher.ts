@@ -99,14 +99,14 @@ export class Launcher extends Phaser.GameObjects.Container {
     // === ARSENAL POSITIONING ===
     // Better spacing: more separation between slots
     private readonly ARSENAL_POSITIONS_PLAYER = [
-        { x: 70 * HD_SCALE, y: -35 * HD_SCALE },     // First slot with good separation
-        { x: 110 * HD_SCALE, y: -35 * HD_SCALE },    // 40 unit spacing between slots
-        { x: 150 * HD_SCALE, y: -35 * HD_SCALE }     // More spread out
+        { x: 53 * HD_SCALE, y: -20 * HD_SCALE },     // Lower position
+        { x: 88 * HD_SCALE, y: -20 * HD_SCALE },     // 35 unit spacing between slots
+        { x: 123 * HD_SCALE, y: -20 * HD_SCALE }     // Max 123 to stay within bounds
     ];
     private readonly ARSENAL_POSITIONS_OPPONENT = [
-        { x: -70 * HD_SCALE, y: -35 * HD_SCALE },    // Mirror positions for opponent
-        { x: -110 * HD_SCALE, y: -35 * HD_SCALE },
-        { x: -150 * HD_SCALE, y: -35 * HD_SCALE }
+        { x: -53 * HD_SCALE, y: -20 * HD_SCALE },    // Mirror positions for opponent
+        { x: -88 * HD_SCALE, y: -20 * HD_SCALE },
+        { x: -123 * HD_SCALE, y: -20 * HD_SCALE }
     ];
     private readonly SLOT_SIZE = 25 * HD_SCALE;  // Further reduced for better spacing
     

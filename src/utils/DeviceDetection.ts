@@ -92,16 +92,28 @@ export class DeviceDetection {
     public getOptimalResolution(): { width: number; height: number } {
         // FIXED RESOLUTION FOR FAIR ONLINE PLAY
         // All players get exactly the same game area
-        // Balanced scale = good visibility without being too large
-        const GAME_SCALE = 2.0;  // Middle ground between 1.8 and 2.5
+        // Using iPhone 11 Pro as base (375x812)
+        const GAME_SCALE = 2.0;
         const FIXED_WIDTH = 375 * GAME_SCALE;  // 750 units
-        const FIXED_HEIGHT = 812 * GAME_SCALE;  // 1624 units (iPhone X ratio)
+        const FIXED_HEIGHT = 812 * GAME_SCALE;  // 1624 units
         
-        // Return fixed dimensions regardless of device
-        // Phaser will handle scaling and letterboxing automatically
+        // Return fixed dimensions
         return { 
             width: Math.floor(FIXED_WIDTH), 
             height: Math.floor(FIXED_HEIGHT) 
+        };
+    }
+    
+    public getSafeZone(): { width: number; height: number } {
+        // Safe zone for consistent gameplay area
+        // All critical game elements should stay within this zone
+        const GAME_SCALE = 2.0;
+        const SAFE_WIDTH = 375 * GAME_SCALE;  // 750 units
+        const SAFE_HEIGHT = 667 * GAME_SCALE; // 1334 units
+        
+        return {
+            width: SAFE_WIDTH,
+            height: SAFE_HEIGHT
         };
     }
 }

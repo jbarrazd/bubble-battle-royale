@@ -1,27 +1,32 @@
 import Phaser from 'phaser';
 import { IGameConfig } from '@/types/GameTypes';
-import { DeviceDetection } from '@utils/DeviceDetection';
+// import { DeviceDetection } from '@utils/DeviceDetection';
 
 // HD_SCALE: Factor to scale everything for Ultra HD quality
 export const HD_SCALE = 2.5; // Ultra HD quality restored
 
 // FIXED GAME DIMENSIONS FOR FAIR ONLINE PLAY
 // All players will see exactly the same game area
-// Balanced size - not too small, not too large
-export const FIXED_GAME_WIDTH = 375 * 2.0;  // 750 units (middle ground)
-export const FIXED_GAME_HEIGHT = 812 * 2.0; // 1624 units (maintains iPhone X aspect ratio)
+// Using iPhone 11 Pro as base (375x812) with scale for visibility
+const SCALE = 2.0;
+
+// Fixed dimensions for consistent gameplay
+export const FIXED_GAME_WIDTH = 375 * SCALE;  // 750 units
+export const FIXED_GAME_HEIGHT = 812 * SCALE; // 1624 units
+
+// Safe zone matches full game area for now
+export const SAFE_ZONE_WIDTH = FIXED_GAME_WIDTH;
+export const SAFE_ZONE_HEIGHT = FIXED_GAME_HEIGHT;
 
 export function createGameConfig(scenes: any[]): IGameConfig {
-    const device = DeviceDetection.getInstance();
     
-    // Detect if running on iOS/Capacitor
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isCapacitor = (window as any).Capacitor !== undefined;
-    const isMobile = device.getCapabilities().isMobile || isIOS || isCapacitor;
+    // Detect if running on iOS/Capacitor (kept for reference)
+    // const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // const isCapacitor = (window as any).Capacitor !== undefined;
     
-    // PERFORMANCE: Use device pixel ratio for better performance on Capacitor
-    // This renders at native resolution instead of forcing 2x
-    const pixelRatio = (isCapacitor && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    // Keep these for potential future use
+    // const pixelRatio = (isCapacitor && window.devicePixelRatio) ? window.devicePixelRatio : 1;
+    // const isMobile = device.getCapabilities().isMobile || isIOS || isCapacitor;
     
     return {
         // Force WebGL for consistent rendering across all platforms
@@ -31,7 +36,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
         width: FIXED_GAME_WIDTH,
         height: FIXED_GAME_HEIGHT,
         scale: {
-            mode: Phaser.Scale.FIT,
+            mode: Phaser.Scale.FIT,  // Scale to fit with letterboxing
             autoCenter: Phaser.Scale.CENTER_BOTH,
             width: FIXED_GAME_WIDTH,
             height: FIXED_GAME_HEIGHT
@@ -84,10 +89,7 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             activePointers: 2,  // Support multi-touch
             smoothFactor: 0,
             windowEvents: false  // Prevent window event conflicts
-        },
-        // Disable features that impact performance
-        disableVisibilityChange: false,
-        banner: false
+        }
     };
 }
 
