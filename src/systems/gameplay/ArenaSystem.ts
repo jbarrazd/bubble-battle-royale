@@ -857,49 +857,10 @@ export class ArenaSystem {
             });
         };
         
-        // Add setShielded method
+        // Add setShielded method (disabled for space objective - no shield needed)
         objectiveContainer.setShielded = (shielded: boolean) => {
-            if (shielded) {
-                // Create hexagonal shield
-                const shield = this.scene.add.graphics();
-                shield.lineStyle(2, 0x00ffff, 0.8);
-                shield.fillStyle(0x00ffff, 0.1);
-                
-                // Draw hexagon
-                const size = 60;
-                const points = [];
-                for (let i = 0; i < 6; i++) {
-                    const angle = (Math.PI / 3) * i;
-                    points.push(new Phaser.Geom.Point(
-                        Math.cos(angle) * size,
-                        Math.sin(angle) * size
-                    ));
-                }
-                
-                shield.beginPath();
-                shield.moveTo(points[0].x, points[0].y);
-                for (let i = 1; i < points.length; i++) {
-                    shield.lineTo(points[i].x, points[i].y);
-                }
-                shield.closePath();
-                shield.fillPath();
-                shield.strokePath();
-                
-                objectiveContainer.add(shield);
-                objectiveContainer.shield = shield;
-                
-                // Animate shield
-                this.scene.tweens.add({
-                    targets: shield,
-                    rotation: Math.PI * 2,
-                    duration: 10000,
-                    repeat: -1,
-                    ease: 'Linear'
-                });
-            } else if (objectiveContainer.shield) {
-                objectiveContainer.shield.destroy();
-                objectiveContainer.shield = null;
-            }
+            // Do nothing - space objective doesn't have a shield
+            // The shield functionality is disabled for the space theme
         };
         
         this.objective = objectiveContainer as any;
