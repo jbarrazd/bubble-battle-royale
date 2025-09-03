@@ -22,6 +22,7 @@ import { PowerUpActivationSystem } from '@/systems/powerups/PowerUpActivationSys
 import { AimingModeSystem } from '@/systems/powerups/AimingModeSystem';
 import { PaintSplatterSystem } from '@/systems/visual/PaintSplatterSystem';
 import { SpaceArenaParticles } from '@/systems/visual/SpaceArenaParticles';
+import { OceanArenaParticles } from '@/systems/visual/OceanArenaParticles';
 
 export { AIDifficulty };
 
@@ -77,8 +78,9 @@ export class ArenaSystem {
     private readonly AIMING_CHECK_INTERVAL: number = 2; // Check every 2 frames for responsive aiming // Check every 10 frames instead of every frame
     private lastAimAngle: number = 0;
     
-    // Space arena particle manager
+    // Arena particle managers
     private spaceParticles?: SpaceArenaParticles;
+    private oceanParticles?: OceanArenaParticles;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -330,12 +332,9 @@ export class ArenaSystem {
                 // Space objective is created during the tractor beam animation
             });
         } else if (currentTheme === 'ocean_depths') {
-            // Ocean Depths theme - Traditional treasure chest
-            this.objective = new Objective(this.scene, {
-                x: centerX,
-                y: centerY,
-                size: this.config.objectiveSize,
-                health: 1
+            // Ocean Depths theme - Vortex delivery with treasure chest
+            this.createOceanVortexDelivery(centerX, centerY, () => {
+                // Treasure chest is created during the vortex animation
             });
         } else {
             // Default for other themes - Traditional chest
@@ -822,6 +821,210 @@ export class ArenaSystem {
         };
         
         this.objective = objectiveContainer as any;
+    }
+    
+    private createOceanVortexDelivery(centerX: number, centerY: number, onComplete?: () => void): void {
+        console.log('Creating ocean vortex delivery animation');
+        
+        // Initialize ocean particle system
+        if (!this.oceanParticles) {
+            this.oceanParticles = new OceanArenaParticles(this.scene);
+        }
+        
+        // Play vortex formation sound
+        try {
+            const vortexSound = this.scene.sound.add('water-swirl', {
+                volume: 0.4,
+                rate: 0.8
+            });
+            vortexSound.play();
+        } catch (e) {
+            console.log('Vortex sound not loaded');
+        }
+        
+        // Create vortex graphics
+        const vortexGraphics = this.scene.add.graphics();
+        vortexGraphics.setDepth(Z_LAYERS.OBJECTIVE - 2);
+        
+        // Create splash particles at the start
+        const splashParticles = this.oceanParticles.createSplashParticles(centerX, centerY, Z_LAYERS.OBJECTIVE + 50);
+        splashParticles.explode(30);
+        
+        // Create vortex swirl particles
+        const vortexParticles = this.oceanParticles.createVortexParticles(centerX, centerY, Z_LAYERS.OBJECTIVE - 1);
+        const foamParticles = this.oceanParticles.createFoamParticles(centerX, centerY, Z_LAYERS.OBJECTIVE);
+        
+        // Start vortex animations
+        this.oceanParticles.startVortexAnimation(vortexParticles, centerX, centerY, 100, 10);
+        this.oceanParticles.startVortexAnimation(foamParticles, centerX, centerY, 80, 15);
+        
+        // Animate vortex formation
+        let vortexTime = 0;
+        let vortexRadius = 10;
+        let maxRadius = 120;
+        let vortexAlpha = 0;
+        
+        const vortexAnimation = this.scene.time.addEvent({
+            delay: 16,
+            callback: () => {
+                vortexTime += 0.03;
+                vortexAlpha = Math.min(1, vortexAlpha + 0.02);
+                
+                // Expand vortex
+                if (vortexRadius < maxRadius) {
+                    vortexRadius += 2;
+                }
+                
+                vortexGraphics.clear();
+                
+                // Draw water vortex with gradient
+                for (let r = vortexRadius; r > 0; r -= 5) {
+                    const alpha = (1 - r / vortexRadius) * 0.3 * vortexAlpha;
+                    const color = Phaser.Display.Color.Interpolate.ColorWithColor(
+                        { r: 0, g: 96, b: 100 },  // Dark ocean
+                        { r: 0, g: 188, b: 212 },  // Cyan
+                        r / vortexRadius,
+                        1
+                    );
+                    
+                    vortexGraphics.fillStyle(
+                        Phaser.Display.Color.GetColor(color.r, color.g, color.b),
+                        alpha
+                    );
+                    
+                    // Draw spiral segments
+                    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+                        const spiralAngle = angle + vortexTime * (1 + r / vortexRadius);
+                        const x1 = centerX + Math.cos(spiralAngle) * r;
+                        const y1 = centerY + Math.sin(spiralAngle) * r;
+                        const x2 = centerX + Math.cos(spiralAngle + 0.5) * (r - 5);
+                        const y2 = centerY + Math.sin(spiralAngle + 0.5) * (r - 5);
+                        
+                        vortexGraphics.fillTriangle(centerX, centerY, x1, y1, x2, y2);
+                    }
+                }
+                
+                // Draw central dark hole
+                vortexGraphics.fillStyle(0x004d40, vortexAlpha * 0.8);
+                vortexGraphics.fillCircle(centerX, centerY, 20);
+                vortexGraphics.fillStyle(0x00251a, vortexAlpha);
+                vortexGraphics.fillCircle(centerX, centerY, 10);
+            },
+            loop: true
+        });
+        
+        // Start particle emissions
+        vortexParticles.start();
+        foamParticles.start();
+        
+        // After vortex forms, emerge the treasure chest
+        this.scene.time.delayedCall(2000, () => {
+            // Create a bright flash in the center of the vortex
+            const portalFlash = this.scene.add.circle(centerX, centerY, 5, 0x00ffff, 1);
+            portalFlash.setDepth(Z_LAYERS.OBJECTIVE + 50);
+            
+            this.scene.tweens.add({
+                targets: portalFlash,
+                scale: { from: 0.5, to: 3 },
+                alpha: { from: 1, to: 0 },
+                duration: 600,
+                ease: 'Power2.easeOut',
+                onComplete: () => {
+                    portalFlash.destroy();
+                }
+            });
+            
+            // Play emergence sound
+            try {
+                const emergenceSound = this.scene.sound.add('chest-arrival', {
+                    volume: 0.3,
+                    rate: 0.9
+                });
+                emergenceSound.play();
+            } catch (e) {
+                console.log('Chest emergence sound not loaded');
+            }
+            
+            // Create treasure chest at the center of vortex
+            this.objective = new Objective(this.scene, {
+                x: centerX,
+                y: centerY, // Start at center, not below
+                size: this.config.objectiveSize,
+                health: 1
+            });
+            
+            // Start with chest invisible and tiny (like emerging from a portal)
+            this.objective.setScale(0.01);
+            this.objective.setAlpha(0);
+            this.objective.setDepth(Z_LAYERS.OBJECTIVE);
+            
+            // Create emergence particles
+            const emergenceParticles = this.oceanParticles.createTreasureEmergenceParticles(
+                centerX, centerY, Z_LAYERS.OBJECTIVE + 100
+            );
+            
+            // Animate chest emerging from vortex center (scaling up with rotation)
+            this.scene.tweens.add({
+                targets: this.objective,
+                scale: { from: 0.01, to: 1.2 }, // Overshoot slightly
+                alpha: { from: 0, to: 1 },
+                angle: { from: 0, to: 360 }, // Spin as it emerges
+                duration: 1200,
+                ease: 'Back.easeOut',
+                onComplete: () => {
+                    // Settle to final size
+                    this.scene.tweens.add({
+                        targets: this.objective,
+                        scale: 1,
+                        duration: 300,
+                        ease: 'Sine.easeInOut'
+                    });
+                    
+                    // Start floating animation
+                    this.scene.tweens.add({
+                        targets: this.objective,
+                        y: centerY - 5,
+                        duration: 2000,
+                        yoyo: true,
+                        repeat: -1,
+                        ease: 'Sine.easeInOut'
+                    });
+                    
+                    // Add bubble particles from chest
+                    const bubbles = this.oceanParticles.createBubbleParticles(
+                        centerX, centerY, Z_LAYERS.OBJECTIVE - 1
+                    );
+                    bubbles.start();
+                    
+                    // Slow down and fade vortex
+                    this.scene.time.delayedCall(500, () => {
+                        vortexParticles.stop();
+                        foamParticles.stop();
+                        
+                        // Fade out vortex
+                        this.scene.tweens.add({
+                            targets: vortexGraphics,
+                            alpha: 0,
+                            duration: 1000,
+                            onComplete: () => {
+                                vortexAnimation.destroy();
+                                vortexGraphics.destroy();
+                                
+                                // Cleanup splash particles
+                                this.scene.time.delayedCall(1000, () => {
+                                    if (splashParticles && splashParticles.active) {
+                                        splashParticles.stop();
+                                        splashParticles.destroy();
+                                    }
+                                });
+                                
+                                if (onComplete) onComplete();
+                            }
+                        });
+                    });
+                }
+            });
+        });
     }
     
     private animateTractorBeam(ufo: Phaser.GameObjects.Image, x: number, y: number, targetY: number, onComplete: () => void): void {
@@ -1903,10 +2106,14 @@ export class ArenaSystem {
     }
     
     public destroy(): void {
-        // Clean up space particle system
+        // Clean up particle systems
         if (this.spaceParticles) {
             this.spaceParticles.destroy();
             this.spaceParticles = undefined;
+        }
+        if (this.oceanParticles) {
+            this.oceanParticles.destroy();
+            this.oceanParticles = undefined;
         }
         
         this.inputManager?.destroy();
