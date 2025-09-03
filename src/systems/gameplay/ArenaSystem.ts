@@ -1088,6 +1088,16 @@ export class ArenaSystem {
                         duration: 500,
                         onComplete: () => {
                             if (beamContainer && beamContainer.active) {
+                                // Properly clean up particles before destroying container
+                                if (beamParticles) {
+                                    beamParticles.stop();
+                                    beamParticles.destroy();
+                                }
+                                if (spiralParticles) {
+                                    spiralParticles.stop();
+                                    spiralParticles.destroy();
+                                }
+                                // Now safe to destroy container
                                 beamContainer.destroy();
                             }
                             onComplete();
