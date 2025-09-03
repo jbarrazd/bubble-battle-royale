@@ -75,6 +75,13 @@ export class ArenaSystem {
     private aimingCheckCounter: number = 0;
     private readonly AIMING_CHECK_INTERVAL: number = 2; // Check every 2 frames for responsive aiming // Check every 10 frames instead of every frame
     private lastAimAngle: number = 0;
+    
+    // Space objective particles tracking
+    private spaceObjectiveParticles?: {
+        energyParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
+        orbitParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
+        glowAnimation?: Phaser.Time.TimerEvent;
+    };
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -591,6 +598,24 @@ export class ArenaSystem {
     }
     
     private createSpaceObjectiveWithMaterialization(x: number, y: number): void {
+        // Clean up any existing particles first
+        if (this.spaceObjectiveParticles) {
+            if (this.spaceObjectiveParticles.energyParticles && this.spaceObjectiveParticles.energyParticles.active) {
+                this.spaceObjectiveParticles.energyParticles.stop();
+                this.spaceObjectiveParticles.energyParticles.destroy();
+            }
+            if (this.spaceObjectiveParticles.orbitParticles && this.spaceObjectiveParticles.orbitParticles.active) {
+                this.spaceObjectiveParticles.orbitParticles.stop();
+                this.spaceObjectiveParticles.orbitParticles.destroy();
+            }
+            if (this.spaceObjectiveParticles.glowAnimation) {
+                this.spaceObjectiveParticles.glowAnimation.destroy();
+            }
+        }
+        
+        // Initialize particles container
+        this.spaceObjectiveParticles = {};
+        
         // Check if space objective texture exists, if not use regular objective
         if (!this.scene.textures.exists('space_objective')) {
             console.log('Space objective texture not found, creating regular objective');
@@ -723,6 +748,11 @@ export class ArenaSystem {
         });
         objectiveContainer.add(energyParticles);
         
+        // Store reference for cleanup
+        if (this.spaceObjectiveParticles) {
+            this.spaceObjectiveParticles.energyParticles = energyParticles;
+        }
+        
         // Start emitting particles after initial materialization
         this.scene.time.delayedCall(600, () => {
             energyParticles.start();
@@ -741,27 +771,36 @@ export class ArenaSystem {
         });
         objectiveContainer.add(orbitParticles);
         
+        // Store reference for cleanup
+        if (this.spaceObjectiveParticles) {
+            this.spaceObjectiveParticles.orbitParticles = orbitParticles;
+        }
+        
         // Animate orbiting particles after materialization
         let orbitAngle = 0;
         this.scene.time.delayedCall(800, () => {
-            this.scene.time.addEvent({
+            const orbitAnimation = this.scene.time.addEvent({
                 delay: 16,
                 callback: () => {
                     orbitAngle += 0.02;
                     const radius = 50;
-                    orbitParticles.setPosition(
-                        Math.cos(orbitAngle) * radius,
-                        Math.sin(orbitAngle) * radius
-                    );
-                    if (orbitAngle > Math.PI * 2) {
-                        if (orbitParticles && orbitParticles.active) {
+                    if (orbitParticles && orbitParticles.active) {
+                        orbitParticles.setPosition(
+                            Math.cos(orbitAngle) * radius,
+                            Math.sin(orbitAngle) * radius
+                        );
+                        if (orbitAngle > Math.PI * 2) {
                             orbitParticles.emitParticle();
+                            orbitAngle = 0;
                         }
-                        orbitAngle = 0;
                     }
                 },
                 loop: true
             });
+            // Store animation reference for cleanup
+            if (this.spaceObjectiveParticles) {
+                this.spaceObjectiveParticles.glowAnimation = orbitAnimation;
+            }
         });
         
         // Add hit method for bubble collisions
@@ -791,9 +830,15 @@ export class ArenaSystem {
         
         // Add playVictoryAnimation method
         objectiveContainer.playVictoryAnimation = (onComplete?: () => void) => {
-            // Stop regular animations
-            if (energyParticles && energyParticles.active) energyParticles.stop();
-            if (orbitParticles && orbitParticles.active) orbitParticles.stop();
+            // Stop regular animations and remove from container first
+            if (energyParticles && energyParticles.active) {
+                energyParticles.stop();
+                objectiveContainer.remove(energyParticles, false);
+            }
+            if (orbitParticles && orbitParticles.active) {
+                orbitParticles.stop();
+                objectiveContainer.remove(orbitParticles, false);
+            }
             
             // Portal implosion effect - pull in then explode
             this.scene.tweens.add({
@@ -842,10 +887,38 @@ export class ArenaSystem {
                     
                     // Cleanup and callback
                     this.scene.time.delayedCall(500, () => {
-                        if (energyParticles && energyParticles.active) energyParticles.destroy();
-                        if (orbitParticles && orbitParticles.active) orbitParticles.destroy();
-                        if (glowGraphics) glowGraphics.destroy();
-                        if (objectiveContainer && objectiveContainer.active) objectiveContainer.destroy();
+                        // Clear our references first to prevent double destruction
+                        if (this.spaceObjectiveParticles) {
+                            this.spaceObjectiveParticles.energyParticles = undefined;
+                            this.spaceObjectiveParticles.orbitParticles = undefined;
+                            this.spaceObjectiveParticles.glowAnimation = undefined;
+                        }
+                        
+                        // Remove particles from container before destroying to prevent double destruction
+                        if (energyParticles && energyParticles.active) {
+                            energyParticles.stop();
+                            if (objectiveContainer && objectiveContainer.list) {
+                                objectiveContainer.remove(energyParticles, false);  // Remove without destroying
+                            }
+                            energyParticles.destroy();
+                        }
+                        if (orbitParticles && orbitParticles.active) {
+                            orbitParticles.stop();
+                            if (objectiveContainer && objectiveContainer.list) {
+                                objectiveContainer.remove(orbitParticles, false);  // Remove without destroying
+                            }
+                            orbitParticles.destroy();
+                        }
+                        if (glowGraphics) {
+                            if (objectiveContainer && objectiveContainer.list) {
+                                objectiveContainer.remove(glowGraphics, false);
+                            }
+                            glowGraphics.destroy();
+                        }
+                        if (objectiveContainer && objectiveContainer.active) {
+                            objectiveContainer.removeAll(false);  // Remove all remaining children without destroying
+                            objectiveContainer.destroy();
+                        }
                         
                         this.scene.time.delayedCall(500, () => {
                             if (victoryParticles && victoryParticles.active) victoryParticles.destroy();
@@ -1945,6 +2018,25 @@ export class ArenaSystem {
     }
     
     public destroy(): void {
+        // Clean up space objective particles first
+        if (this.spaceObjectiveParticles) {
+            // Stop and clear particles without destroying (Phaser will handle that)
+            if (this.spaceObjectiveParticles.energyParticles && this.spaceObjectiveParticles.energyParticles.active) {
+                this.spaceObjectiveParticles.energyParticles.stop();
+                this.spaceObjectiveParticles.energyParticles.removeAllListeners();
+                // Don't destroy - let Phaser handle it
+            }
+            if (this.spaceObjectiveParticles.orbitParticles && this.spaceObjectiveParticles.orbitParticles.active) {
+                this.spaceObjectiveParticles.orbitParticles.stop();
+                this.spaceObjectiveParticles.orbitParticles.removeAllListeners();
+                // Don't destroy - let Phaser handle it
+            }
+            if (this.spaceObjectiveParticles.glowAnimation) {
+                this.spaceObjectiveParticles.glowAnimation.remove();
+            }
+            this.spaceObjectiveParticles = undefined;
+        }
+        
         this.inputManager?.destroy();
         this.shootingSystem?.destroy();
         this.gridAttachmentSystem?.clearGrid();
