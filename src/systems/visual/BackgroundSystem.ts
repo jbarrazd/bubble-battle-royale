@@ -282,17 +282,27 @@ export class BackgroundSystem {
         this.oceanVortexBackground.setRotation(0);
         
         if (this.config.enableAnimation) {
-            // ZOOM IN with rotation happening simultaneously from the start - all in one tween
-            this.oceanCameraZoomTween = this.scene.tweens.add({
-                targets: this.oceanVortexBackground,
-                scale: finalScale, // Deep zoom into vortex
-                rotation: Math.PI * 0.18, // Slightly more rotation (32 degrees)
-                y: this.height / 2 + this.height * 0.2, // Gradually increase Y offset from 15% to 20%
-                x: this.width / 2 - this.width * 0.28, // Increased X offset to -28% (more to the left)
-                duration: 35000, // 35 seconds total for zoom in
-                ease: 'Power1.easeIn', // Very gentle easing for subtle effect
-                delay: 2000, // Small 2 second delay before starting
-                onComplete: () => {
+            // Start the animation loop
+            this.createOceanVortexAnimation(initialScale, finalScale);
+            
+            // No overlay or vignette - keep original colors
+        }
+    }
+    
+    private createOceanVortexAnimation(initialScale: number, finalScale: number): void {
+        // ZOOM IN with rotation happening simultaneously from the start - all in one tween
+        this.oceanCameraZoomTween = this.scene.tweens.add({
+            targets: this.oceanVortexBackground,
+            scale: finalScale, // Deep zoom into vortex
+            rotation: Math.PI * 0.18, // Slightly more rotation (32 degrees)
+            y: this.height / 2 + this.height * 0.2, // Gradually increase Y offset from 15% to 20%
+            x: this.width / 2 - this.width * 0.28, // Increased X offset to -28% (more to the left)
+            duration: 35000, // 35 seconds total for zoom in
+            ease: 'Power1.easeIn', // Very gentle easing for subtle effect
+            delay: 2000, // Small 2 second delay before starting
+            onComplete: () => {
+                // Wait 2 seconds before starting zoom out
+                this.scene.time.delayedCall(2000, () => {
                     // ZOOM OUT with rotation back - all in one tween
                     this.scene.tweens.add({
                         targets: this.oceanVortexBackground,
@@ -303,22 +313,16 @@ export class BackgroundSystem {
                         duration: 35000, // 35 seconds for zoom out
                         ease: 'Power1.easeOut',
                         onComplete: () => {
-                            // Subtle breathing at original position
-                            this.scene.tweens.add({
-                                targets: this.oceanVortexBackground,
-                                scale: initialScale * 1.02,
-                                duration: 10000,
-                                ease: 'Sine.easeInOut',
-                                repeat: -1,
-                                yoyo: true
+                            // Wait 2 seconds then restart the zoom in animation for continuous loop
+                            this.scene.time.delayedCall(2000, () => {
+                                // Restart the entire animation loop
+                                this.createOceanVortexAnimation(initialScale, finalScale);
                             });
                         }
                     });
-                }
-            });
-            
-            // No overlay or vignette - keep original colors
-        }
+                })
+            }
+        });
     }
     
     private createGradientBackground(): void {
