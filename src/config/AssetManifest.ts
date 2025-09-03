@@ -10,7 +10,9 @@ export const ASSET_KEYS = {
         PLANET: 'planet',
         BUBBLE_PLANET: 'bubble_planet',
         UFO: 'ufo',
-        SPACE_OBJECTIVE: 'space_objective'
+        SPACE_OBJECTIVE: 'space_objective',
+        OCEAN_DEPTHS_BG: 'ocean_depths_bg',
+        OCEAN_DEPTHS_VORTEX: 'ocean_depths_vortex'
     },
     AUDIO: {
         BUBBLE_SHOOT: 'bubble-shoot',
@@ -72,6 +74,18 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.IMAGES.SPACE_OBJECTIVE,
                 url: 'assets/sprites/space_objective.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.OCEAN_DEPTHS_BG,
+                url: 'assets/backgrounds/ocean_depths.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.OCEAN_DEPTHS_VORTEX,
+                url: 'assets/backgrounds/ocean_depths_vortex.jpeg',
                 type: 'image',
                 data: {}
             },

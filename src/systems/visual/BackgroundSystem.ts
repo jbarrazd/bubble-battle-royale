@@ -12,7 +12,7 @@ import { Scene } from 'phaser';
 import { HD_SCALE } from '@/config/GameConfig';
 
 interface IBackgroundConfig {
-    theme?: 'ocean' | 'sunset' | 'forest' | 'space' | 'aurora';
+    theme?: 'ocean' | 'sunset' | 'forest' | 'space' | 'aurora' | 'ocean_depths';
     quality?: 'low' | 'medium' | 'high' | 'ultra';
     enableParticles?: boolean;
     enableAnimation?: boolean;
@@ -37,6 +37,15 @@ export class BackgroundSystem {
     
     // Animation timers
     private animationTimers: Phaser.Time.TimerEvent[] = [];
+    
+    // Ocean Depths specific
+    private oceanDepthsBackground?: Phaser.GameObjects.Image;
+    private oceanScrollTween?: Phaser.Tweens.Tween;
+    private oceanDepthOverlay?: Phaser.GameObjects.Graphics;
+    private oceanVignette?: Phaser.GameObjects.Graphics;
+    private oceanVortexBackground?: Phaser.GameObjects.Image;
+    private oceanCameraZoomTween?: Phaser.Tweens.Tween;
+    private oceanCameraRotateTween?: Phaser.Tweens.Tween;
     
     // Color schemes for different themes with unique particle types
     private readonly themes = {
@@ -79,6 +88,15 @@ export class BackgroundSystem {
             name: 'Northern Lights',
             particleType: 'aurora' as const,
             secondaryParticles: 0xaaffff // Bright cyan
+        },
+        ocean_depths: {
+            colors: [0x001a33, 0x003366, 0x004d99, 0x0066cc], // Similar to ocean but will use image
+            accent: 0x00ccff,
+            particles: 0x66ddff,
+            name: 'Ocean Depths',
+            particleType: 'bubbles' as const,
+            secondaryParticles: 0x99eeff,
+            useBackgroundImage: true // Flag to use image instead of gradient
         }
     };
     
@@ -103,11 +121,16 @@ export class BackgroundSystem {
     }
 
     private create(): void {
-        // Create gradient background
-        this.createGradientBackground();
+        // Check if we should use background image (Ocean Depths)
+        if (this.config.theme === 'ocean_depths') {
+            this.createOceanDepthsBackground();
+        } else {
+            // Create gradient background for other themes
+            this.createGradientBackground();
+        }
         
         // Add parallax layers based on quality
-        if (this.config.quality !== 'low') {
+        if (this.config.quality !== 'low' && this.config.theme !== 'ocean_depths') {
             this.createParallaxLayers();
         }
         
@@ -128,6 +151,198 @@ export class BackgroundSystem {
         }
     }
 
+    private createOceanDepthsBackground(): void {
+        // Check if the vortex image is loaded first
+        if (this.scene.textures.exists('ocean_depths_vortex')) {
+            this.createOceanVortexBackground();
+            return;
+        }
+        
+        // Check if the regular ocean image is loaded
+        if (!this.scene.textures.exists('ocean_depths_bg')) {
+            console.warn('Ocean Depths background not loaded, falling back to gradient');
+            this.createGradientBackground();
+            return;
+        }
+        
+        // Create the ocean background image
+        this.oceanDepthsBackground = this.scene.add.image(
+            this.width / 2,
+            this.height / 2,
+            'ocean_depths_bg'
+        );
+        
+        // Get image dimensions
+        const imageWidth = this.oceanDepthsBackground.width;
+        const imageHeight = this.oceanDepthsBackground.height;
+        
+        // Calculate scale with less zoom to maintain quality
+        // Just enough to allow smooth scrolling without losing image quality
+        const scaleX = (this.width / imageWidth) * 1.2;  // 1.2x width for subtle horizontal panning
+        const scaleY = (this.height / imageHeight) * 1.4; // 1.4x height for vertical scrolling
+        const scale = Math.max(scaleX, scaleY);
+        
+        this.oceanDepthsBackground.setScale(scale);
+        this.oceanDepthsBackground.setDepth(-1000);
+        
+        // Calculate movement ranges
+        const scaledWidth = imageWidth * scale;
+        const scaledHeight = imageHeight * scale;
+        const horizontalRange = (scaledWidth - this.width) / 2;
+        const verticalRange = (scaledHeight - this.height) / 2;
+        
+        // Start the scrolling animation - simulating descent into ocean depths
+        if (this.config.enableAnimation) {
+            // Start showing the TOP of the image (surface water)
+            // We position the image UP so its top part is visible
+            this.oceanDepthsBackground.y = this.height / 2 + verticalRange;
+            this.oceanDepthsBackground.x = this.width / 2;
+            
+            // Create descent animation - image moves UP to show lower parts (deeper ocean)
+            this.oceanScrollTween = this.scene.tweens.add({
+                targets: this.oceanDepthsBackground,
+                y: this.height / 2 - verticalRange, // Move image UP to show bottom part (deep ocean)
+                duration: 90000, // 1.5 minutes - good balance between speed and atmosphere
+                ease: 'Sine.easeInOut', // Smooth acceleration/deceleration
+                repeat: -1,
+                yoyo: true,
+                onUpdate: (tween) => {
+                    const progress = tween.progress;
+                    
+                    // Very subtle horizontal movement - barely noticeable
+                    const time = this.scene.time.now / 1000;
+                    const horizontalDrift = Math.sin(time * 0.08) * horizontalRange * 0.2; // Gentle side-to-side drift
+                    
+                    this.oceanDepthsBackground.x = this.width / 2 + horizontalDrift;
+                }
+            });
+            
+            // Add depth overlay that increases as we go deeper
+            this.oceanDepthOverlay = this.scene.add.graphics();
+            this.oceanDepthOverlay.fillStyle(0x000033, 0);
+            this.oceanDepthOverlay.fillRect(0, 0, this.width, this.height);
+            this.oceanDepthOverlay.setDepth(-999);
+            
+            // Subtle darkness increase as we descend (starts at 0, goes to 0.35)
+            this.scene.tweens.add({
+                targets: this.oceanDepthOverlay,
+                alpha: 0.35, // Moderate darkening for depth feeling
+                duration: 90000, // Match the descent duration
+                ease: 'Sine.easeIn', // Gets darker faster at the end (deeper = darker)
+                repeat: -1,
+                yoyo: true
+            });
+            
+            // Add very subtle vignette effect for depth perception
+            this.oceanVignette = this.scene.add.graphics();
+            this.oceanVignette.fillStyle(0x000000, 0.2); // Lighter vignette
+            // Draw smaller vignette (less intrusive)
+            this.oceanVignette.fillRect(0, 0, this.width, 30); // Top
+            this.oceanVignette.fillRect(0, this.height - 30, this.width, 30); // Bottom
+            this.oceanVignette.fillRect(0, 0, 30, this.height); // Left
+            this.oceanVignette.fillRect(this.width - 30, 0, 30, this.height); // Right
+            this.oceanVignette.setDepth(-998);
+            this.oceanVignette.setAlpha(0.3); // More transparent
+        }
+    }
+    
+    private createOceanVortexBackground(): void {
+        // Create the vortex background image
+        this.oceanVortexBackground = this.scene.add.image(
+            this.width / 2,
+            this.height / 2,
+            'ocean_depths_vortex'
+        );
+        
+        // Get image dimensions
+        const imageWidth = this.oceanVortexBackground.width;
+        const imageHeight = this.oceanVortexBackground.height;
+        
+        // Start with zoomed in view (focused on center)
+        const initialScale = 2.5; // Start zoomed into the golden center
+        const finalScale = Math.max(
+            this.width / imageWidth,
+            this.height / imageHeight
+        ) * 1.1; // End scale to fit screen with slight overflow
+        
+        this.oceanVortexBackground.setScale(initialScale);
+        this.oceanVortexBackground.setDepth(-1000);
+        
+        // Start with rotation
+        this.oceanVortexBackground.setRotation(0);
+        
+        if (this.config.enableAnimation) {
+            // Rotation effect - starts fast, slows down
+            this.oceanCameraRotateTween = this.scene.tweens.add({
+                targets: this.oceanVortexBackground,
+                rotation: Math.PI * 0.5, // 90 degrees total rotation
+                duration: 15000, // 15 seconds
+                ease: 'Power2.easeOut' // Slows down over time
+            });
+            
+            // Zoom out effect - gradual reveal of the full scene
+            this.oceanCameraZoomTween = this.scene.tweens.add({
+                targets: this.oceanVortexBackground,
+                scale: finalScale,
+                duration: 20000, // 20 seconds to fully zoom out
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    // After zoom completes, add subtle breathing effect
+                    this.scene.tweens.add({
+                        targets: this.oceanVortexBackground,
+                        scale: finalScale * 1.02,
+                        duration: 8000,
+                        ease: 'Sine.easeInOut',
+                        repeat: -1,
+                        yoyo: true
+                    });
+                }
+            });
+            
+            // Add depth overlay that fades in as we zoom out
+            this.oceanDepthOverlay = this.scene.add.graphics();
+            this.oceanDepthOverlay.fillStyle(0x000044, 0);
+            this.oceanDepthOverlay.fillRect(0, 0, this.width, this.height);
+            this.oceanDepthOverlay.setDepth(-999);
+            this.oceanDepthOverlay.setAlpha(0);
+            
+            // Fade in the depth overlay
+            this.scene.tweens.add({
+                targets: this.oceanDepthOverlay,
+                alpha: 0.2, // Subtle darkening
+                duration: 20000,
+                ease: 'Linear'
+            });
+            
+            // Add vignette effect for depth
+            this.oceanVignette = this.scene.add.graphics();
+            const vignetteGradient = this.scene.add.graphics();
+            vignetteGradient.fillStyle(0x000000, 0);
+            
+            // Create radial vignette
+            const centerX = this.width / 2;
+            const centerY = this.height / 2;
+            const maxRadius = Math.max(this.width, this.height) * 0.7;
+            
+            for (let r = maxRadius; r > 0; r -= 2) {
+                const alpha = 1 - (r / maxRadius);
+                vignetteGradient.lineStyle(3, 0x000000, alpha * 0.3);
+                vignetteGradient.strokeCircle(centerX, centerY, r);
+            }
+            
+            vignetteGradient.setDepth(-998);
+            vignetteGradient.setAlpha(0);
+            
+            // Fade in vignette
+            this.scene.tweens.add({
+                targets: vignetteGradient,
+                alpha: 0.5,
+                duration: 15000,
+                ease: 'Sine.easeIn'
+            });
+        }
+    }
+    
     private createGradientBackground(): void {
         this.gradientGraphics = this.scene.add.graphics();
         
@@ -1035,20 +1250,66 @@ export class BackgroundSystem {
         // Clean up graphics
         this.gradientGraphics?.destroy();
         
+        // Clean up Ocean Depths specific elements
+        if (this.oceanScrollTween) {
+            this.oceanScrollTween.stop();
+            this.oceanScrollTween.remove();
+            this.oceanScrollTween = undefined;
+        }
+        if (this.oceanDepthsBackground) {
+            this.oceanDepthsBackground.destroy();
+            this.oceanDepthsBackground = undefined;
+        }
+        if (this.oceanVortexBackground) {
+            this.oceanVortexBackground.destroy();
+            this.oceanVortexBackground = undefined;
+        }
+        if (this.oceanCameraZoomTween) {
+            this.oceanCameraZoomTween.stop();
+            this.oceanCameraZoomTween.remove();
+            this.oceanCameraZoomTween = undefined;
+        }
+        if (this.oceanCameraRotateTween) {
+            this.oceanCameraRotateTween.stop();
+            this.oceanCameraRotateTween.remove();
+            this.oceanCameraRotateTween = undefined;
+        }
+        if (this.oceanDepthOverlay) {
+            this.oceanDepthOverlay.destroy();
+            this.oceanDepthOverlay = undefined;
+        }
+        if (this.oceanVignette) {
+            this.oceanVignette.destroy();
+            this.oceanVignette = undefined;
+        }
+        
         // Clean up parallax layers
         this.parallaxLayers.forEach(layer => layer.destroy());
         this.parallaxLayers = [];
         
-        // Clean up particles
-        this.particleEmitters.forEach(emitter => emitter.destroy());
+        // Clean up particles safely
+        this.particleEmitters.forEach(emitter => {
+            if (emitter && emitter.active) {
+                emitter.stop();
+                emitter.destroy();
+            }
+        });
         this.particleEmitters = [];
         
         // Clean up ambient elements
-        this.ambientElements.forEach(element => element.destroy());
+        this.ambientElements.forEach(element => {
+            if (element && element.active) {
+                element.destroy();
+            }
+        });
         this.ambientElements = [];
         
         // Clean up timers
-        this.animationTimers.forEach(timer => timer.destroy());
+        this.animationTimers.forEach(timer => {
+            if (timer && timer.paused !== undefined) {
+                timer.destroy();
+            }
+        });
         this.animationTimers = [];
     }
 }

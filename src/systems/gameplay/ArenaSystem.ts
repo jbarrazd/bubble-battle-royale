@@ -317,10 +317,31 @@ export class ArenaSystem {
         const centerX = this.scene.cameras.main.centerX;
         const centerY = this.scene.cameras.main.centerY;
         
-        // Create UFO delivery animation for Deep Space theme
-        this.createUFODelivery(centerX, centerY, () => {
-            // Space objective is now created during the tractor beam animation
-        });
+        // Check current theme to decide which objective to create
+        const currentTheme = this.scene.registry.get('selectedTheme') || this.scene.registry.get('gameTheme') || 'ocean';
+        
+        if (currentTheme === 'space') {
+            // Deep Space theme - UFO delivery with space objective
+            this.createUFODelivery(centerX, centerY, () => {
+                // Space objective is created during the tractor beam animation
+            });
+        } else if (currentTheme === 'ocean_depths') {
+            // Ocean Depths theme - Traditional treasure chest
+            this.objective = new Objective(this.scene, {
+                x: centerX,
+                y: centerY,
+                size: this.config.objectiveSize,
+                health: 1
+            });
+        } else {
+            // Default for other themes - Traditional chest
+            this.objective = new Objective(this.scene, {
+                x: centerX,
+                y: centerY,
+                size: this.config.objectiveSize,
+                health: 1
+            });
+        }
     }
     
     private createUFODelivery(targetX: number, targetY: number, onComplete: () => void): void {

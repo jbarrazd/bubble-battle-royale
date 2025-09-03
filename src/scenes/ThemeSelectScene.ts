@@ -8,7 +8,7 @@ import { SceneKeys } from '@/types/GameTypes';
 import { BackgroundSystem } from '@/systems/visual/BackgroundSystem';
 import { HD_SCALE } from '@/config/GameConfig';
 
-export type ThemeType = 'ocean' | 'sunset' | 'forest' | 'space' | 'aurora';
+export type ThemeType = 'ocean' | 'ocean_depths' | 'sunset' | 'forest' | 'space' | 'aurora';
 
 interface ThemeOption {
     key: ThemeType;
@@ -20,7 +20,7 @@ interface ThemeOption {
 
 export class ThemeSelectScene extends Scene {
     private backgroundSystem!: BackgroundSystem;
-    private selectedTheme: ThemeType = 'ocean';
+    private selectedTheme: ThemeType = 'ocean_depths';
     private themeContainers: Phaser.GameObjects.Container[] = [];
     private titleText!: Phaser.GameObjects.Text;
     private confirmButton!: Phaser.GameObjects.Container;
@@ -29,6 +29,13 @@ export class ThemeSelectScene extends Scene {
     private themes: ThemeOption[] = [
         {
             key: 'ocean',
+            name: 'Ocean Classic',
+            description: 'Classic ocean theme',
+            colors: [0x001a33, 0x003366, 0x004d99, 0x0066cc],
+            icon: '💧'
+        },
+        {
+            key: 'ocean_depths',
             name: 'Ocean Depths',
             description: 'Dive into deep blue waters',
             colors: [0x001a33, 0x003366, 0x004d99, 0x0066cc],
@@ -71,9 +78,9 @@ export class ThemeSelectScene extends Scene {
     create(): void {
         const { width, height } = this.cameras.main;
         
-        // Create preview background (starts with ocean)
+        // Create preview background (starts with ocean_depths)
         this.previewBackground = new BackgroundSystem(this, {
-            theme: 'ocean',
+            theme: 'ocean_depths',
             quality: 'high',
             enableParticles: true,
             enableAnimation: true

@@ -483,6 +483,11 @@ export class GameScene extends Scene {
                 this.backgroundSystem?.setTheme('aurora');
                 console.log('Background theme: Aurora');
             });
+            
+            this.input.keyboard?.on('keydown-ZERO', () => {
+                this.backgroundSystem?.setTheme('ocean_depths');
+                console.log('Background theme: Ocean Depths');
+            });
         }
     }
 
