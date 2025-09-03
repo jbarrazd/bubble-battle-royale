@@ -92,10 +92,10 @@ export class DeviceDetection {
     public getOptimalResolution(): { width: number; height: number } {
         // FIXED RESOLUTION FOR FAIR ONLINE PLAY
         // All players get exactly the same game area
-        // Reduced scale = larger elements when displayed
-        const GAME_SCALE = 1.8;  // Reduced from 2.5 for larger elements
-        const FIXED_WIDTH = 375 * GAME_SCALE;  // 675 units
-        const FIXED_HEIGHT = 667 * GAME_SCALE;  // 1200.6 units
+        // Balanced scale = good visibility without being too large
+        const GAME_SCALE = 2.0;  // Middle ground between 1.8 and 2.5
+        const FIXED_WIDTH = 375 * GAME_SCALE;  // 750 units
+        const FIXED_HEIGHT = 812 * GAME_SCALE;  // 1624 units (iPhone X ratio)
         
         // Return fixed dimensions regardless of device
         // Phaser will handle scaling and letterboxing automatically

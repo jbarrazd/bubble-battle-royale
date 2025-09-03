@@ -7,9 +7,9 @@ export const HD_SCALE = 2.5; // Ultra HD quality restored
 
 // FIXED GAME DIMENSIONS FOR FAIR ONLINE PLAY
 // All players will see exactly the same game area
-// Reduced dimensions = larger elements when scaled to screen
-export const FIXED_GAME_WIDTH = 375 * 1.8;  // 675 units (was 937.5)
-export const FIXED_GAME_HEIGHT = 667 * 1.8; // 1200.6 units (was 2030)
+// Balanced size - not too small, not too large
+export const FIXED_GAME_WIDTH = 375 * 2.0;  // 750 units (middle ground)
+export const FIXED_GAME_HEIGHT = 812 * 2.0; // 1624 units (maintains iPhone X aspect ratio)
 
 export function createGameConfig(scenes: any[]): IGameConfig {
     const device = DeviceDetection.getInstance();
