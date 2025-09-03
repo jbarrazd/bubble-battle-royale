@@ -85,7 +85,7 @@ export function createAssetManifest(): IAssetManifest {
             },
             {
                 key: ASSET_KEYS.IMAGES.OCEAN_DEPTHS_VORTEX,
-                url: 'assets/backgrounds/ocean_depths_vortex.jpeg',
+                url: 'assets/backgrounds/ocean_depths_vortex.png',
                 type: 'image',
                 data: {}
             },

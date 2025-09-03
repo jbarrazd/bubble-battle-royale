@@ -152,13 +152,13 @@ export class BackgroundSystem {
     }
 
     private createOceanDepthsBackground(): void {
-        // Check if the vortex image is loaded first
+        // Use vortex background if available
         if (this.scene.textures.exists('ocean_depths_vortex')) {
             this.createOceanVortexBackground();
             return;
         }
         
-        // Check if the regular ocean image is loaded
+        // Fallback to regular ocean background
         if (!this.scene.textures.exists('ocean_depths_bg')) {
             console.warn('Ocean Depths background not loaded, falling back to gradient');
             this.createGradientBackground();
@@ -258,88 +258,66 @@ export class BackgroundSystem {
         const imageWidth = this.oceanVortexBackground.width;
         const imageHeight = this.oceanVortexBackground.height;
         
-        // Start with zoomed in view (focused on center)
-        const initialScale = 2.5; // Start zoomed into the golden center
-        const finalScale = Math.max(
+        // Subtle ZOOM IN effect
+        // Initial scale - larger to accommodate positioning
+        const initialScale = Math.max(
             this.width / imageWidth,
             this.height / imageHeight
-        ) * 1.1; // End scale to fit screen with slight overflow
+        ) * 1.35; // Larger initial zoom to prevent cutoff when positioned
+        
+        const midScale = initialScale * 1.3; // Intermediate zoom
+        const finalScale = initialScale * 1.8; // Deeper zoom into vortex
         
         this.oceanVortexBackground.setScale(initialScale);
         this.oceanVortexBackground.setDepth(-1000);
         
-        // Start with rotation
+        // Full opacity - no transparency
+        this.oceanVortexBackground.setAlpha(1.0);
+        
+        // Start with offset for zoom in
+        this.oceanVortexBackground.x = this.width / 2;
+        this.oceanVortexBackground.y = this.height / 2 + this.height * 0.15; // Start lower to show top
+        
+        // Start with slight rotation
         this.oceanVortexBackground.setRotation(0);
         
         if (this.config.enableAnimation) {
-            // Rotation effect - starts fast, slows down
-            this.oceanCameraRotateTween = this.scene.tweens.add({
-                targets: this.oceanVortexBackground,
-                rotation: Math.PI * 0.5, // 90 degrees total rotation
-                duration: 15000, // 15 seconds
-                ease: 'Power2.easeOut' // Slows down over time
-            });
-            
-            // Zoom out effect - gradual reveal of the full scene
+            // ZOOM IN with rotation happening simultaneously from the start - all in one tween
             this.oceanCameraZoomTween = this.scene.tweens.add({
                 targets: this.oceanVortexBackground,
-                scale: finalScale,
-                duration: 20000, // 20 seconds to fully zoom out
-                ease: 'Cubic.easeOut',
+                scale: finalScale, // Deep zoom into vortex
+                rotation: Math.PI * 0.18, // Slightly more rotation (32 degrees)
+                y: this.height / 2 + this.height * 0.2, // Gradually increase Y offset from 15% to 20%
+                x: this.width / 2 - this.width * 0.28, // Increased X offset to -28% (more to the left)
+                duration: 35000, // 35 seconds total for zoom in
+                ease: 'Power1.easeIn', // Very gentle easing for subtle effect
+                delay: 2000, // Small 2 second delay before starting
                 onComplete: () => {
-                    // After zoom completes, add subtle breathing effect
+                    // ZOOM OUT with rotation back - all in one tween
                     this.scene.tweens.add({
                         targets: this.oceanVortexBackground,
-                        scale: finalScale * 1.02,
-                        duration: 8000,
-                        ease: 'Sine.easeInOut',
-                        repeat: -1,
-                        yoyo: true
+                        scale: initialScale, // Back to initial scale
+                        rotation: 0, // Rotate back slowly (counter-clockwise)
+                        y: this.height / 2 + this.height * 0.15, // Back to 15% Y offset
+                        x: this.width / 2, // Back to 0% X offset
+                        duration: 35000, // 35 seconds for zoom out
+                        ease: 'Power1.easeOut',
+                        onComplete: () => {
+                            // Subtle breathing at original position
+                            this.scene.tweens.add({
+                                targets: this.oceanVortexBackground,
+                                scale: initialScale * 1.02,
+                                duration: 10000,
+                                ease: 'Sine.easeInOut',
+                                repeat: -1,
+                                yoyo: true
+                            });
+                        }
                     });
                 }
             });
             
-            // Add depth overlay that fades in as we zoom out
-            this.oceanDepthOverlay = this.scene.add.graphics();
-            this.oceanDepthOverlay.fillStyle(0x000044, 0);
-            this.oceanDepthOverlay.fillRect(0, 0, this.width, this.height);
-            this.oceanDepthOverlay.setDepth(-999);
-            this.oceanDepthOverlay.setAlpha(0);
-            
-            // Fade in the depth overlay
-            this.scene.tweens.add({
-                targets: this.oceanDepthOverlay,
-                alpha: 0.2, // Subtle darkening
-                duration: 20000,
-                ease: 'Linear'
-            });
-            
-            // Add vignette effect for depth
-            this.oceanVignette = this.scene.add.graphics();
-            const vignetteGradient = this.scene.add.graphics();
-            vignetteGradient.fillStyle(0x000000, 0);
-            
-            // Create radial vignette
-            const centerX = this.width / 2;
-            const centerY = this.height / 2;
-            const maxRadius = Math.max(this.width, this.height) * 0.7;
-            
-            for (let r = maxRadius; r > 0; r -= 2) {
-                const alpha = 1 - (r / maxRadius);
-                vignetteGradient.lineStyle(3, 0x000000, alpha * 0.3);
-                vignetteGradient.strokeCircle(centerX, centerY, r);
-            }
-            
-            vignetteGradient.setDepth(-998);
-            vignetteGradient.setAlpha(0);
-            
-            // Fade in vignette
-            this.scene.tweens.add({
-                targets: vignetteGradient,
-                alpha: 0.5,
-                duration: 15000,
-                ease: 'Sine.easeIn'
-            });
+            // No overlay or vignette - keep original colors
         }
     }
     
