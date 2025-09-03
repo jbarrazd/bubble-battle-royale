@@ -766,6 +766,17 @@ export class ArenaSystem {
         
         // Add hit method for bubble collisions
         objectiveContainer.hit = (damage: number = 1) => {
+            // Play success objective sound
+            try {
+                const successSound = this.scene.sound.add('success-objective', {
+                    volume: 0.5,
+                    rate: 1.0
+                });
+                successSound.play();
+            } catch (error) {
+                console.warn('Could not play success-objective sound:', error);
+            }
+            
             // Simple flash effect without margin
             spaceObjective.setTint(0xffffff);
             this.scene.time.delayedCall(100, () => {
