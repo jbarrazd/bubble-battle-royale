@@ -21,6 +21,7 @@ import { PowerUpInventoryUI } from '@/ui/PowerUpInventoryUI';
 import { PowerUpActivationSystem } from '@/systems/powerups/PowerUpActivationSystem';
 import { AimingModeSystem } from '@/systems/powerups/AimingModeSystem';
 import { PaintSplatterSystem } from '@/systems/visual/PaintSplatterSystem';
+import { SpaceArenaParticles } from '@/systems/visual/SpaceArenaParticles';
 
 export { AIDifficulty };
 
@@ -76,12 +77,8 @@ export class ArenaSystem {
     private readonly AIMING_CHECK_INTERVAL: number = 2; // Check every 2 frames for responsive aiming // Check every 10 frames instead of every frame
     private lastAimAngle: number = 0;
     
-    // Space objective particles tracking
-    private spaceObjectiveParticles?: {
-        energyParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
-        orbitParticles?: Phaser.GameObjects.Particles.ParticleEmitter;
-        glowAnimation?: Phaser.Time.TimerEvent;
-    };
+    // Space arena particle manager
+    private spaceParticles?: SpaceArenaParticles;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -382,37 +379,14 @@ export class ArenaSystem {
             console.log('UFO arrival sound not loaded');
         }
         
-        // Create UFO trail particles for entry
-        const trailParticles = this.scene.add.particles(0, 0, 'particle', {
-            follow: ufo,
-            followOffset: { x: -30, y: 0 },
-            scale: { start: 0.3, end: 0 },
-            alpha: { start: 0.6, end: 0 },
-            tint: [0xffffff, 0x00ffff, 0xaaffff],  // White, cyan, light cyan for UFO trail
-            blendMode: 'ADD',
-            lifespan: 500,
-            quantity: 2,
-            frequency: 50,
-            emitting: true
-        });
-        trailParticles.setDepth(999);
+        // Initialize particle system if not already done
+        if (!this.spaceParticles) {
+            this.spaceParticles = new SpaceArenaParticles(this.scene);
+        }
         
-        // UFO engine glow
-        const engineGlow = this.scene.add.particles(0, 0, 'particle', {
-            follow: ufo,
-            followOffset: { x: 0, y: 20 },
-            scale: { start: 0.4, end: 0.1 },
-            alpha: { start: 0.8, end: 0 },
-            tint: 0x00ffff,  // Bright cyan for UFO engine
-            blendMode: 'ADD',
-            lifespan: 300,
-            speedY: { min: 20, max: 40 },
-            speedX: { min: -10, max: 10 },
-            quantity: 3,
-            frequency: 30,
-            emitting: false
-        });
-        engineGlow.setDepth(998);
+        // Create UFO particles
+        const trailParticles = this.spaceParticles.createUFOTrailParticles(ufo, 999);
+        const engineGlow = this.spaceParticles.createUFOEngineParticles(ufo, 998);
         
         // UFO entry animation with bounce
         this.scene.tweens.add({
@@ -456,19 +430,7 @@ export class ArenaSystem {
                             });
                             
                             // Create departure particles
-                            const departParticles = this.scene.add.particles(targetX, startY, 'particle', {
-                                scale: { start: 0.5, end: 0 },
-                                alpha: { start: 1, end: 0 },
-                                tint: [0xffffff, 0x00ffff],  // White and cyan for departure
-                                blendMode: 'ADD',
-                                lifespan: 1000,
-                                speedY: { min: 50, max: 100 },
-                                speedX: { min: -30, max: 30 },
-                                quantity: 10,
-                                emitting: false
-                            });
-                            departParticles.setDepth(999);
-                            departParticles.explode(20);
+                            const departParticles = this.spaceParticles?.createDepartureParticles(targetX, startY, 999);
                             
                             // UFO flies up towards planet (top-right where Earth is)
                             this.scene.tweens.add({
@@ -569,12 +531,19 @@ export class ArenaSystem {
                                     
                                     // Destroy UFO after flash starts
                                     if (ufo && ufo.active) ufo.destroy();
-                                    if (trailParticles && trailParticles.active) trailParticles.destroy();
-                                    if (engineGlow && engineGlow.active) engineGlow.destroy();
+                                    if (trailParticles && trailParticles.active) {
+                                        trailParticles.stop();
+                                        trailParticles.destroy();
+                                    }
+                                    if (engineGlow && engineGlow.active) {
+                                        engineGlow.stop();
+                                        engineGlow.destroy();
+                                    }
                                     
                                     // Cleanup after delay
                                     this.scene.time.delayedCall(1000, () => {
                                         if (departParticles && departParticles.active) {
+                                            departParticles.stop();
                                             departParticles.destroy();
                                         }
                                     });
@@ -598,23 +567,13 @@ export class ArenaSystem {
     }
     
     private createSpaceObjectiveWithMaterialization(x: number, y: number): void {
-        // Clean up any existing particles first
-        if (this.spaceObjectiveParticles) {
-            if (this.spaceObjectiveParticles.energyParticles && this.spaceObjectiveParticles.energyParticles.active) {
-                this.spaceObjectiveParticles.energyParticles.stop();
-                this.spaceObjectiveParticles.energyParticles.destroy();
-            }
-            if (this.spaceObjectiveParticles.orbitParticles && this.spaceObjectiveParticles.orbitParticles.active) {
-                this.spaceObjectiveParticles.orbitParticles.stop();
-                this.spaceObjectiveParticles.orbitParticles.destroy();
-            }
-            if (this.spaceObjectiveParticles.glowAnimation) {
-                this.spaceObjectiveParticles.glowAnimation.destroy();
-            }
+        // Clean up any existing particle system
+        if (this.spaceParticles) {
+            this.spaceParticles.destroy();
         }
         
-        // Initialize particles container
-        this.spaceObjectiveParticles = {};
+        // Initialize new particle system
+        this.spaceParticles = new SpaceArenaParticles(this.scene);
         
         // Check if space objective texture exists, if not use regular objective
         if (!this.scene.textures.exists('space_objective')) {
@@ -734,24 +693,7 @@ export class ArenaSystem {
         });
         
         // Create energy particles that materialize with the objective
-        const energyParticles = this.scene.add.particles(0, 0, 'particle', {
-            scale: { start: 0.4, end: 0.05 },
-            alpha: { start: 0, end: 0.8 },
-            tint: [0x00ffff, 0x0099ff, 0xffffff],
-            blendMode: 'ADD',
-            lifespan: 2000,
-            speedY: { min: -15, max: -5 },
-            speedX: { min: -5, max: 5 },
-            quantity: 1,
-            frequency: 150,
-            emitting: false
-        });
-        objectiveContainer.add(energyParticles);
-        
-        // Store reference for cleanup
-        if (this.spaceObjectiveParticles) {
-            this.spaceObjectiveParticles.energyParticles = energyParticles;
-        }
+        const energyParticles = this.spaceParticles.createEnergyParticles(x, y, Z_LAYERS.OBJECTIVE - 1);
         
         // Start emitting particles after initial materialization
         this.scene.time.delayedCall(600, () => {
@@ -759,48 +701,11 @@ export class ArenaSystem {
         });
         
         // Create orbiting particles
-        const orbitParticles = this.scene.add.particles(0, 0, 'particle', {
-            scale: { start: 0.3, end: 0.1 },
-            alpha: { start: 0, end: 0.6 },
-            tint: 0x00ffff,
-            blendMode: 'ADD',
-            lifespan: 3000,
-            quantity: 1,
-            frequency: 500,
-            emitting: false
-        });
-        objectiveContainer.add(orbitParticles);
-        
-        // Store reference for cleanup
-        if (this.spaceObjectiveParticles) {
-            this.spaceObjectiveParticles.orbitParticles = orbitParticles;
-        }
+        const orbitParticles = this.spaceParticles.createOrbitingParticles(x, y, Z_LAYERS.OBJECTIVE - 1);
         
         // Animate orbiting particles after materialization
-        let orbitAngle = 0;
         this.scene.time.delayedCall(800, () => {
-            const orbitAnimation = this.scene.time.addEvent({
-                delay: 16,
-                callback: () => {
-                    orbitAngle += 0.02;
-                    const radius = 50;
-                    if (orbitParticles && orbitParticles.active) {
-                        orbitParticles.setPosition(
-                            Math.cos(orbitAngle) * radius,
-                            Math.sin(orbitAngle) * radius
-                        );
-                        if (orbitAngle > Math.PI * 2) {
-                            orbitParticles.emitParticle();
-                            orbitAngle = 0;
-                        }
-                    }
-                },
-                loop: true
-            });
-            // Store animation reference for cleanup
-            if (this.spaceObjectiveParticles) {
-                this.spaceObjectiveParticles.glowAnimation = orbitAnimation;
-            }
+            this.spaceParticles?.startOrbitAnimation(orbitParticles, x, y);
         });
         
         // Add hit method for bubble collisions
@@ -830,14 +735,14 @@ export class ArenaSystem {
         
         // Add playVictoryAnimation method
         objectiveContainer.playVictoryAnimation = (onComplete?: () => void) => {
-            // Stop regular animations and remove from container first
+            // Stop regular animations
             if (energyParticles && energyParticles.active) {
                 energyParticles.stop();
-                objectiveContainer.remove(energyParticles, false);
+                energyParticles.removeAllListeners();
             }
             if (orbitParticles && orbitParticles.active) {
                 orbitParticles.stop();
-                objectiveContainer.remove(orbitParticles, false);
+                orbitParticles.removeAllListeners();
             }
             
             // Portal implosion effect - pull in then explode
@@ -872,56 +777,36 @@ export class ArenaSystem {
                     });
                     
                     // Victory particles explosion
-                    const victoryParticles = this.scene.add.particles(x, y, 'particle', {
-                        scale: { start: 0.5, end: 0 },
-                        alpha: { start: 1, end: 0 },
-                        tint: [0x00ffff, 0x9966ff, 0xffffff, 0xffff00],
-                        blendMode: 'ADD',
-                        lifespan: 1000,
-                        speed: { min: 150, max: 300 },
-                        quantity: 50,
-                        emitting: false
-                    });
-                    victoryParticles.setDepth(Z_LAYERS.OBJECTIVE + 99);
-                    victoryParticles.explode(50);
+                    const victoryParticles = this.spaceParticles?.createVictoryParticles(x, y, Z_LAYERS.OBJECTIVE + 99);
                     
                     // Cleanup and callback
                     this.scene.time.delayedCall(500, () => {
-                        // Clear our references first to prevent double destruction
-                        if (this.spaceObjectiveParticles) {
-                            this.spaceObjectiveParticles.energyParticles = undefined;
-                            this.spaceObjectiveParticles.orbitParticles = undefined;
-                            this.spaceObjectiveParticles.glowAnimation = undefined;
+                        // Clear space particles
+                        if (this.spaceParticles) {
+                            this.spaceParticles.destroyParticle('energy');
+                            this.spaceParticles.destroyParticle('orbit');
                         }
                         
-                        // Remove particles from container before destroying to prevent double destruction
+                        // Destroy particles properly
                         if (energyParticles && energyParticles.active) {
                             energyParticles.stop();
-                            if (objectiveContainer && objectiveContainer.list) {
-                                objectiveContainer.remove(energyParticles, false);  // Remove without destroying
-                            }
                             energyParticles.destroy();
                         }
                         if (orbitParticles && orbitParticles.active) {
                             orbitParticles.stop();
-                            if (objectiveContainer && objectiveContainer.list) {
-                                objectiveContainer.remove(orbitParticles, false);  // Remove without destroying
-                            }
                             orbitParticles.destroy();
                         }
-                        if (glowGraphics) {
-                            if (objectiveContainer && objectiveContainer.list) {
-                                objectiveContainer.remove(glowGraphics, false);
-                            }
-                            glowGraphics.destroy();
-                        }
+                        
+                        // Destroy container
                         if (objectiveContainer && objectiveContainer.active) {
-                            objectiveContainer.removeAll(false);  // Remove all remaining children without destroying
                             objectiveContainer.destroy();
                         }
                         
                         this.scene.time.delayedCall(500, () => {
-                            if (victoryParticles && victoryParticles.active) victoryParticles.destroy();
+                            if (victoryParticles && victoryParticles.active) {
+                                victoryParticles.stop();
+                                victoryParticles.destroy();
+                            }
                         });
                         
                         if (onComplete) onComplete();
@@ -1133,16 +1018,16 @@ export class ArenaSystem {
                         duration: 500,
                         onComplete: () => {
                             if (beamContainer && beamContainer.active) {
-                                // Properly clean up particles before destroying container
-                                if (beamParticles) {
+                                // Destroy beam particles properly
+                                if (beamParticles && beamParticles.active) {
                                     beamParticles.stop();
                                     beamParticles.destroy();
                                 }
-                                if (spiralParticles) {
+                                if (spiralParticles && spiralParticles.active) {
                                     spiralParticles.stop();
                                     spiralParticles.destroy();
                                 }
-                                // Now safe to destroy container
+                                // Destroy container
                                 beamContainer.destroy();
                             }
                             onComplete();
@@ -2018,23 +1903,10 @@ export class ArenaSystem {
     }
     
     public destroy(): void {
-        // Clean up space objective particles first
-        if (this.spaceObjectiveParticles) {
-            // Stop and clear particles without destroying (Phaser will handle that)
-            if (this.spaceObjectiveParticles.energyParticles && this.spaceObjectiveParticles.energyParticles.active) {
-                this.spaceObjectiveParticles.energyParticles.stop();
-                this.spaceObjectiveParticles.energyParticles.removeAllListeners();
-                // Don't destroy - let Phaser handle it
-            }
-            if (this.spaceObjectiveParticles.orbitParticles && this.spaceObjectiveParticles.orbitParticles.active) {
-                this.spaceObjectiveParticles.orbitParticles.stop();
-                this.spaceObjectiveParticles.orbitParticles.removeAllListeners();
-                // Don't destroy - let Phaser handle it
-            }
-            if (this.spaceObjectiveParticles.glowAnimation) {
-                this.spaceObjectiveParticles.glowAnimation.remove();
-            }
-            this.spaceObjectiveParticles = undefined;
+        // Clean up space particle system
+        if (this.spaceParticles) {
+            this.spaceParticles.destroy();
+            this.spaceParticles = undefined;
         }
         
         this.inputManager?.destroy();
