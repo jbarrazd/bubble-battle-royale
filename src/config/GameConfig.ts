@@ -2,9 +2,16 @@ import Phaser from 'phaser';
 import { IGameConfig } from '@/types/GameTypes';
 import { DeviceDetection } from '@utils/DeviceDetection';
 
+// HD_SCALE: Factor to scale everything for Ultra HD quality
+export const HD_SCALE = 2.5; // Ultra HD quality restored
+
+// FIXED GAME DIMENSIONS FOR FAIR ONLINE PLAY
+// All players will see exactly the same game area
+export const FIXED_GAME_WIDTH = 375 * HD_SCALE;  // 937.5 HD units
+export const FIXED_GAME_HEIGHT = 812 * HD_SCALE; // 2030 HD units - iPhone X/11/12/13 aspect ratio
+
 export function createGameConfig(scenes: any[]): IGameConfig {
     const device = DeviceDetection.getInstance();
-    const resolution = device.getOptimalResolution();
     
     // Detect if running on iOS/Capacitor
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -19,14 +26,14 @@ export function createGameConfig(scenes: any[]): IGameConfig {
         // Force WebGL for consistent rendering across all platforms
         type: Phaser.WEBGL,
         parent: 'game',
-        backgroundColor: '#1a1a2e',
-        width: resolution.width,
-        height: resolution.height,
+        backgroundColor: '#000000', // Black for letterboxing
+        width: FIXED_GAME_WIDTH,
+        height: FIXED_GAME_HEIGHT,
         scale: {
             mode: Phaser.Scale.FIT,
             autoCenter: Phaser.Scale.CENTER_BOTH,
-            width: resolution.width,
-            height: resolution.height
+            width: FIXED_GAME_WIDTH,
+            height: FIXED_GAME_HEIGHT
         },
         physics: {
             default: 'arcade',
@@ -83,14 +90,11 @@ export function createGameConfig(scenes: any[]): IGameConfig {
     };
 }
 
-// HD_SCALE: Factor to scale everything for Ultra HD quality
-export const HD_SCALE = 2.5; // Ultra HD quality restored
-
 export const GAME_CONSTANTS = {
-    BASE_WIDTH: 375 * HD_SCALE,  // 750 for HD
-    BASE_HEIGHT: 667 * HD_SCALE,  // 1334 for HD
-    MAX_WIDTH: 414 * HD_SCALE,    // 828 for HD
-    MAX_HEIGHT: 896 * HD_SCALE,   // 1792 for HD
+    BASE_WIDTH: FIXED_GAME_WIDTH,  // Fixed for all devices
+    BASE_HEIGHT: FIXED_GAME_HEIGHT,  // Fixed for all devices
+    MAX_WIDTH: FIXED_GAME_WIDTH,    // No variation allowed
+    MAX_HEIGHT: FIXED_GAME_HEIGHT,   // No variation allowed
     TARGET_FPS: 120,
     HD_SCALE: HD_SCALE,  // Export scale factor
     

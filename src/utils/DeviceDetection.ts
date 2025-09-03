@@ -90,21 +90,17 @@ export class DeviceDetection {
     }
 
     public getOptimalResolution(): { width: number; height: number } {
-        const HD_SCALE = 2;  // Keep HD quality
-        const baseWidth = 375 * HD_SCALE;  // 750 HD
-        const baseHeight = 667 * HD_SCALE;  // 1334 HD
-        const maxWidth = 414 * HD_SCALE;    // 828 HD
-        const maxHeight = 896 * HD_SCALE;   // 1792 HD
+        // FIXED RESOLUTION FOR FAIR ONLINE PLAY
+        // All players get exactly the same game area
+        const HD_SCALE = 2.5;  // Must match GameConfig HD_SCALE
+        const FIXED_WIDTH = 375 * HD_SCALE;  // 937.5 HD units
+        const FIXED_HEIGHT = 812 * HD_SCALE;  // 2030 HD units
         
-        const { screenWidth, screenHeight, pixelRatio } = this.capabilities;
-        
-        let width = Math.min(screenWidth, maxWidth);
-        let height = Math.min(screenHeight, maxHeight);
-        
-        // Use HD resolution for all devices
-        width = Math.min(width * HD_SCALE, maxWidth);
-        height = Math.min(height * HD_SCALE, maxHeight);
-        
-        return { width: Math.floor(width), height: Math.floor(height) };
+        // Return fixed dimensions regardless of device
+        // Phaser will handle scaling and letterboxing automatically
+        return { 
+            width: Math.floor(FIXED_WIDTH), 
+            height: Math.floor(FIXED_HEIGHT) 
+        };
     }
 }
