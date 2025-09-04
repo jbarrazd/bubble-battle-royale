@@ -93,6 +93,11 @@ export class ArenaSystem {
     // private gemSpawnSystem?: GemSpawnSystem; // Not used - gems are now inside bubbles
     private gemCollectionSystem?: GemCollectionSystem;
     private gemCounterUI?: GemCounterUI;
+    
+    // Objective gem throwing system
+    private objectiveGemTimer?: Phaser.Time.TimerEvent;
+    private lastPlayerGemCount: number = 0;
+    private lastOpponentGemCount: number = 0;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -248,6 +253,12 @@ export class ArenaSystem {
         
         // Listen for gem collection from bubbles
         this.scene.events.on('gem-collected-from-bubble', this.handleBubbleGemCollected, this);
+        
+        // Start objective gem throwing animation for space theme
+        const currentTheme = this.scene.registry.get('gameTheme') || 'ocean';
+        if (currentTheme === 'space') {
+            this.startObjectiveGemThrowing();
+        }
         
         // Initialize power-up activation after launcher is created
         if (this.playerLauncher) {
@@ -1517,9 +1528,8 @@ export class ArenaSystem {
                 // Create normal bubble
                 const bubble = this.getBubbleFromPool();
                 if (bubble) {
-                    // 15% chance to have a gem inside (adjust as needed)
-                    const hasGem = Math.random() < 0.15;
-                    bubble.reset(pos.pixelPos.x, pos.pixelPos.y, Bubble.getRandomColor(), hasGem);
+                    // No initial gems - they come from the objective
+                    bubble.reset(pos.pixelPos.x, pos.pixelPos.y, Bubble.getRandomColor(), false);
                     bubble.setGridPosition(pos.hexPos);
                     this.bubbles.push(bubble);
                     this.gridAttachmentSystem.addGridBubble(bubble);
@@ -2362,13 +2372,11 @@ export class ArenaSystem {
         // If no bubble in pool, create a new one
         if (!bubble) {
             console.log('ArenaSystem: Pool exhausted, creating new bubble');
-            // 10% chance for shot bubbles to have gems (slightly lower than grid bubbles)
-            const hasGem = Math.random() < 0.10;
-            bubble = new Bubble(this.scene, x, y, color, hasGem);
+            // No gems in shot bubbles - gems only come from objective
+            bubble = new Bubble(this.scene, x, y, color, false);
         } else {
-            // 10% chance for shot bubbles to have gems
-            const hasGem = Math.random() < 0.10;
-            bubble.reset(x, y, color, hasGem);
+            // No gems in shot bubbles - gems only come from objective
+            bubble.reset(x, y, color, false);
         }
 
         bubble.setVisible(true);
@@ -2462,7 +2470,204 @@ export class ArenaSystem {
         });
     }
     
+    private startObjectiveGemThrowing(): void {
+        // Every 8-12 seconds, the objective throws gems to random bubbles
+        this.objectiveGemTimer = this.scene.time.addEvent({
+            delay: Phaser.Math.Between(8000, 12000),
+            callback: () => {
+                this.throwGemsFromObjective();
+                // Schedule next throw
+                this.objectiveGemTimer = this.scene.time.addEvent({
+                    delay: Phaser.Math.Between(8000, 12000),
+                    callback: () => this.throwGemsFromObjective(),
+                    loop: false
+                });
+            },
+            loop: false
+        });
+    }
+    
+    private throwGemsFromObjective(): void {
+        if (!this.objective || this.gameOver) return;
+        
+        // Get all visible bubbles without gems
+        const eligibleBubbles: Bubble[] = [];
+        const playerBubbles: Bubble[] = [];
+        const opponentBubbles: Bubble[] = [];
+        
+        this.gridAttachmentSystem.getGridBubbles().forEach(bubble => {
+            if (bubble.visible && !bubble.getHasGem()) {
+                eligibleBubbles.push(bubble);
+                // Separate by zone
+                if (bubble.y > this.scene.cameras.main.centerY) {
+                    playerBubbles.push(bubble);
+                } else {
+                    opponentBubbles.push(bubble);
+                }
+            }
+        });
+        
+        if (eligibleBubbles.length === 0) return;
+        
+        // Decide how many gems to throw (2-4)
+        const gemCount = Phaser.Math.Between(2, 4);
+        
+        // Try to distribute fairly between player and opponent
+        const playerGems = Math.floor(gemCount / 2);
+        const opponentGems = gemCount - playerGems;
+        
+        // Select target bubbles
+        const targetBubbles: Bubble[] = [];
+        
+        // Add player bubbles
+        for (let i = 0; i < playerGems && playerBubbles.length > 0; i++) {
+            const index = Phaser.Math.Between(0, playerBubbles.length - 1);
+            targetBubbles.push(playerBubbles[index]);
+            playerBubbles.splice(index, 1);
+        }
+        
+        // Add opponent bubbles
+        for (let i = 0; i < opponentGems && opponentBubbles.length > 0; i++) {
+            const index = Phaser.Math.Between(0, opponentBubbles.length - 1);
+            targetBubbles.push(opponentBubbles[index]);
+            opponentBubbles.splice(index, 1);
+        }
+        
+        // If not enough bubbles in one zone, use from the other
+        while (targetBubbles.length < gemCount && eligibleBubbles.length > 0) {
+            const index = Phaser.Math.Between(0, eligibleBubbles.length - 1);
+            if (!targetBubbles.includes(eligibleBubbles[index])) {
+                targetBubbles.push(eligibleBubbles[index]);
+            }
+            eligibleBubbles.splice(index, 1);
+        }
+        
+        // Create throwing animation for each target bubble
+        targetBubbles.forEach((bubble, index) => {
+            this.scene.time.delayedCall(index * 200, () => {
+                this.animateGemThrow(bubble);
+            });
+        });
+        
+        // Play a special sound/effect when throwing gems
+        this.playObjectiveGemThrowEffect();
+    }
+    
+    private animateGemThrow(targetBubble: Bubble): void {
+        if (!this.objective) return;
+        
+        // Create a gem at the objective position
+        const gem = this.scene.add.star(
+            this.objective.x,
+            this.objective.y,
+            6, 8, 12, 0xFFD700
+        );
+        gem.setDepth(1500);
+        gem.setScale(0.5);
+        
+        // Create sparkle trail
+        const particles = this.scene.add.particles(this.objective.x, this.objective.y, 'flares', {
+            frame: 'yellow',
+            scale: { start: 0.3, end: 0 },
+            alpha: { start: 0.8, end: 0 },
+            speed: { min: 20, max: 40 },
+            lifespan: 600,
+            frequency: 30,
+            follow: gem
+        });
+        
+        // Animate the gem flying to the bubble with an arc
+        const midX = (this.objective.x + targetBubble.x) / 2;
+        const midY = Math.min(this.objective.y, targetBubble.y) - 100; // Arc height
+        
+        this.scene.tweens.add({
+            targets: gem,
+            x: targetBubble.x,
+            y: targetBubble.y,
+            duration: 1000,
+            ease: 'Cubic.easeInOut',
+            onUpdate: (tween) => {
+                // Create arc motion
+                const progress = tween.progress;
+                if (progress < 0.5) {
+                    // First half - move up
+                    const t = progress * 2;
+                    gem.y = Phaser.Math.Linear(this.objective.y, midY, t);
+                    gem.x = Phaser.Math.Linear(this.objective.x, midX, t);
+                } else {
+                    // Second half - move down
+                    const t = (progress - 0.5) * 2;
+                    gem.y = Phaser.Math.Linear(midY, targetBubble.y, t);
+                    gem.x = Phaser.Math.Linear(midX, targetBubble.x, t);
+                }
+                
+                // Rotate the gem
+                gem.angle += 5;
+            },
+            onComplete: () => {
+                // Add gem to the bubble
+                targetBubble.setGem(true, Math.random() < 0.1 ? 'golden' : 'normal');
+                
+                // Flash effect on bubble
+                this.scene.tweens.add({
+                    targets: targetBubble,
+                    scale: 1.2,
+                    duration: 200,
+                    yoyo: true,
+                    ease: 'Back.easeOut'
+                });
+                
+                // Cleanup
+                gem.destroy();
+                particles.destroy();
+            }
+        });
+    }
+    
+    private playObjectiveGemThrowEffect(): void {
+        if (!this.objective) return;
+        
+        // Flash the objective
+        this.scene.tweens.add({
+            targets: this.objective,
+            scale: 1.1,
+            duration: 300,
+            yoyo: true,
+            ease: 'Back.easeOut'
+        });
+        
+        // Create burst particles around objective
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const sparkle = this.scene.add.circle(
+                this.objective.x + Math.cos(angle) * 20,
+                this.objective.y + Math.sin(angle) * 20,
+                3, 0xFFD700
+            );
+            sparkle.setDepth(1400);
+            
+            this.scene.tweens.add({
+                targets: sparkle,
+                x: this.objective.x + Math.cos(angle) * 60,
+                y: this.objective.y + Math.sin(angle) * 60,
+                scale: 0,
+                alpha: 0,
+                duration: 600,
+                ease: 'Cubic.easeOut',
+                onComplete: () => {
+                    sparkle.destroy();
+                }
+            });
+        }
+    }
+    
     public destroy(): void {
+        // Clean up gem timer
+        if (this.objectiveGemTimer) {
+            this.objectiveGemTimer.destroy();
+            this.objectiveGemTimer = undefined;
+        }
+        
         // Clean up particle systems
         if (this.spaceParticles) {
             this.spaceParticles.destroy();
