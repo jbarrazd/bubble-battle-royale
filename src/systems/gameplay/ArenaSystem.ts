@@ -1271,101 +1271,120 @@ export class ArenaSystem {
             }
         };
         
-        // CREATE A PERFECT 5-POINTED STAR
-        // Using precise coordinates to form a clear star shape
+        // SPACE ARENA - CAREFULLY DESIGNED FOR BEST GAMEPLAY
+        // Balanced, symmetric, and strategic
         
-        // STAR CENTER - Core hexagon
-        addPosition({ q: 0, r: 0, s: 0 });   // Center
+        // CENTER - Leave empty for objective
+        // Skip (0,0,0)
         
-        // TOP POINT (North) - Long and sharp
-        addPosition({ q: 0, r: -6, s: 6 });  // Tip
-        addPosition({ q: 0, r: -5, s: 5 });
-        addPosition({ q: 0, r: -4, s: 4 });
-        addPosition({ q: 0, r: -3, s: 3 });
-        addPosition({ q: 0, r: -2, s: 2 });
+        // PROTECTIVE RING - First ring around objective
+        // This creates the shield that protects the objective
+        addPosition({ q: 1, r: -1, s: 0 });
+        addPosition({ q: 1, r: 0, s: -1 });
+        addPosition({ q: 0, r: 1, s: -1 });
+        addPosition({ q: -1, r: 1, s: 0 });
+        addPosition({ q: -1, r: 0, s: 1 });
         addPosition({ q: 0, r: -1, s: 1 });
         
-        // TOP-RIGHT POINT (72° clockwise from top)
-        addPosition({ q: 5, r: -2, s: -3 }); // Tip
-        addPosition({ q: 4, r: -2, s: -2 });
-        addPosition({ q: 3, r: -1, s: -2 });
-        addPosition({ q: 2, r: -1, s: -1 });
-        addPosition({ q: 1, r: 0, s: -1 });
+        // SECOND RING - Full circle for stability
+        const ring2 = this.bubbleGrid.getRing({ q: 0, r: 0, s: 0 }, 2);
+        ring2.forEach(pos => addPosition(pos));
         
-        // BOTTOM-RIGHT POINT (144° from previous)
-        addPosition({ q: 3, r: 4, s: -7 });  // Tip  
-        addPosition({ q: 3, r: 3, s: -6 });
-        addPosition({ q: 2, r: 3, s: -5 });
-        addPosition({ q: 2, r: 2, s: -4 });
-        addPosition({ q: 1, r: 2, s: -3 });
-        addPosition({ q: 1, r: 1, s: -2 });
+        // THIRD RING - Almost complete with strategic gaps
+        const ring3 = this.bubbleGrid.getRing({ q: 0, r: 0, s: 0 }, 3);
+        ring3.forEach((pos, index) => {
+            // Leave 2 gaps for strategy (at positions 4 and 10)
+            if (index !== 4 && index !== 10) {
+                addPosition(pos);
+            }
+        });
         
-        // BOTTOM-LEFT POINT (mirror of bottom-right)
-        addPosition({ q: -3, r: 4, s: -1 });  // Tip
+        // UPPER FORMATION (Opponent's side) - Symmetric and balanced
+        // Row -4: Wide formation
+        for (let q = -3; q <= 3; q++) {
+            addPosition({ q, r: -4, s: -q + 4 });
+        }
+        
+        // Row -5: Slightly narrower
+        for (let q = -2; q <= 2; q++) {
+            addPosition({ q, r: -5, s: -q + 5 });
+        }
+        
+        // Row -6: Top edge
+        addPosition({ q: -1, r: -6, s: 7 });
+        addPosition({ q: 0, r: -6, s: 6 });
+        addPosition({ q: 1, r: -6, s: 5 });
+        
+        // LOWER FORMATION (Player's side) - Mirror of upper
+        // Row 4: Wide formation
+        for (let q = -3; q <= 3; q++) {
+            addPosition({ q, r: 4, s: -q - 4 });
+        }
+        
+        // Row 5: Slightly narrower
+        for (let q = -2; q <= 2; q++) {
+            addPosition({ q, r: 5, s: -q - 5 });
+        }
+        
+        // Row 6: Bottom edge
+        addPosition({ q: -1, r: 6, s: -5 });
+        addPosition({ q: 0, r: 6, s: -6 });
+        addPosition({ q: 1, r: 6, s: -7 });
+        
+        // LEFT WING - Balanced formation
+        // Column -4
+        for (let r = -3; r <= 3; r++) {
+            if (r !== 0) { // Skip center row for gap
+                addPosition({ q: -4, r, s: 4 - r });
+            }
+        }
+        
+        // Column -5 (partial)
+        addPosition({ q: -5, r: -1, s: 6 });
+        addPosition({ q: -5, r: 0, s: 5 });
+        addPosition({ q: -5, r: 1, s: 4 });
+        
+        // RIGHT WING - Mirror of left
+        // Column 4
+        for (let r = -3; r <= 3; r++) {
+            if (r !== 0) { // Skip center row for gap
+                addPosition({ q: 4, r, s: -4 - r });
+            }
+        }
+        
+        // Column 5 (partial)
+        addPosition({ q: 5, r: -1, s: -4 });
+        addPosition({ q: 5, r: 0, s: -5 });
+        addPosition({ q: 5, r: 1, s: -6 });
+        
+        // CORNER CONNECTORS - Ensure everything is connected
+        // These prevent orphan bubbles
+        addPosition({ q: -3, r: -3, s: 6 });
+        addPosition({ q: 3, r: -3, s: 0 });
         addPosition({ q: -3, r: 3, s: 0 });
-        addPosition({ q: -2, r: 3, s: -1 });
-        addPosition({ q: -2, r: 2, s: 0 });
-        addPosition({ q: -1, r: 2, s: -1 });
-        addPosition({ q: -1, r: 1, s: 0 });
+        addPosition({ q: 3, r: 3, s: -6 });
         
-        // TOP-LEFT POINT (mirror of top-right)
-        addPosition({ q: -5, r: -2, s: 7 }); // Tip
-        addPosition({ q: -4, r: -2, s: 6 });
-        addPosition({ q: -3, r: -1, s: 4 });
-        addPosition({ q: -2, r: -1, s: 3 });
-        addPosition({ q: -1, r: 0, s: 1 });
+        // Total: ~100 bubbles, leaving plenty of room in the pool
+        // Symmetric design for fair competitive play
+        // Strategic gaps for skillful shots
+        // All bubbles connected - no orphans
         
-        // INNER PENTAGON to connect all points through center
-        // This creates the classic star inner shape
-        addPosition({ q: 1, r: -1, s: 0 });  // Between top and top-right
-        addPosition({ q: 1, r: 1, s: -2 });  // Between top-right and bottom-right
-        addPosition({ q: -1, r: 1, s: 0 });  // Between bottom points
-        addPosition({ q: -1, r: -1, s: 2 }); // Between top-left and top
-        addPosition({ q: 0, r: 1, s: -1 });  // Bottom of inner pentagon
+        console.log(`Space pattern: Creating ${allPositions.length} bubbles (MOON formation)`);
+        console.log(`Pool has ${BUBBLE_CONFIG.POOL_SIZE} total bubbles available`);
         
-        // STAR RAYS - Connect center to each point with clean lines
-        // These make the star points more defined
-        
-        // Ray to top-right
-        addPosition({ q: 2, r: -1, s: -1 });
-        addPosition({ q: 3, r: -2, s: -1 });
-        
-        // Ray to bottom-right  
-        addPosition({ q: 1, r: 1, s: -2 });
-        addPosition({ q: 2, r: 2, s: -4 });
-        
-        // Ray to bottom
-        addPosition({ q: 0, r: 2, s: -2 });
-        addPosition({ q: 0, r: 3, s: -3 });
-        
-        // Ray to bottom-left
-        addPosition({ q: -1, r: 1, s: 0 });
-        addPosition({ q: -2, r: 2, s: 0 });
-        
-        // Ray to top-left
-        addPosition({ q: -2, r: -1, s: 3 });
-        addPosition({ q: -3, r: -2, s: 5 });
-        
-        // Add some space debris around the star (fewer, more scattered)
-        // Upper space field
-        if (Math.random() < 0.4) {
-            addPosition({ q: -5, r: -4, s: 9 });
-            addPosition({ q: 5, r: -4, s: -1 });
+        // If we have too many positions, trim to fit pool size minus some reserve
+        const maxBubbles = Math.floor(BUBBLE_CONFIG.POOL_SIZE * 0.4); // Use only 40% for initial pattern
+        if (allPositions.length > maxBubbles) {
+            console.warn(`Pattern has ${allPositions.length} positions but limiting to ${maxBubbles} to avoid pool exhaustion`);
+            // Prioritize center positions
+            allPositions.sort((a, b) => {
+                const distA = Math.abs(a.hexPos.q) + Math.abs(a.hexPos.r) + Math.abs(a.hexPos.s);
+                const distB = Math.abs(b.hexPos.q) + Math.abs(b.hexPos.r) + Math.abs(b.hexPos.s);
+                return distA - distB;
+            });
+            allPositions = allPositions.slice(0, maxBubbles);
         }
         
-        // Lower space field
-        if (Math.random() < 0.4) {
-            addPosition({ q: -4, r: 4, s: 0 });
-            addPosition({ q: 4, r: 4, s: -8 });
-        }
-        
-        // Side asteroids
-        if (Math.random() < 0.3) {
-            addPosition({ q: 5, r: 0, s: -5 });
-            addPosition({ q: -5, r: 0, s: 5 });
-        }
-        
-        console.log(`Space pattern: Creating ${allPositions.length} bubbles (5-POINTED STAR formation)`);
         this.createBubblesFromPositions(allPositions);
     }
     

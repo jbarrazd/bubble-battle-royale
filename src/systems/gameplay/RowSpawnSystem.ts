@@ -28,30 +28,35 @@ export class RowSpawnSystem {
     private currentConfig: RowSpawnConfig;
     private centerY: number;
     private spawnCounter: number = 0; // Track spawns for Mystery Bubble timing
+    private spawnAcceleration: number = 0; // Track how many times we've spawned
     
     // Arena-specific configurations
     private readonly ARENA_CONFIGS: Record<string, RowSpawnConfig> = {
         ocean: {
-            interval: 12000,  // 12 seconds - balanced pace
+            interval: 15000,  // 15 seconds - balanced pace
             pattern: 'random',
             colors: 5
         },
         space: {
-            interval: 9000,   // 9 seconds - faster for space battles
+            interval: 12000,   // 12 seconds initially - reduced from 7
             pattern: 'random',
             colors: 5
         },
         volcanic: {
-            interval: 10000,  // 10 seconds - moderate pace
+            interval: 14000,  // 14 seconds - moderate pace
             pattern: 'random',
             colors: 5
         },
         crystal: {
-            interval: 8000,   // 8 seconds - fastest pace
+            interval: 10000,   // 10 seconds - still faster but manageable
             pattern: 'random',
             colors: 6
         }
     };
+    
+    // Progressive difficulty settings
+    private readonly MIN_INTERVAL = 5000; // Minimum spawn interval (5 seconds) - more manageable
+    private readonly ACCELERATION_RATE = 0.97; // Each spawn makes next one 3% faster - slower acceleration
 
     constructor(scene: Scene, arenaSystem: ArenaSystem) {
         this.scene = scene;
@@ -94,6 +99,7 @@ export class RowSpawnSystem {
 
         this.isEnabled = true;
         this.spawnInterval = interval || this.currentConfig.interval;
+        this.spawnAcceleration = 0; // Reset acceleration when starting
         
         // Create timer for spawning
         this.spawnTimer = this.scene.time.addEvent({
@@ -130,8 +136,34 @@ export class RowSpawnSystem {
 
         // Increment spawn counter for Mystery Bubble timing
         this.spawnCounter++;
+        this.spawnAcceleration++;
         
-        console.log(`RowSpawnSystem: Adding new rows (spawn #${this.spawnCounter})`);
+        // Progressive difficulty: Speed up spawning over time
+        if (this.spawnTimer && this.spawnInterval > this.MIN_INTERVAL) {
+            // Calculate new interval (gets faster each time)
+            const newInterval = Math.max(
+                this.MIN_INTERVAL,
+                this.spawnInterval * this.ACCELERATION_RATE
+            );
+            
+            // Only update if significantly different (avoid too many timer recreations)
+            if (Math.abs(newInterval - this.spawnInterval) > 100) {
+                this.spawnInterval = newInterval;
+                
+                // Destroy old timer and create new one with faster interval
+                this.spawnTimer.destroy();
+                this.spawnTimer = this.scene.time.addEvent({
+                    delay: this.spawnInterval,
+                    callback: this.spawnNewRows,
+                    callbackScope: this,
+                    loop: true
+                });
+                
+                console.log(`RowSpawnSystem: Accelerating! New interval: ${Math.round(this.spawnInterval)}ms`);
+            }
+        }
+        
+        console.log(`RowSpawnSystem: Adding new rows (spawn #${this.spawnCounter}, interval: ${Math.round(this.spawnInterval)}ms)`);
         
         const bubbleGrid = this.arenaSystem.bubbleGrid;
         const gridAttachment = this.arenaSystem.gridAttachmentSystem;
@@ -147,7 +179,96 @@ export class RowSpawnSystem {
             }
         });
         
-        // Find edge bubbles for both sides
+        // CRITICAL: Find THE MOST DANGEROUS bubble on each side
+        // These are the bubbles closest to causing game over
+        let mostDangerousTop: Bubble | null = null;
+        let mostDangerousBottom: Bubble | null = null;
+        let minR = Infinity;  // For top (most negative wins)
+        let maxR = -Infinity; // For bottom (most positive wins)
+        
+        allBubbles.forEach(bubble => {
+            if (!bubble.visible) return;
+            const pos = bubble.getGridPosition();
+            if (!pos) return;
+            
+            // Find THE most dangerous bubble on top (smallest r)
+            if (pos.r < minR) {
+                minR = pos.r;
+                mostDangerousTop = bubble;
+            }
+            
+            // Find THE most dangerous bubble on bottom (largest r)
+            if (pos.r > maxR) {
+                maxR = pos.r;
+                mostDangerousBottom = bubble;
+            }
+        });
+        
+        // PRIORITY 1: Always spawn at the most dangerous positions first
+        const criticalSpawns: { hexPos: IHexPosition, color: BubbleColor }[] = [];
+        
+        if (mostDangerousTop) {
+            const dangerPos = mostDangerousTop.getGridPosition()!;
+            const criticalPos = {
+                q: dangerPos.q,
+                r: dangerPos.r - 1, // Above the most dangerous
+                s: -dangerPos.q - (dangerPos.r - 1)
+            };
+            const key = `${criticalPos.q},${criticalPos.r}`;
+            
+            if (!occupiedPositions.has(key) && Math.abs(criticalPos.r) <= 12) {
+                const color = this.getRandomColor();
+                criticalSpawns.push({ hexPos: criticalPos, color });
+                occupiedPositions.set(key, true);
+                console.warn(`CRITICAL SPAWN TOP: Will add at ${criticalPos.q},${criticalPos.r} - MOST DANGEROUS POSITION!`);
+            }
+        }
+        
+        if (mostDangerousBottom) {
+            const dangerPos = mostDangerousBottom.getGridPosition()!;
+            const criticalPos = {
+                q: dangerPos.q,
+                r: dangerPos.r + 1, // Below the most dangerous
+                s: -dangerPos.q - (dangerPos.r + 1)
+            };
+            const key = `${criticalPos.q},${criticalPos.r}`;
+            
+            if (!occupiedPositions.has(key) && Math.abs(criticalPos.r) <= 12) {
+                const color = this.getRandomColor();
+                criticalSpawns.push({ hexPos: criticalPos, color });
+                occupiedPositions.set(key, true);
+                console.warn(`CRITICAL SPAWN BOTTOM: Will add at ${criticalPos.q},${criticalPos.r} - MOST DANGEROUS POSITION!`);
+            }
+        }
+        
+        // Create critical spawns FIRST
+        criticalSpawns.forEach(spawn => {
+            const pixelPos = bubbleGrid.hexToPixel(spawn.hexPos);
+            
+            // Mystery Bubble check for critical spawns
+            const shouldSpawnMystery = this.spawnCounter % 2 === 0 && Math.random() < 0.3;
+            
+            if (shouldSpawnMystery) {
+                const mysteryBubble = new MysteryBubble(this.scene, pixelPos.x, pixelPos.y);
+                mysteryBubble.setGridPosition(spawn.hexPos);
+                this.arenaSystem.bubbles.push(mysteryBubble);
+                gridAttachment.addGridBubble(mysteryBubble);
+                console.log(`Created CRITICAL Mystery Bubble at ${spawn.hexPos.q},${spawn.hexPos.r}`);
+            } else {
+                const bubble = this.arenaSystem.createBubbleAt(
+                    pixelPos.x,
+                    pixelPos.y,
+                    spawn.color
+                );
+                if (bubble) {
+                    bubble.setGridPosition(spawn.hexPos);
+                    gridAttachment.addGridBubble(bubble);
+                    console.log(`Created CRITICAL ${spawn.color} bubble at ${spawn.hexPos.q},${spawn.hexPos.r}`);
+                }
+            }
+        });
+        
+        // PRIORITY 2: Continue with normal edge spawning
         const topEdgeBubbles = this.findTopEdgeBubbles(allBubbles);
         const bottomEdgeBubbles = this.findBottomEdgeBubbles(allBubbles);
         
@@ -196,40 +317,22 @@ export class RowSpawnSystem {
         const edgeBubbles: Bubble[] = [];
         const columnMap = new Map<number, { bubble: Bubble, r: number }>();
         
-        // Find the topmost bubble in each column (smallest/most negative r value)
+        // Find the topmost bubble in each column WITHOUT filtering by half
+        // This ensures we always spawn at the most dangerous edge
         bubbles.forEach(bubble => {
             if (!bubble.visible) return;
             
             const pos = bubble.getGridPosition();
             if (!pos) return;
             
-            // Consider ANY bubble on the upper half OR center area
-            if (pos.r <= 0) {
-                const existing = columnMap.get(pos.q);
-                
-                // Keep the bubble with the smallest (most negative or zero) r
-                if (!existing || pos.r < existing.r) {
-                    columnMap.set(pos.q, { bubble, r: pos.r });
-                }
+            const existing = columnMap.get(pos.q);
+            
+            // Always keep the bubble with the smallest (most negative) r value
+            // This is the bubble closest to the opponent's danger zone
+            if (!existing || pos.r < existing.r) {
+                columnMap.set(pos.q, { bubble, r: pos.r });
             }
         });
-        
-        // If no bubbles found in upper half, use any topmost bubbles
-        if (columnMap.size === 0) {
-            console.log('No bubbles in upper half, finding absolute topmost bubbles');
-            bubbles.forEach(bubble => {
-                if (!bubble.visible) return;
-                
-                const pos = bubble.getGridPosition();
-                if (!pos) return;
-                
-                const existing = columnMap.get(pos.q);
-                // Keep the bubble with the smallest r value
-                if (!existing || pos.r < existing.r) {
-                    columnMap.set(pos.q, { bubble, r: pos.r });
-                }
-            });
-        }
         
         // Convert map to array and log positions
         columnMap.forEach((data, q) => {
@@ -237,7 +340,7 @@ export class RowSpawnSystem {
             console.log(`Top edge bubble at column ${q}, row ${data.r}`);
         });
         
-        console.log(`Found ${edgeBubbles.length} top edge bubbles for opponent side`);
+        console.log(`Found ${edgeBubbles.length} top edge bubbles (closest to opponent danger)`);
         return edgeBubbles;
     }
 
@@ -249,40 +352,22 @@ export class RowSpawnSystem {
         const edgeBubbles: Bubble[] = [];
         const columnMap = new Map<number, { bubble: Bubble, r: number }>();
         
-        // Find the bottommost bubble in each column (largest/most positive r value)
+        // Find the bottommost bubble in each column WITHOUT filtering by half
+        // This ensures we always spawn at the most dangerous edge
         bubbles.forEach(bubble => {
             if (!bubble.visible) return;
             
             const pos = bubble.getGridPosition();
             if (!pos) return;
             
-            // Consider ANY bubble on the lower half OR center area
-            if (pos.r >= 0) {
-                const existing = columnMap.get(pos.q);
-                
-                // Keep the bubble with the largest (most positive or zero) r
-                if (!existing || pos.r > existing.r) {
-                    columnMap.set(pos.q, { bubble, r: pos.r });
-                }
+            const existing = columnMap.get(pos.q);
+            
+            // Always keep the bubble with the largest (most positive) r value
+            // This is the bubble closest to the player's danger zone
+            if (!existing || pos.r > existing.r) {
+                columnMap.set(pos.q, { bubble, r: pos.r });
             }
         });
-        
-        // If no bubbles found in lower half, use any bottommost bubbles
-        if (columnMap.size === 0) {
-            console.log('No bubbles in lower half, finding absolute bottommost bubbles');
-            bubbles.forEach(bubble => {
-                if (!bubble.visible) return;
-                
-                const pos = bubble.getGridPosition();
-                if (!pos) return;
-                
-                const existing = columnMap.get(pos.q);
-                // Keep the bubble with the largest r value
-                if (!existing || pos.r > existing.r) {
-                    columnMap.set(pos.q, { bubble, r: pos.r });
-                }
-            });
-        }
         
         // Convert map to array and log positions
         columnMap.forEach((data, q) => {
@@ -290,7 +375,7 @@ export class RowSpawnSystem {
             console.log(`Bottom edge bubble at column ${q}, row ${data.r}`);
         });
         
-        console.log(`Found ${edgeBubbles.length} bottom edge bubbles for player side`);
+        console.log(`Found ${edgeBubbles.length} bottom edge bubbles (closest to player danger)`);
         return edgeBubbles;
     }
 
@@ -345,23 +430,22 @@ export class RowSpawnSystem {
             // Check if position is already occupied
             const key = `${newPos.q},${newPos.r}`;
             if (!occupiedPositions.has(key)) {
-                // Check bounds - don't spawn beyond reasonable limits
-                if (Math.abs(newPos.r) > 7 || Math.abs(newPos.q) > 5) {
-                    console.log(`Skipping out-of-bounds position ${newPos.q},${newPos.r}`);
+                // AGGRESSIVE SPAWN - Allow spawning very close to danger zones
+                // Player loses around r=10-11, opponent loses around r=-10 to -11
+                if (Math.abs(newPos.r) > 12 || Math.abs(newPos.q) > 8) {
+                    console.log(`Skipping extreme out-of-bounds position ${newPos.q},${newPos.r}`);
                     return;
                 }
                 
                 // Since we're adding directly above/below existing bubbles,
                 // they ALWAYS have support from the bubble below/above them
-                // 85% chance to spawn for more pressure
-                if (Math.random() < 0.85) {
-                    const color = this.getRandomColor();
-                    newBubbles.push({ hexPos: newPos, color });
-                    occupiedPositions.set(key, true);
-                    supportedPositions.add(key);
-                    
-                    console.log(`Adding bubble at ${newPos.q},${newPos.r} ${side === 'top' ? 'ABOVE' : 'BELOW'} edge bubble at ${edgePos.q},${edgePos.r}`);
-                }
+                // ALWAYS spawn for MAXIMUM pressure - no random chance
+                const color = this.getRandomColor();
+                newBubbles.push({ hexPos: newPos, color });
+                occupiedPositions.set(key, true);
+                supportedPositions.add(key);
+                
+                console.log(`FORCING bubble at ${newPos.q},${newPos.r} ${side === 'top' ? 'ABOVE' : 'BELOW'} edge bubble at ${edgePos.q},${edgePos.r}`);
             } else {
                 console.log(`Position ${newPos.q},${newPos.r} already occupied - skipping`);
             }
@@ -397,20 +481,21 @@ export class RowSpawnSystem {
                         
                         const key = `${gapPos.q},${gapPos.r}`;
                         
-                        // Check bounds
-                        if (Math.abs(gapPos.r) > 7 || Math.abs(gapPos.q) > 5) {
+                        // Check bounds - VERY AGGRESSIVE
+                        if (Math.abs(gapPos.r) > 12 || Math.abs(gapPos.q) > 8) {
                             continue;
                         }
                         
                         // Only fill gap if it has support from existing structure
                         const hasSupport = this.checkHasNeighborSupport(gapPos, supportedPositions, occupiedPositions);
                         
-                        if (!occupiedPositions.has(key) && hasSupport && Math.random() < 0.7) { // Increased from 0.5
+                        // ALWAYS fill gaps when there's support - maximum pressure
+                        if (!occupiedPositions.has(key) && hasSupport) {
                             const color = this.getRandomColor();
                             newBubbles.push({ hexPos: gapPos, color });
                             occupiedPositions.set(key, true);
                             supportedPositions.add(key);
-                            console.log(`Filling gap at ${gapPos.q},${gapPos.r}`);
+                            console.log(`FORCING gap fill at ${gapPos.q},${gapPos.r}`);
                         }
                     }
                 }
