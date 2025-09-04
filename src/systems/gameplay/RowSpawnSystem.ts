@@ -7,6 +7,7 @@
 import { Scene } from 'phaser';
 import { ArenaSystem } from './ArenaSystem';
 import { Bubble } from '@/gameObjects/Bubble';
+import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { BUBBLE_CONFIG, ARENA_CONFIG, GRID_CONFIG } from '@/config/ArenaConfig';
 import { BubbleColor, IHexPosition } from '@/types/ArenaTypes';
 
@@ -26,6 +27,7 @@ export class RowSpawnSystem {
     private availableColors: BubbleColor[] = [];
     private currentConfig: RowSpawnConfig;
     private centerY: number;
+    private spawnCounter: number = 0; // Track spawns for Mystery Bubble timing
     
     // Arena-specific configurations
     private readonly ARENA_CONFIGS: Record<string, RowSpawnConfig> = {
@@ -126,7 +128,10 @@ export class RowSpawnSystem {
             return;
         }
 
-        console.log('RowSpawnSystem: Adding new rows adjacent to edges');
+        // Increment spawn counter for Mystery Bubble timing
+        this.spawnCounter++;
+        
+        console.log(`RowSpawnSystem: Adding new rows (spawn #${this.spawnCounter})`);
         
         const bubbleGrid = this.arenaSystem.bubbleGrid;
         const gridAttachment = this.arenaSystem.gridAttachmentSystem;
@@ -473,6 +478,13 @@ export class RowSpawnSystem {
         // Now create only the validated bubbles
         const createdBubbles: Bubble[] = [];
         
+        // Determine if we should spawn Mystery Bubbles this round (every 2 spawns)
+        const shouldSpawnMystery = this.spawnCounter % 2 === 0;
+        const mysteryBubbleChance = 0.50; // 50% chance for ONE bubble per side if it's a Mystery round
+        
+        // Track how many Mystery Bubbles we've added (max 1 per side per spawn)
+        let mysteryAddedThisSide = false;
+        
         validatedBubbles.forEach((bubbleData, index) => {
             // Double-check connectivity right before creation with updated grid state
             const currentGrid = gridAttachment.getGridBubbles();
@@ -485,11 +497,31 @@ export class RowSpawnSystem {
             
             const pixelPos = bubbleGrid.hexToPixel(bubbleData.hexPos);
             
-            const bubble = this.arenaSystem.createBubbleAt(
-                pixelPos.x,
-                pixelPos.y,
-                bubbleData.color
-            );
+            // Decide if this should be a Mystery Bubble
+            const makeMystery = shouldSpawnMystery && 
+                               !mysteryAddedThisSide && 
+                               Math.random() < mysteryBubbleChance;
+            
+            let bubble: Bubble | null = null;
+            
+            if (makeMystery) {
+                // Create a Mystery Bubble
+                console.log(`Spawning Mystery Bubble at (${bubbleData.hexPos.q},${bubbleData.hexPos.r}) for ${side} side`);
+                const mysteryBubble = new MysteryBubble(
+                    this.scene,
+                    pixelPos.x,
+                    pixelPos.y
+                );
+                bubble = mysteryBubble;
+                mysteryAddedThisSide = true;
+            } else {
+                // Create a normal bubble
+                bubble = this.arenaSystem.createBubbleAt(
+                    pixelPos.x,
+                    pixelPos.y,
+                    bubbleData.color
+                );
+            }
             
             if (bubble) {
                 // Set grid position
@@ -497,6 +529,11 @@ export class RowSpawnSystem {
                 
                 // Add to grid attachment system
                 gridAttachment.addGridBubble(bubble);
+                
+                // If it's a Mystery Bubble, also add it to the arena's bubbles array
+                if (bubble instanceof MysteryBubble) {
+                    this.arenaSystem.bubbles.push(bubble);
+                }
                 
                 // IMMEDIATE validation after adding to grid
                 const allCurrentBubbles = gridAttachment.getGridBubbles();

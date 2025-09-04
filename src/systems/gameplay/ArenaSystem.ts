@@ -1254,7 +1254,7 @@ export class ArenaSystem {
     
     /**
      * Create a space-themed initial bubble pattern
-     * Forms asteroid fields and nebula formations
+     * Forms a clear STAR shape that's easily recognizable
      */
     private createSpaceArenaPattern(): void {
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
@@ -1271,88 +1271,120 @@ export class ArenaSystem {
             }
         };
         
-        // Central space station core - dense center formation
-        // Ring 1 - immediate neighbors of objective
-        for (const hexPos of this.bubbleGrid.getRing(center, 1)) {
-            addPosition(hexPos);
+        // CREATE A LARGE, FILLED 5-POINTED STAR
+        // We'll make it thick and clear so it's unmistakably a star
+        
+        // CENTER MASS - Make the star body thick and obvious
+        addPosition({ q: 0, r: 0, s: 0 });   // Center
+        addPosition({ q: 0, r: -1, s: 1 });
+        addPosition({ q: 1, r: -1, s: 0 });
+        addPosition({ q: 1, r: 0, s: -1 });
+        addPosition({ q: 0, r: 1, s: -1 });
+        addPosition({ q: -1, r: 1, s: 0 });
+        addPosition({ q: -1, r: 0, s: 1 });
+        
+        // TOP POINT (straight up) - Make it long and prominent
+        addPosition({ q: 0, r: -5, s: 5 });  // Tip
+        addPosition({ q: 0, r: -4, s: 4 });
+        addPosition({ q: 0, r: -3, s: 3 });
+        addPosition({ q: 0, r: -2, s: 2 });
+        // Add width to top arm
+        addPosition({ q: -1, r: -3, s: 4 });
+        addPosition({ q: 1, r: -3, s: 2 });
+        addPosition({ q: -1, r: -4, s: 5 });
+        addPosition({ q: 1, r: -4, s: 3 });
+        
+        // UPPER-RIGHT POINT (72 degrees from top)
+        addPosition({ q: 4, r: -3, s: -1 }); // Tip
+        addPosition({ q: 3, r: -2, s: -1 });
+        addPosition({ q: 2, r: -2, s: 0 });
+        addPosition({ q: 2, r: -1, s: -1 });
+        addPosition({ q: 1, r: -1, s: 0 });
+        // Thicken the arm
+        addPosition({ q: 3, r: -3, s: 0 });
+        addPosition({ q: 4, r: -2, s: -2 });
+        
+        // LOWER-RIGHT POINT (144 degrees from upper-right)
+        addPosition({ q: 3, r: 3, s: -6 });  // Tip
+        addPosition({ q: 3, r: 2, s: -5 });
+        addPosition({ q: 2, r: 2, s: -4 });
+        addPosition({ q: 2, r: 1, s: -3 });
+        addPosition({ q: 1, r: 1, s: -2 });
+        // Thicken
+        addPosition({ q: 2, r: 3, s: -5 });
+        
+        // LOWER-LEFT POINT (symmetrical to lower-right)
+        addPosition({ q: -3, r: 3, s: 0 });  // Tip
+        addPosition({ q: -3, r: 2, s: 1 });
+        addPosition({ q: -2, r: 2, s: 0 });
+        addPosition({ q: -2, r: 1, s: 1 });
+        addPosition({ q: -1, r: 1, s: 0 });
+        // Thicken
+        addPosition({ q: -2, r: 3, s: -1 });
+        
+        // UPPER-LEFT POINT (symmetrical to upper-right)
+        addPosition({ q: -4, r: -3, s: 7 }); // Tip
+        addPosition({ q: -3, r: -2, s: 5 });
+        addPosition({ q: -2, r: -2, s: 4 });
+        addPosition({ q: -2, r: -1, s: 3 });
+        addPosition({ q: -1, r: -1, s: 2 });
+        // Thicken
+        addPosition({ q: -3, r: -3, s: 6 });
+        addPosition({ q: -4, r: -2, s: 6 });
+        
+        // CONNECT THE POINTS WITH MORE BUBBLES
+        // This fills in the star shape to make it more solid
+        
+        // Fill between top and upper-right
+        addPosition({ q: 1, r: -2, s: 1 });
+        addPosition({ q: 2, r: -3, s: 1 });
+        
+        // Fill between upper-right and lower-right
+        addPosition({ q: 2, r: 0, s: -2 });
+        addPosition({ q: 3, r: 0, s: -3 });
+        addPosition({ q: 3, r: 1, s: -4 });
+        
+        // Fill between lower-right and lower-left (bottom V)
+        addPosition({ q: 1, r: 2, s: -3 });
+        addPosition({ q: 0, r: 2, s: -2 });
+        addPosition({ q: -1, r: 2, s: -1 });
+        addPosition({ q: 0, r: 3, s: -3 });
+        
+        // Fill between lower-left and upper-left
+        addPosition({ q: -2, r: 0, s: 2 });
+        addPosition({ q: -3, r: 0, s: 3 });
+        addPosition({ q: -3, r: 1, s: 2 });
+        
+        // Fill between upper-left and top
+        addPosition({ q: -1, r: -2, s: 3 });
+        addPosition({ q: -2, r: -3, s: 5 });
+        
+        // Additional center mass to make the star body prominent
+        addPosition({ q: 1, r: 0, s: -1 });
+        addPosition({ q: -1, r: 0, s: 1 });
+        addPosition({ q: 0, r: -1, s: 1 });
+        addPosition({ q: 0, r: 1, s: -1 });
+        
+        // Add some space debris around the star (fewer, more scattered)
+        // Upper space field
+        if (Math.random() < 0.4) {
+            addPosition({ q: -5, r: -4, s: 9 });
+            addPosition({ q: 5, r: -4, s: -1 });
         }
         
-        // Ring 2 - second ring (full)
-        for (const hexPos of this.bubbleGrid.getRing(center, 2)) {
-            addPosition(hexPos);
+        // Lower space field
+        if (Math.random() < 0.4) {
+            addPosition({ q: -4, r: 4, s: 0 });
+            addPosition({ q: 4, r: 4, s: -8 });
         }
         
-        // Ring 3 - third ring with some gaps for variety
-        for (const hexPos of this.bubbleGrid.getRing(center, 3)) {
-            // Create some strategic gaps in ring 3
-            if (Math.abs(hexPos.q) !== 3 || Math.random() < 0.8) {
-                addPosition(hexPos);
-            }
+        // Side asteroids
+        if (Math.random() < 0.3) {
+            addPosition({ q: 5, r: 0, s: -5 });
+            addPosition({ q: -5, r: 0, s: 5 });
         }
         
-        // Upper asteroid field (opponent side) - more organized clusters
-        // Row -5: Sparse outer edge
-        for (let q = -4; q <= 4; q++) {
-            if (Math.abs(q) <= 3 && Math.random() < 0.6) {
-                addPosition({ q, r: -5, s: -q - (-5) });
-            }
-        }
-        
-        // Row -4: Dense asteroid belt
-        for (let q = -4; q <= 4; q++) {
-            if (Math.abs(q) <= 4) {
-                addPosition({ q, r: -4, s: -q - (-4) });
-            }
-        }
-        
-        // Row -3: Connected clusters (already partially covered by ring 3)
-        for (let q = -3; q <= 3; q++) {
-            // Add positions not covered by ring 3
-            const pos = { q, r: -3, s: -q - (-3) };
-            if (!positionSet.has(`${pos.q},${pos.r}`)) {
-                addPosition(pos);
-            }
-        }
-        
-        // Lower nebula field (player side) - symmetric but different pattern
-        // Row 3: Connected clusters (partially covered by ring 3)
-        for (let q = -3; q <= 3; q++) {
-            const pos = { q, r: 3, s: -q - 3 };
-            if (!positionSet.has(`${pos.q},${pos.r}`)) {
-                addPosition(pos);
-            }
-        }
-        
-        // Row 4: Dense nebula cloud
-        for (let q = -4; q <= 4; q++) {
-            if (Math.abs(q) <= 4) {
-                addPosition({ q, r: 4, s: -q - 4 });
-            }
-        }
-        
-        // Row 5: Sparse outer edge
-        for (let q = -4; q <= 4; q++) {
-            if (Math.abs(q) <= 3 && Math.random() < 0.6) {
-                addPosition({ q, r: 5, s: -q - 5 });
-            }
-        }
-        
-        // Add some strategic floating asteroids in mid-field
-        // These create interesting tactical positions
-        const floatingAsteroids = [
-            { q: -2, r: -2, s: 4 },
-            { q: 2, r: -2, s: 0 },
-            { q: -2, r: 2, s: 0 },
-            { q: 2, r: 2, s: -4 }
-        ];
-        
-        floatingAsteroids.forEach(pos => {
-            if (!positionSet.has(`${pos.q},${pos.r}`) && Math.random() < 0.7) {
-                addPosition(pos);
-            }
-        });
-        
-        console.log(`Space pattern: Creating ${allPositions.length} bubbles (asteroid field formation)`);
+        console.log(`Space pattern: Creating ${allPositions.length} bubbles (5-POINTED STAR formation)`);
         this.createBubblesFromPositions(allPositions);
     }
     
