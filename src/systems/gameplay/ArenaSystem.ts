@@ -2471,24 +2471,27 @@ export class ArenaSystem {
     }
     
     private startObjectiveGemThrowing(): void {
-        // Every 8-12 seconds, the objective throws gems to random bubbles
+        // Every 5-8 seconds, the objective throws gems to random bubbles
+        // Using a repeating timer that continuously runs
         this.objectiveGemTimer = this.scene.time.addEvent({
-            delay: Phaser.Math.Between(8000, 12000),
+            delay: 5000, // Initial delay
             callback: () => {
                 this.throwGemsFromObjective();
-                // Schedule next throw
-                this.objectiveGemTimer = this.scene.time.addEvent({
-                    delay: Phaser.Math.Between(8000, 12000),
-                    callback: () => this.throwGemsFromObjective(),
-                    loop: false
-                });
             },
-            loop: false
+            loop: true, // Keep repeating
+            startAt: 0
+        });
+        
+        // Also throw gems immediately after a short delay
+        this.scene.time.delayedCall(2000, () => {
+            this.throwGemsFromObjective();
         });
     }
     
     private throwGemsFromObjective(): void {
         if (!this.objective || this.gameOver) return;
+        
+        console.log('Objective throwing gems...');
         
         // Get all visible bubbles without gems
         const eligibleBubbles: Bubble[] = [];
@@ -2507,10 +2510,15 @@ export class ArenaSystem {
             }
         });
         
-        if (eligibleBubbles.length === 0) return;
+        if (eligibleBubbles.length === 0) {
+            console.log('No eligible bubbles for gems');
+            return;
+        }
         
         // Decide how many gems to throw (2-4)
         const gemCount = Phaser.Math.Between(2, 4);
+        
+        console.log(`Throwing ${gemCount} gems. Player bubbles: ${playerBubbles.length}, Opponent bubbles: ${opponentBubbles.length}`);
         
         // Try to distribute fairly between player and opponent
         const playerGems = Math.floor(gemCount / 2);
@@ -2565,15 +2573,33 @@ export class ArenaSystem {
         gem.setDepth(1500);
         gem.setScale(0.5);
         
-        // Create sparkle trail
-        const particles = this.scene.add.particles(this.objective.x, this.objective.y, 'flares', {
-            frame: 'yellow',
-            scale: { start: 0.3, end: 0 },
-            alpha: { start: 0.8, end: 0 },
-            speed: { min: 20, max: 40 },
-            lifespan: 600,
-            frequency: 30,
-            follow: gem
+        // Create sparkle trail - using simple circles instead of 'flares' texture
+        const sparkles: Phaser.GameObjects.GameObject[] = [];
+        const sparkleTimer = this.scene.time.addEvent({
+            delay: 50,
+            repeat: 20,
+            callback: () => {
+                const sparkle = this.scene.add.circle(
+                    gem.x + Phaser.Math.Between(-5, 5),
+                    gem.y + Phaser.Math.Between(-5, 5),
+                    Phaser.Math.Between(1, 3),
+                    0xFFD700,
+                    0.8
+                );
+                sparkle.setDepth(1400);
+                sparkles.push(sparkle);
+                
+                this.scene.tweens.add({
+                    targets: sparkle,
+                    scale: 0,
+                    alpha: 0,
+                    duration: 400,
+                    ease: 'Power2',
+                    onComplete: () => {
+                        sparkle.destroy();
+                    }
+                });
+            }
         });
         
         // Animate the gem flying to the bubble with an arc
@@ -2619,7 +2645,8 @@ export class ArenaSystem {
                 
                 // Cleanup
                 gem.destroy();
-                particles.destroy();
+                sparkleTimer.destroy();
+                sparkles.forEach(s => s.destroy());
             }
         });
     }
