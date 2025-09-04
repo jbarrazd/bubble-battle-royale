@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { IGameConfig } from '@/types/GameTypes';
 // import { DeviceDetection } from '@utils/DeviceDetection';
 
-// HD_SCALE: Factor to scale everything for Ultra HD quality
-export const HD_SCALE = 2.5; // Ultra HD quality restored
+// HD_SCALE: Factor to scale everything for HD quality
+export const HD_SCALE = 2.2; // Balanced for visibility and space
 
 // FIXED GAME DIMENSIONS FOR FAIR ONLINE PLAY
 // All players will see exactly the same game area

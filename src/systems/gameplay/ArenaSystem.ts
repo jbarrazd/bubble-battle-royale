@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition } from '@/types/ArenaTypes';
+import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition, BubbleColor } from '@/types/ArenaTypes';
 import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER_ZONE_CONFIG } from '@/config/ArenaConfig';
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
@@ -32,7 +32,7 @@ export class ArenaSystem {
     
     private scene: Scene;
     private config: IArenaConfig;
-    private bubbleGrid: BubbleGrid;
+    public bubbleGrid: BubbleGrid;
     private objective!: Objective;
     private playerLauncher!: Launcher;
     private opponentLauncher!: Launcher;
@@ -43,7 +43,7 @@ export class ArenaSystem {
     private debugEnabled: boolean = false;
     private inputManager: InputManager;
     private shootingSystem?: ShootingSystem;
-    private gridAttachmentSystem: GridAttachmentSystem;
+    public gridAttachmentSystem: GridAttachmentSystem;
     private matchDetectionSystem: MatchDetectionSystem;
     private aiOpponent?: AIOpponentSystem;
     private isSinglePlayer: boolean = true;
@@ -1242,25 +1242,121 @@ export class ArenaSystem {
     }
 
     private createInitialBubbles(): void {
-        const center: IHexPosition = { q: 0, r: 0, s: 0 };
+        const theme = this.scene.registry.get('gameTheme') || 'ocean';
         
-        // Track Mystery Bubbles per side to ensure fair distribution
+        // Use theme-specific pattern
+        if (theme === 'space') {
+            this.createSpaceArenaPattern();
+        } else {
+            this.createDefaultPattern();
+        }
+    }
+    
+    /**
+     * Create a space-themed initial bubble pattern
+     * Forms asteroid fields on both sides
+     */
+    private createSpaceArenaPattern(): void {
+        const center: IHexPosition = { q: 0, r: 0, s: 0 };
+        const allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
+        const positionSet = new Set<string>();
+        
+        // Helper to add position without duplicates
+        const addPosition = (hexPos: IHexPosition) => {
+            const key = `${hexPos.q},${hexPos.r}`;
+            if (!positionSet.has(key)) {
+                positionSet.add(key);
+                const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
+                allPositions.push({ hexPos, pixelPos });
+            }
+        };
+        
+        // Central space station - create connected structure from center
+        // Ring 1 - immediate neighbors of objective
+        for (const hexPos of this.bubbleGrid.getRing(center, 1)) {
+            addPosition(hexPos);
+        }
+        
+        // Ring 2 - second ring
+        for (const hexPos of this.bubbleGrid.getRing(center, 2)) {
+            addPosition(hexPos);
+        }
+        
+        // Ring 3 - third ring (this reaches r=-3 to r=3)
+        for (const hexPos of this.bubbleGrid.getRing(center, 3)) {
+            addPosition(hexPos);
+        }
+        
+        // Now add outer rows that connect to the rings
+        // Top row -4: Connected to ring at r=-3
+        for (let q = -3; q <= 3; q++) {
+            addPosition({ q, r: -4, s: -q - (-4) });
+        }
+        
+        // Bottom row 4: Connected to ring at r=3
+        for (let q = -3; q <= 3; q++) {
+            addPosition({ q, r: 4, s: -q - 4 });
+        }
+        
+        console.log(`Space pattern: Creating ${allPositions.length} bubbles`);
+        this.createBubblesFromPositions(allPositions);
+    }
+    
+    /**
+     * Create default pattern for other arenas
+     */
+    private createDefaultPattern(): void {
+        const center: IHexPosition = { q: 0, r: 0, s: 0 };
+        const allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
+        const positionSet = new Set<string>();
+        
+        // Helper to add position without duplicates
+        const addPosition = (hexPos: IHexPosition) => {
+            const key = `${hexPos.q},${hexPos.r}`;
+            if (!positionSet.has(key)) {
+                positionSet.add(key);
+                const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
+                allPositions.push({ hexPos, pixelPos });
+            }
+        };
+        
+        // Create 3 rings of bubbles around the objective (guaranteed connected)
+        // These rings will be the anchor for all other bubbles
+        for (let ring = 1; ring <= 3; ring++) {
+            const positions = this.bubbleGrid.getRing(center, ring);
+            positions.forEach(hexPos => {
+                addPosition(hexPos);
+            });
+        }
+        
+        // Add outer rows that are guaranteed to connect
+        // Top row -4: Only add positions that will connect to r=-3
+        for (let q = -3; q <= 3; q++) {
+            if (Math.random() < 0.8) { // Some variety but most connect
+                addPosition({ q, r: -4, s: -q - (-4) });
+            }
+        }
+        
+        // Bottom row 4: Only add positions that will connect to r=3
+        for (let q = -3; q <= 3; q++) {
+            if (Math.random() < 0.8) { // Some variety but most connect
+                addPosition({ q, r: 4, s: -q - 4 });
+            }
+        }
+        
+        console.log(`Default pattern: Creating ${allPositions.length} bubbles`);
+        this.createBubblesFromPositions(allPositions);
+    }
+    
+    /**
+     * Helper to create bubbles from position array
+     */
+    private createBubblesFromPositions(allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[]): void {
+        // Track Mystery Bubbles per side
         let playerSideMysteryCount = 0;
         let opponentSideMysteryCount = 0;
         const screenHeight = this.scene.cameras.main.height;
         const midPoint = screenHeight / 2;
-        
-        // Collect all positions first
-        const allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
-        
-        // Create 3 rings of bubbles around the objective
-        for (let ring = 1; ring <= GRID_CONFIG.OBJECTIVE_RADIUS; ring++) {
-            const positions = this.bubbleGrid.getRing(center, ring);
-            positions.forEach(hexPos => {
-                const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-                allPositions.push({ hexPos, pixelPos });
-            });
-        }
         
         // Calculate how many Mystery Bubbles we want (12.5% of total)
         const totalBubbles = allPositions.length;
@@ -2105,6 +2201,37 @@ export class ArenaSystem {
         }
     }
     
+    /**
+     * Get all active bubbles in the arena
+     * Used by RowSpawnSystem to shift bubbles
+     */
+    public getAllBubbles(): Bubble[] {
+        return this.bubbles.filter(b => b.visible && !b.isPooled());
+    }
+
+    /**
+     * Create a bubble at a specific position
+     * Used by RowSpawnSystem to add new rows
+     */
+    public createBubbleAt(x: number, y: number, color: BubbleColor): Bubble | null {
+        let bubble = this.getBubbleFromPool();
+        
+        // If no bubble in pool, create a new one
+        if (!bubble) {
+            console.log('ArenaSystem: Pool exhausted, creating new bubble');
+            bubble = new Bubble(this.scene, x, y, color);
+        } else {
+            bubble.reset(x, y, color);
+        }
+
+        bubble.setVisible(true);
+        bubble.setActive(true);
+        
+        this.bubbles.push(bubble);
+        
+        return bubble;
+    }
+
     public destroy(): void {
         // Clean up particle systems
         if (this.spaceParticles) {

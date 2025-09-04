@@ -532,7 +532,7 @@ export class GridAttachmentSystem {
     /**
      * Check for disconnected bubbles after attachment
      */
-    private checkDisconnectedBubbles(): void {
+    public checkDisconnectedBubbles(): void {
         const disconnected = this.findDisconnectedGroups();
         
         // Apply bidirectional gravity based on Y position, not zone

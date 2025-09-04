@@ -2,6 +2,7 @@ import { Scene } from 'phaser';
 import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
+import { RowSpawnSystem } from '@/systems/gameplay/RowSpawnSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
 import { RealSoundSystem } from '@/systems/audio/RealSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
@@ -12,6 +13,7 @@ export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private arenaSystem!: ArenaSystem;
+    private rowSpawnSystem!: RowSpawnSystem;
     private soundSystem!: RealSoundSystem;
     private backgroundSystem!: BackgroundSystem;
     private backgroundMusic: Phaser.Sound.BaseSound | undefined;
@@ -250,14 +252,52 @@ export class GameScene extends Scene {
             // Setup single player mode with AI difficulty - Always HARD
             this.arenaSystem.setupArena(true, AIDifficulty.HARD);
             
+            console.log('GameScene: Initializing RowSpawnSystem (BGC-001)...');
+            // Initialize the row spawning system
+            this.rowSpawnSystem = new RowSpawnSystem(this, this.arenaSystem);
+            
+            // Start automatic row spawning after a longer delay  
+            this.time.delayedCall(8000, () => {
+                console.log('GameScene: Starting automatic row spawning...');
+                this.rowSpawnSystem.startSpawning();
+            });
+            
+            // Setup combo events to pause spawning
+            this.setupRowSpawnEvents();
+            
             // Connect sound system to game events
             this.setupSoundEvents();
             
-            console.log('GameScene: Arena created successfully with AI opponent');
+            console.log('GameScene: Arena created successfully with AI opponent and row spawning');
         } catch (error) {
             console.error('GameScene: Error creating arena:', error);
             throw error;
         }
+    }
+    
+    private setupRowSpawnEvents(): void {
+        // Pause row spawning during combos
+        this.events.on('combo-start', () => {
+            console.log('GameScene: Pausing row spawn for combo');
+            this.rowSpawnSystem?.pause();
+        });
+        
+        this.events.on('combo-complete', () => {
+            console.log('GameScene: Resuming row spawn after combo');
+            this.rowSpawnSystem?.resume();
+        });
+        
+        // Also pause during match detection
+        this.game.events.on('match-started', () => {
+            this.rowSpawnSystem?.pause();
+        });
+        
+        this.game.events.on('match-completed', () => {
+            // Resume after a short delay to allow for cascades
+            this.time.delayedCall(500, () => {
+                this.rowSpawnSystem?.resume();
+            });
+        });
     }
     
     private setupSoundEvents(): void {
@@ -621,6 +661,9 @@ export class GameScene extends Scene {
             this.backgroundMusic.destroy();
             this.backgroundMusic = undefined;
         }
+        
+        // Clean up row spawn system
+        this.rowSpawnSystem?.destroy();
         
         this.arenaSystem?.destroy();
         this.soundSystem?.destroy();

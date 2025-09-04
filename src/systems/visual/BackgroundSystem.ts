@@ -46,6 +46,8 @@ export class BackgroundSystem {
     private oceanVortexBackground?: Phaser.GameObjects.Image;
     private oceanCameraZoomTween?: Phaser.Tweens.Tween;
     private oceanCameraRotateTween?: Phaser.Tweens.Tween;
+    private oceanFishGroup?: Phaser.GameObjects.Container;
+    private fishSprites: Phaser.GameObjects.Image[] = [];
     
     // Color schemes for different themes with unique particle types
     private readonly themes = {
@@ -152,6 +154,9 @@ export class BackgroundSystem {
     }
 
     private createOceanDepthsBackground(): void {
+        // Load fish assets if not already loaded
+        this.loadFishAssets();
+        
         // Use vortex background if available
         if (this.scene.textures.exists('ocean_depths_vortex')) {
             this.createOceanVortexBackground();
@@ -290,6 +295,9 @@ export class BackgroundSystem {
     }
     
     private createOceanVortexAnimation(initialScale: number, finalScale: number): void {
+        // Calculate zoom ratio for fish scaling
+        const zoomRatio = finalScale / initialScale;
+        
         // ZOOM IN with rotation happening simultaneously from the start - all in one tween
         this.oceanCameraZoomTween = this.scene.tweens.add({
             targets: this.oceanVortexBackground,
@@ -300,6 +308,13 @@ export class BackgroundSystem {
             duration: 35000, // 35 seconds total for zoom in
             ease: 'Power1.easeIn', // Very gentle easing for subtle effect
             delay: 2000, // Small 2 second delay before starting
+            onUpdate: (tween) => {
+                // Sync fish with zoom effect
+                if (this.fishSprites && this.fishSprites.length > 0) {
+                    const progress = tween.progress;
+                    this.updateFishWithZoom(progress, initialScale, finalScale, true);
+                }
+            },
             onComplete: () => {
                 // Wait 2 seconds before starting zoom out
                 this.scene.time.delayedCall(2000, () => {
@@ -312,6 +327,13 @@ export class BackgroundSystem {
                         x: this.width / 2, // Back to 0% X offset
                         duration: 35000, // 35 seconds for zoom out
                         ease: 'Power1.easeOut',
+                        onUpdate: (tween) => {
+                            // Sync fish with zoom out effect
+                            if (this.fishSprites && this.fishSprites.length > 0) {
+                                const progress = tween.progress;
+                                this.updateFishWithZoom(progress, finalScale, initialScale, false);
+                            }
+                        },
                         onComplete: () => {
                             // Wait 2 seconds then restart the zoom in animation for continuous loop
                             this.scene.time.delayedCall(2000, () => {
@@ -1228,6 +1250,357 @@ export class BackgroundSystem {
         this.create();
     }
 
+    private loadFishAssets(): void {
+        // Load fish textures if not already loaded
+        const fishTypes = ['pufferfish_cyan', 'pufferfish_purple', 'pufferfish_red', 'pufferfish_rainbow'];
+        
+        console.log('Loading fish assets...');
+        fishTypes.forEach(fishType => {
+            if (!this.scene.textures.exists(fishType)) {
+                const path = `assets/backgrounds/ocean/${fishType}.png`;
+                console.log(`Loading ${fishType} from ${path}`);
+                this.scene.load.image(fishType, path);
+            } else {
+                console.log(`${fishType} already loaded`);
+            }
+        });
+        
+        // Start loading if needed
+        if (!this.scene.load.isLoading()) {
+            this.scene.load.once('complete', () => {
+                this.createOceanFish();
+            });
+            this.scene.load.start();
+        } else {
+            // If already loaded, create fish
+            this.createOceanFish();
+        }
+    }
+    
+    private createOceanFish(): void {
+        // Only create fish if textures are loaded
+        const fishTypes = ['pufferfish_cyan', 'pufferfish_purple', 'pufferfish_red', 'pufferfish_rainbow'];
+        const availableFish = fishTypes.filter(type => this.scene.textures.exists(type));
+        
+        if (availableFish.length === 0) {
+            console.log('Fish textures not yet loaded');
+            return;
+        }
+        
+        // Create fish container
+        this.oceanFishGroup = this.scene.add.container(0, 0);
+        this.oceanFishGroup.setDepth(-900); // Behind game elements but above background
+        
+        // Create dynamic fish groups
+        // Mix of families (3-4 fish) and solo fish for variety
+        const groups: number[] = [];
+        let totalFish = 0;
+        
+        // Create a balanced mix: some families, some solo fish
+        // Total around 12-15 fish
+        while (totalFish < 12) {
+            const rand = Phaser.Math.Between(0, 3);
+            if (rand === 0 && totalFish < 10) {
+                // Family of 3-4 (25% chance, but not too many)
+                const familySize = Phaser.Math.Between(3, 4);
+                groups.push(familySize);
+                totalFish += familySize;
+            } else {
+                // Solo fish (75% chance)
+                groups.push(1);
+                totalFish += 1;
+            }
+        }
+        
+        console.log('Fish groups:', groups, 'Total fish:', totalFish);
+        
+        // ALL FISH NOW FACE LEFT (red was flipped)
+        const fishDirections: { [key: string]: 'left' | 'right' } = {
+            'pufferfish_cyan': 'left',
+            'pufferfish_purple': 'left',
+            'pufferfish_red': 'left',
+            'pufferfish_rainbow': 'left'
+        };
+        
+        let fishIndex = 0;
+        
+        // Ensure we use all colors
+        let colorIndex = 0;
+        
+        // Create each group
+        groups.forEach((groupSize, groupIndex) => {
+            // Rotate through colors to ensure variety
+            const fishType = availableFish[colorIndex % availableFish.length];
+            colorIndex++;
+            
+            // Randomly decide swimming direction for the group
+            const shouldSwimRight = Phaser.Math.Between(0, 1) === 1;
+            
+            // Distribute groups evenly across screen height
+            const sectionHeight = (this.height - 200) / groups.length;
+            const groupY = 100 + (groupIndex * sectionHeight) + Phaser.Math.Between(0, sectionHeight * 0.5);
+            
+            // Create each fish in the group
+            for (let i = 0; i < groupSize; i++) {
+                // Position fish in formation
+                let startX = shouldSwimRight ? -150 : this.width + 150;
+                let startY = groupY;
+                
+                // If it's a family, position them together
+                if (groupSize > 1) {
+                    // Offset each fish slightly
+                    startX += (shouldSwimRight ? -1 : 1) * (i * 60); // Horizontal spacing
+                    startY += Phaser.Math.Between(-20, 20); // Slight vertical variation
+                }
+                
+                const fish = this.scene.add.image(startX, startY, fishType);
+                
+                // Size variation within family
+                let scale;
+                if (groupSize > 1 && i === 0) {
+                    // Parent fish is noticeably bigger
+                    scale = Phaser.Math.FloatBetween(0.28, 0.35);
+                } else if (groupSize > 1) {
+                    // Children fish are much smaller (baby fish)
+                    scale = Phaser.Math.FloatBetween(0.12, 0.17);
+                } else {
+                    // Solo fish - varied sizes
+                    scale = Phaser.Math.FloatBetween(0.18, 0.3);
+                }
+                
+                fish.setScale(scale);
+                fish.setData('baseScale', scale);
+                
+                // Lower opacity to match background elements
+                fish.setAlpha(Phaser.Math.FloatBetween(0.3, 0.5));
+                
+                // Set flip based on swim direction
+                fish.setFlipX(shouldSwimRight);
+                
+                // Store data
+                fish.setData('swimDirection', shouldSwimRight ? 1 : -1);
+                fish.setData('originalDirection', 'left');
+                fish.setData('currentFlipState', fish.flipX);
+                fish.setData('depthLayer', fishIndex / totalFish);
+                fish.setData('groupId', groupIndex); // Store group ID for synchronized movement
+                fish.setData('isFamily', groupSize > 1);
+                
+                this.oceanFishGroup.add(fish);
+                this.fishSprites.push(fish);
+                
+                // Create animation with slight delay for family members
+                const animDelay = groupSize > 1 ? i * 100 : 0;
+                this.createFishAnimation(fish, fishIndex, animDelay);
+                
+                fishIndex++;
+            }
+        });
+    }
+    
+    private updateFishWithZoom(progress: number, fromScale: number, toScale: number, isZoomingIn: boolean): void {
+        if (!this.fishSprites || !this.oceanFishGroup) return;
+        
+        // Background zoom ratio: goes from 1.0 to 1.8 (80% increase)
+        // We want fish to scale similarly but with depth variation
+        let backgroundZoomRatio;
+        if (isZoomingIn) {
+            // Zoom in: 1.0 to 1.8
+            backgroundZoomRatio = 1 + (0.8 * progress);
+        } else {
+            // Zoom out: 1.8 back to 1.0
+            backgroundZoomRatio = 1.8 - (0.8 * progress);
+        }
+        
+        this.fishSprites.forEach((fish, index) => {
+            if (!fish || !fish.active) return;
+            
+            const baseScale = fish.getData('baseScale') || 0.2;
+            const depthLayer = fish.getData('depthLayer') || 0.5;
+            
+            // Fish closer to camera (higher depth) scale more with zoom
+            // Far fish (depth 0) scale less, close fish (depth 1) scale more
+            const depthMultiplier = 0.3 + depthLayer * 0.7; // 0.3 to 1.0
+            
+            // Calculate fish zoom based on background zoom and depth
+            const fishZoomRatio = 1 + ((backgroundZoomRatio - 1) * depthMultiplier);
+            
+            // Final scale
+            const finalScale = baseScale * fishZoomRatio;
+            
+            // Save flip state before scaling
+            const currentFlip = fish.flipX;
+            
+            // Apply scale
+            fish.setScale(finalScale);
+            
+            // Restore flip state
+            fish.setFlipX(currentFlip);
+            
+            // Opacity effect - fish get clearer when closer
+            if (!fish.getData('baseAlpha')) {
+                fish.setData('baseAlpha', fish.alpha);
+            }
+            const baseAlpha = fish.getData('baseAlpha');
+            // Subtle opacity increase when zoomed in
+            const alphaBoost = ((backgroundZoomRatio - 1) / 0.8) * 0.1 * depthMultiplier;
+            fish.setAlpha(Math.min(0.5, baseAlpha + alphaBoost)); // Max 0.5 to keep as background
+        });
+    }
+    
+    private createFishAnimation(fish: Phaser.GameObjects.Image, index: number, extraDelay: number = 0): void {
+        const swimDirection = fish.getData('swimDirection') || 1;
+        const isFamily = fish.getData('isFamily') || false;
+        
+        // Families swim together at same speed
+        const swimDuration = isFamily ? 
+            25000 : // Consistent speed for families
+            Phaser.Math.Between(20000, 35000); // Variable for solo fish
+            
+        const startY = fish.y;
+        
+        // Calculate target position (opposite side of screen)
+        const targetX = swimDirection === 1 ? this.width + 150 : -150;
+        
+        // Store initial Y for wave calculation
+        const centerY = fish.y;
+        const waveAmplitude = Phaser.Math.Between(15, 25); // How much the fish moves up/down
+        const waveFrequency = Phaser.Math.Between(2, 4); // Number of waves across screen
+        
+        // Main swimming tween - swim across entire screen with wave motion
+        this.scene.tweens.add({
+            targets: fish,
+            x: targetX,
+            duration: swimDuration,
+            ease: 'Linear', // Constant speed horizontally
+            delay: index * 1500 + extraDelay, // Stagger animations + family delay
+            onUpdate: (tween) => {
+                // Calculate sine wave for vertical position
+                const progress = tween.progress;
+                const waveOffset = Math.sin(progress * Math.PI * 2 * waveFrequency) * waveAmplitude;
+                fish.y = centerY + waveOffset;
+            },
+            onComplete: () => {
+                // When fish exits screen, reposition it on the other side
+                const sectionHeight = (this.height - 200) / 8; // Divide screen into sections
+                const randomSection = Phaser.Math.Between(0, 7);
+                const newY = 100 + (randomSection * sectionHeight) + Phaser.Math.Between(0, sectionHeight);
+                
+                if (swimDirection === 1) {
+                    // Was swimming right, reposition to left
+                    fish.x = -150;
+                } else {
+                    // Was swimming left, reposition to right
+                    fish.x = this.width + 150;
+                }
+                
+                fish.y = newY;
+                
+                // Create bubble trail occasionally
+                if (Phaser.Math.Between(0, 10) > 7) {
+                    this.createFishBubbleTrail(fish);
+                }
+                
+                // Restart the animation
+                this.createFishAnimation(fish, 0);
+            }
+        });
+        
+        // More visible tail wiggle for swimming effect
+        this.scene.tweens.add({
+            targets: fish,
+            angle: Phaser.Math.Between(-5, 5), // More visible wiggle
+            duration: Phaser.Math.Between(500, 700), // Faster for active swimming
+            ease: 'Sine.easeInOut',
+            yoyo: true,
+            repeat: -1,
+            delay: index * 100
+        });
+        
+        // Add subtle scale pulsing for swimming propulsion
+        const currentScale = fish.scaleX;
+        this.scene.tweens.add({
+            targets: fish,
+            scaleX: currentScale * 0.95, // 5% compression
+            duration: Phaser.Math.Between(400, 500),
+            ease: 'Sine.easeOut',
+            yoyo: true,
+            repeat: -1,
+            delay: index * 50
+        });
+        
+        // Create more frequent bubble emissions
+        this.scene.time.addEvent({
+            delay: Phaser.Math.Between(2000, 4000), // Every 2-4 seconds (more frequent)
+            callback: () => {
+                if (fish && fish.active) {
+                    this.createSubtleFishBubbles(fish);
+                }
+            },
+            loop: true
+        });
+        
+        // Removed scale pulsing to avoid conflicts with zoom effect
+        
+        // Add subtle color tinting for depth variation
+        const tintColors = [0xaaccff, 0xbbddff, 0xcceeee, 0xffffff];
+        fish.setTint(Phaser.Utils.Array.GetRandom(tintColors));
+        
+        // Create initial bubble effect
+        this.scene.time.delayedCall(Phaser.Math.Between(1000, 3000), () => {
+            this.createFishBubbleTrail(fish);
+        });
+    }
+    
+    private createSubtleFishBubbles(fish: Phaser.GameObjects.Image): void {
+        if (!fish || !fish.active) return;
+        
+        // Create 2-3 bubbles for better visibility
+        const bubbleCount = Phaser.Math.Between(2, 3);
+        
+        for (let i = 0; i < bubbleCount; i++) {
+            this.scene.time.delayedCall(i * 150, () => {
+                if (!fish || !fish.active) return;
+                
+                // Position bubble near fish mouth
+                const direction = fish.getData('swimDirection') || 1;
+                const xOffset = direction * 20 * fish.scaleX;
+                
+                // Bigger bubbles for better visibility
+                const bubbleSize = Phaser.Math.Between(3, 5) * fish.scaleX;
+                
+                const bubble = this.scene.add.circle(
+                    fish.x + xOffset,
+                    fish.y,
+                    bubbleSize,
+                    0xaaddff,
+                    0.4 // More opaque
+                );
+                
+                bubble.setDepth(-895);
+                bubble.setStrokeStyle(1, 0xffffff, 0.3); // Add white outline
+                
+                // More visible float animation
+                this.scene.tweens.add({
+                    targets: bubble,
+                    y: bubble.y - Phaser.Math.Between(60, 100),
+                    x: bubble.x + Phaser.Math.Between(-10, 10),
+                    alpha: 0,
+                    scale: bubble.scale * 1.5,
+                    duration: Phaser.Math.Between(2500, 3500),
+                    ease: 'Power1.easeOut',
+                    onComplete: () => {
+                        bubble.destroy();
+                    }
+                });
+            });
+        }
+    }
+    
+    private createFishBubbleTrail(fish: Phaser.GameObjects.Image): void {
+        // This is now just an alias to the subtle version
+        this.createSubtleFishBubbles(fish);
+    }
+    
     public destroy(): void {
         // Clean up graphics
         this.gradientGraphics?.destroy();
@@ -1246,6 +1619,13 @@ export class BackgroundSystem {
             this.oceanVortexBackground.destroy();
             this.oceanVortexBackground = undefined;
         }
+        
+        // Clean up fish
+        if (this.oceanFishGroup) {
+            this.oceanFishGroup.destroy(true); // Destroy container and all children
+            this.oceanFishGroup = undefined;
+        }
+        this.fishSprites = [];
         if (this.oceanCameraZoomTween) {
             this.oceanCameraZoomTween.stop();
             this.oceanCameraZoomTween.remove();

@@ -107,8 +107,22 @@ export class Bubble extends Phaser.GameObjects.Container {
         */
     }
 
-    public setGridPosition(hex: IHexPosition | null): void {
-        this.gridPosition = hex;
+    public setGridPosition(hex: IHexPosition | null): void;
+    public setGridPosition(row: number, col: number): void;
+    public setGridPosition(hexOrRow: IHexPosition | number | null, col?: number): void {
+        if (typeof hexOrRow === 'number' && col !== undefined) {
+            // Row/column format - convert to hex
+            this.gridPosition = {
+                q: col,
+                r: hexOrRow,
+                s: -col - hexOrRow
+            };
+        } else if (hexOrRow && typeof hexOrRow === 'object') {
+            // Hex position format
+            this.gridPosition = hexOrRow;
+        } else {
+            this.gridPosition = null;
+        }
     }
 
     public getGridPosition(): IHexPosition | null {

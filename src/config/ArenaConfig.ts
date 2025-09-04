@@ -1,25 +1,25 @@
 import { IArenaConfig } from '@/types/ArenaTypes';
 
-const HD_SCALE = 2.5;  // Ultra HD scaling factor restored
+const HD_SCALE = 2.2;  // Slightly larger for better visibility
 
 export const ARENA_CONFIG: IArenaConfig = {
-    width: 375 * HD_SCALE,  // 937.5 Ultra HD width
-    height: 667 * HD_SCALE, // 1667.5 Ultra HD height
-    playerZoneHeight: 267 * HD_SCALE,    // 667.5 Ultra HD
-    opponentZoneHeight: 267 * HD_SCALE,  // 667.5 Ultra HD
-    objectiveZoneHeight: 133 * HD_SCALE, // 332.5 Ultra HD
-    bubbleSize: 28 * HD_SCALE,  // 70 Ultra HD (reduced from 32)
-    objectiveSize: 28 * HD_SCALE, // 70 Ultra HD (reduced from 32)
-    launcherOffset: 45 * HD_SCALE  // 112.5 Ultra HD (reduced from 50)
+    width: 375 * HD_SCALE,  // 825 HD width
+    height: 667 * HD_SCALE, // 1467 HD height
+    playerZoneHeight: 267 * HD_SCALE,    // 587 HD
+    opponentZoneHeight: 267 * HD_SCALE,  // 587 HD
+    objectiveZoneHeight: 133 * HD_SCALE, // 293 HD
+    bubbleSize: 26 * HD_SCALE,  // 57 HD (balanced size)
+    objectiveSize: 26 * HD_SCALE, // 57 HD
+    launcherOffset: 42 * HD_SCALE  // 92 HD
 };
 
 export const BUBBLE_CONFIG = {
-    SIZE: 28 * HD_SCALE,  // 70 Ultra HD (reduced from 32)
+    SIZE: 26 * HD_SCALE,  // 57 HD (balanced for visibility and space)
     GAP: 0,  // No gap - bubbles touch perfectly
     COLORS: 5,
-    POOL_SIZE: 50, // OPTIMIZED: Reduced pool size for better iOS performance
-    HEX_WIDTH: 28 * HD_SCALE,  // 70 Ultra HD (reduced)
-    HEX_HEIGHT: 24 * HD_SCALE, // 60 Ultra HD (SIZE * 0.866)
+    POOL_SIZE: 250, // Increased for row spawning system
+    HEX_WIDTH: 26 * HD_SCALE,  // 57 HD
+    HEX_HEIGHT: 22.5 * HD_SCALE, // 49.5 HD (SIZE * 0.866)
     ANIMATION_DURATION: 200,
     FALL_SPEED: 500 * HD_SCALE  // 1250 Ultra HD
 };
