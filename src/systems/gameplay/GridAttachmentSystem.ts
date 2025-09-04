@@ -243,32 +243,37 @@ export class GridAttachmentSystem {
         
         // console.log('Target position occupied or invalid, searching alternatives');
         
-        // Search in expanding rings for available position
-        for (let ring = 1; ring <= 3; ring++) {
-            const ringPositions = this.bubbleGrid.getRing(targetHex, ring);
-            
-            // Find closest available position in this ring
-            let bestPos: IHexPosition | null = null;
-            let minDistance = Infinity;
-            
-            for (const pos of ringPositions) {
-                if (!this.isPositionOccupied(pos) && this.isValidPosition(pos)) {
-                    const pixelPos = this.bubbleGrid.hexToPixel(pos);
-                    const distance = Phaser.Math.Distance.Between(
-                        bubble.x, bubble.y,
-                        pixelPos.x, pixelPos.y
-                    );
-                    
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        bestPos = pos;
-                    }
+        // First try immediate neighbors only
+        const neighbors = this.bubbleGrid.getNeighbors(targetHex);
+        let bestNeighbor: IHexPosition | null = null;
+        let minNeighborDist = Infinity;
+        
+        for (const pos of neighbors) {
+            if (!this.isPositionOccupied(pos) && this.isValidPosition(pos)) {
+                const pixelPos = this.bubbleGrid.hexToPixel(pos);
+                const distance = Phaser.Math.Distance.Between(
+                    bubble.x, bubble.y,
+                    pixelPos.x, pixelPos.y
+                );
+                
+                if (distance < minNeighborDist) {
+                    minNeighborDist = distance;
+                    bestNeighbor = pos;
                 }
             }
-            
-            if (bestPos) {
-                // console.log(`Found available position at ring ${ring}:`, bestPos);
-                return bestPos;
+        }
+        
+        if (bestNeighbor) {
+            console.log(`Found neighbor position at (${bestNeighbor.q},${bestNeighbor.r})`);
+            return bestNeighbor;
+        }
+        
+        // Only if no neighbors available, try ring 2
+        const ring2 = this.bubbleGrid.getRing(targetHex, 2);
+        for (const pos of ring2) {
+            if (!this.isPositionOccupied(pos) && this.isValidPosition(pos)) {
+                console.log(`Using fallback position at ring 2: (${pos.q},${pos.r})`);
+                return pos;
             }
         }
         
@@ -295,24 +300,27 @@ export class GridAttachmentSystem {
         const key = this.hexToKey(hexPos);
         if (this.gridPositions.has(key)) {
             const bubble = this.gridPositions.get(key);
-            return bubble ? bubble.visible : false;
+            // Clean up stale entries
+            if (!bubble || !bubble.visible) {
+                this.gridPositions.delete(key);
+                return false;
+            }
+            return true;
         }
         
-        // Fallback: Check by pixel proximity only for nearby bubbles
-        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-        const threshold = BUBBLE_CONFIG.SIZE * 0.8;
-        const nearbyBubbles = this.getNearbyBubbles(pixelPos.x, pixelPos.y);
-        
-        return nearbyBubbles.some(bubble => {
+        // Double-check with actual grid bubbles to be sure
+        const occupied = this.gridBubbles.some(bubble => {
             if (!bubble.visible) return false;
             
-            const distance = Phaser.Math.Distance.Between(
-                bubble.x, bubble.y,
-                pixelPos.x, pixelPos.y
-            );
+            const pos = bubble.getGridPosition();
+            if (!pos) return false;
             
-            return distance < threshold;
+            return pos.q === hexPos.q && pos.r === hexPos.r;
         });
+        
+        // Don't use pixel proximity as it causes false positives
+        // We only care about exact hex position matches
+        return occupied;
     }
     
     /**
@@ -502,31 +510,52 @@ export class GridAttachmentSystem {
      * Clean up any misaligned bubbles at position
      */
     private cleanupMisalignedBubbles(hexPos: IHexPosition, newBubble: Bubble): void {
-        const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
-        const threshold = BUBBLE_CONFIG.SIZE * 0.9;
-        
-        // Find and remove any bubbles too close to this position
+        // Only remove bubbles that are in the EXACT same hex position
+        // This prevents removing nearby valid bubbles
         const toRemove: Bubble[] = [];
         
         this.gridBubbles.forEach(bubble => {
             if (bubble === newBubble || !bubble.visible) return;
             
-            const distance = Phaser.Math.Distance.Between(
-                bubble.x, bubble.y,
-                pixelPos.x, pixelPos.y
-            );
+            const bubblePos = bubble.getGridPosition();
+            if (!bubblePos) return;
             
-            if (distance < threshold) {
-                // console.warn('Found overlapping bubble, removing it:', bubble.getGridPosition());
-                toRemove.push(bubble);
+            // Check if it's the EXACT same hex position
+            if (bubblePos.q === hexPos.q && bubblePos.r === hexPos.r) {
+                // Double check with pixel distance to be absolutely sure
+                const targetPixel = this.bubbleGrid.hexToPixel(hexPos);
+                const bubbleDistance = Phaser.Math.Distance.Between(
+                    bubble.x, bubble.y,
+                    targetPixel.x, targetPixel.y
+                );
+                
+                // Only remove if truly at the same position (within 5 pixels)
+                if (bubbleDistance < 5) {
+                    console.warn(`Found duplicate bubble at exact position (${hexPos.q},${hexPos.r}), removing old one`);
+                    toRemove.push(bubble);
+                } else {
+                    console.log(`Bubble claims position (${hexPos.q},${hexPos.r}) but is ${bubbleDistance}px away, not removing`);
+                }
             }
         });
         
-        // Remove overlapping bubbles
+        // Remove only true duplicates at the same hex position
         toRemove.forEach(bubble => {
+            // Final safety check before removal
+            const key = this.hexToKey(hexPos);
+            const existingAtPos = this.gridPositions.get(key);
+            
+            if (existingAtPos === bubble) {
+                this.gridPositions.delete(key);
+            }
+            
             this.removeGridBubble(bubble);
             bubble.destroy();
         });
+        
+        if (toRemove.length > 0) {
+            console.log(`Cleaned up ${toRemove.length} duplicate bubble(s) at position (${hexPos.q},${hexPos.r})`);
+        }
     }
     
     /**

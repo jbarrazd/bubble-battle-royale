@@ -27,25 +27,25 @@ export class RowSpawnSystem {
     private currentConfig: RowSpawnConfig;
     private centerY: number;
     
-    // Arena-specific configurations (less aggressive timing)
+    // Arena-specific configurations
     private readonly ARENA_CONFIGS: Record<string, RowSpawnConfig> = {
         ocean: {
-            interval: 12000,  // 12 seconds (doubled from 6)
+            interval: 12000,  // 12 seconds - balanced pace
             pattern: 'random',
             colors: 5
         },
         space: {
-            interval: 11000,  // 11 seconds (doubled from 5.5)
+            interval: 9000,   // 9 seconds - faster for space battles
             pattern: 'random',
             colors: 5
         },
         volcanic: {
-            interval: 10000,  // 10 seconds (doubled from 5)
+            interval: 10000,  // 10 seconds - moderate pace
             pattern: 'random',
             colors: 5
         },
         crystal: {
-            interval: 8000,   // 8 seconds (doubled from 4)
+            interval: 8000,   // 8 seconds - fastest pace
             pattern: 'random',
             colors: 6
         }
@@ -146,11 +146,34 @@ export class RowSpawnSystem {
         const topEdgeBubbles = this.findTopEdgeBubbles(allBubbles);
         const bottomEdgeBubbles = this.findBottomEdgeBubbles(allBubbles);
         
-        // Add new bubbles adjacent to top edge (for opponent pressure)
+        // IMPORTANT: For fair competitive play, spawn must be symmetric
+        // Add new bubbles adjacent to BOTH edges equally
         this.addBubblesAdjacentToEdge(topEdgeBubbles, 'top', occupiedPositions, bubbleGrid, gridAttachment);
-        
-        // Add new bubbles adjacent to bottom edge (for player pressure)
         this.addBubblesAdjacentToEdge(bottomEdgeBubbles, 'bottom', occupiedPositions, bubbleGrid, gridAttachment);
+        
+        // For Space arena, add extra pressure to BOTH sides equally
+        const theme = this.scene.registry.get('gameTheme');
+        if (theme === 'space' && Math.random() < 0.3) {
+            console.log('Space arena: Adding extra pressure wave to BOTH sides!');
+            
+            // Re-find edges after first spawn
+            const updatedBubbles = this.arenaSystem.getAllBubbles();
+            const newTopEdge = this.findTopEdgeBubbles(updatedBubbles);
+            const newBottomEdge = this.findBottomEdgeBubbles(updatedBubbles);
+            
+            // Update occupied positions
+            updatedBubbles.forEach(bubble => {
+                const pos = bubble.getGridPosition();
+                if (pos && bubble.visible) {
+                    const key = `${pos.q},${pos.r}`;
+                    occupiedPositions.set(key, true);
+                }
+            });
+            
+            // Add second wave to BOTH sides for fairness
+            this.addBubblesAdjacentToEdge(newTopEdge, 'top', occupiedPositions, bubbleGrid, gridAttachment);
+            this.addBubblesAdjacentToEdge(newBottomEdge, 'bottom', occupiedPositions, bubbleGrid, gridAttachment);
+        }
         
         // Emit event
         this.scene.events.emit('row-spawned', { 
@@ -175,16 +198,33 @@ export class RowSpawnSystem {
             const pos = bubble.getGridPosition();
             if (!pos) return;
             
-            // Only consider bubbles on the upper half (negative r values)
-            if (pos.r < 0) {
+            // Consider ANY bubble on the upper half OR center area
+            if (pos.r <= 0) {
                 const existing = columnMap.get(pos.q);
                 
-                // Keep the bubble with the smallest (most negative) r
+                // Keep the bubble with the smallest (most negative or zero) r
                 if (!existing || pos.r < existing.r) {
                     columnMap.set(pos.q, { bubble, r: pos.r });
                 }
             }
         });
+        
+        // If no bubbles found in upper half, use any topmost bubbles
+        if (columnMap.size === 0) {
+            console.log('No bubbles in upper half, finding absolute topmost bubbles');
+            bubbles.forEach(bubble => {
+                if (!bubble.visible) return;
+                
+                const pos = bubble.getGridPosition();
+                if (!pos) return;
+                
+                const existing = columnMap.get(pos.q);
+                // Keep the bubble with the smallest r value
+                if (!existing || pos.r < existing.r) {
+                    columnMap.set(pos.q, { bubble, r: pos.r });
+                }
+            });
+        }
         
         // Convert map to array and log positions
         columnMap.forEach((data, q) => {
@@ -211,16 +251,33 @@ export class RowSpawnSystem {
             const pos = bubble.getGridPosition();
             if (!pos) return;
             
-            // Only consider bubbles on the lower half (positive r values)
-            if (pos.r > 0) {
+            // Consider ANY bubble on the lower half OR center area
+            if (pos.r >= 0) {
                 const existing = columnMap.get(pos.q);
                 
-                // Keep the bubble with the largest (most positive) r
+                // Keep the bubble with the largest (most positive or zero) r
                 if (!existing || pos.r > existing.r) {
                     columnMap.set(pos.q, { bubble, r: pos.r });
                 }
             }
         });
+        
+        // If no bubbles found in lower half, use any bottommost bubbles
+        if (columnMap.size === 0) {
+            console.log('No bubbles in lower half, finding absolute bottommost bubbles');
+            bubbles.forEach(bubble => {
+                if (!bubble.visible) return;
+                
+                const pos = bubble.getGridPosition();
+                if (!pos) return;
+                
+                const existing = columnMap.get(pos.q);
+                // Keep the bubble with the largest r value
+                if (!existing || pos.r > existing.r) {
+                    columnMap.set(pos.q, { bubble, r: pos.r });
+                }
+            });
+        }
         
         // Convert map to array and log positions
         columnMap.forEach((data, q) => {
@@ -291,8 +348,8 @@ export class RowSpawnSystem {
                 
                 // Since we're adding directly above/below existing bubbles,
                 // they ALWAYS have support from the bubble below/above them
-                // 70% chance to spawn for variety
-                if (Math.random() < 0.70) {
+                // 85% chance to spawn for more pressure
+                if (Math.random() < 0.85) {
                     const color = this.getRandomColor();
                     newBubbles.push({ hexPos: newPos, color });
                     occupiedPositions.set(key, true);
@@ -343,7 +400,7 @@ export class RowSpawnSystem {
                         // Only fill gap if it has support from existing structure
                         const hasSupport = this.checkHasNeighborSupport(gapPos, supportedPositions, occupiedPositions);
                         
-                        if (!occupiedPositions.has(key) && hasSupport && Math.random() < 0.5) {
+                        if (!occupiedPositions.has(key) && hasSupport && Math.random() < 0.7) { // Increased from 0.5
                             const color = this.getRandomColor();
                             newBubbles.push({ hexPos: gapPos, color });
                             occupiedPositions.set(key, true);

@@ -1254,7 +1254,7 @@ export class ArenaSystem {
     
     /**
      * Create a space-themed initial bubble pattern
-     * Forms asteroid fields on both sides
+     * Forms asteroid fields and nebula formations
      */
     private createSpaceArenaPattern(): void {
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
@@ -1271,34 +1271,88 @@ export class ArenaSystem {
             }
         };
         
-        // Central space station - create connected structure from center
+        // Central space station core - dense center formation
         // Ring 1 - immediate neighbors of objective
         for (const hexPos of this.bubbleGrid.getRing(center, 1)) {
             addPosition(hexPos);
         }
         
-        // Ring 2 - second ring
+        // Ring 2 - second ring (full)
         for (const hexPos of this.bubbleGrid.getRing(center, 2)) {
             addPosition(hexPos);
         }
         
-        // Ring 3 - third ring (this reaches r=-3 to r=3)
+        // Ring 3 - third ring with some gaps for variety
         for (const hexPos of this.bubbleGrid.getRing(center, 3)) {
-            addPosition(hexPos);
+            // Create some strategic gaps in ring 3
+            if (Math.abs(hexPos.q) !== 3 || Math.random() < 0.8) {
+                addPosition(hexPos);
+            }
         }
         
-        // Now add outer rows that connect to the rings
-        // Top row -4: Connected to ring at r=-3
+        // Upper asteroid field (opponent side) - more organized clusters
+        // Row -5: Sparse outer edge
+        for (let q = -4; q <= 4; q++) {
+            if (Math.abs(q) <= 3 && Math.random() < 0.6) {
+                addPosition({ q, r: -5, s: -q - (-5) });
+            }
+        }
+        
+        // Row -4: Dense asteroid belt
+        for (let q = -4; q <= 4; q++) {
+            if (Math.abs(q) <= 4) {
+                addPosition({ q, r: -4, s: -q - (-4) });
+            }
+        }
+        
+        // Row -3: Connected clusters (already partially covered by ring 3)
         for (let q = -3; q <= 3; q++) {
-            addPosition({ q, r: -4, s: -q - (-4) });
+            // Add positions not covered by ring 3
+            const pos = { q, r: -3, s: -q - (-3) };
+            if (!positionSet.has(`${pos.q},${pos.r}`)) {
+                addPosition(pos);
+            }
         }
         
-        // Bottom row 4: Connected to ring at r=3
+        // Lower nebula field (player side) - symmetric but different pattern
+        // Row 3: Connected clusters (partially covered by ring 3)
         for (let q = -3; q <= 3; q++) {
-            addPosition({ q, r: 4, s: -q - 4 });
+            const pos = { q, r: 3, s: -q - 3 };
+            if (!positionSet.has(`${pos.q},${pos.r}`)) {
+                addPosition(pos);
+            }
         }
         
-        console.log(`Space pattern: Creating ${allPositions.length} bubbles`);
+        // Row 4: Dense nebula cloud
+        for (let q = -4; q <= 4; q++) {
+            if (Math.abs(q) <= 4) {
+                addPosition({ q, r: 4, s: -q - 4 });
+            }
+        }
+        
+        // Row 5: Sparse outer edge
+        for (let q = -4; q <= 4; q++) {
+            if (Math.abs(q) <= 3 && Math.random() < 0.6) {
+                addPosition({ q, r: 5, s: -q - 5 });
+            }
+        }
+        
+        // Add some strategic floating asteroids in mid-field
+        // These create interesting tactical positions
+        const floatingAsteroids = [
+            { q: -2, r: -2, s: 4 },
+            { q: 2, r: -2, s: 0 },
+            { q: -2, r: 2, s: 0 },
+            { q: 2, r: 2, s: -4 }
+        ];
+        
+        floatingAsteroids.forEach(pos => {
+            if (!positionSet.has(`${pos.q},${pos.r}`) && Math.random() < 0.7) {
+                addPosition(pos);
+            }
+        });
+        
+        console.log(`Space pattern: Creating ${allPositions.length} bubbles (asteroid field formation)`);
         this.createBubblesFromPositions(allPositions);
     }
     
