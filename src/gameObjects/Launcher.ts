@@ -1128,8 +1128,9 @@ export class Launcher extends Phaser.GameObjects.Container {
         }
         
         // Mobile-optimized bubble positioning and sizing
+        // Always use regular Bubble with texture cache
         this.loadedBubble = new Bubble(this.scene, 0, this.BUBBLE_POSITION_Y, color);
-        this.loadedBubble.setScale(1.0); // Slightly larger for mobile clarity (was 0.95)
+        this.loadedBubble.setScale(1.0); // Standard size for all themes
         this.add(this.loadedBubble);
         this.bringToTop(this.loadedBubble);
         

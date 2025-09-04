@@ -66,61 +66,40 @@ export class BubbleTextureCache {
         const centerX = radius + 5;
         const centerY = radius + 5;
 
-        // Create temporary graphics for the bubble design
-        const tempContainer = this.scene.add.container(0, 0);
+        // Create temporary container at render texture center
+        const tempContainer = this.scene.add.container(centerX, centerY);
         
-        // 1. Shadow
-        const shadow = this.scene.add.circle(
-            centerX + 3, 
-            centerY + 5, 
-            radius, 
-            0x000000, 
-            0.2
-        );
+        // 1. Shadow - exact same as original Bubble
+        const shadow = this.scene.add.circle(3, 5, radius, 0x000000, 0.2);
         shadow.setScale(0.95);
         
-        // 2. Main bubble
-        const mainBubble = this.scene.add.circle(
-            centerX, 
-            centerY, 
-            radius, 
-            color
-        );
+        // 2. Main bubble - exact same as original
+        const mainBubble = this.scene.add.circle(0, 0, radius, color);
         mainBubble.setStrokeStyle(3, this.getDarkerColor(color), 1);
         
-        // 3. Inner gradient
-        const innerGradient = this.scene.add.circle(
-            centerX, 
-            centerY + 2, 
-            radius - 4, 
-            this.getDarkerColor(color)
-        );
+        // 3. Inner gradient - exact same as original
+        const innerGradient = this.scene.add.circle(0, 2, radius - 4, this.getDarkerColor(color));
         innerGradient.setAlpha(0.5);
         innerGradient.setScale(0.9);
         
-        // 4. Rim light
-        const rimLight = this.scene.add.circle(
-            centerX, 
-            centerY, 
-            radius - 2, 
-            this.getLighterColor(color)
-        );
+        // 4. Rim light - exact same as original
+        const rimLight = this.scene.add.circle(0, 0, radius - 2, this.getLighterColor(color));
         rimLight.setAlpha(0.0);
         rimLight.setStrokeStyle(3, this.getLighterColor(color), 0.6);
         
-        // 5. Primary highlight
+        // 5. Primary highlight - exact same as original
         const highlight1 = this.scene.add.circle(
-            centerX - radius * 0.35,
-            centerY - radius * 0.4,
+            -radius * 0.35,
+            -radius * 0.4,
             radius * 0.4,
             0xFFFFFF,
             0.3
         );
         
-        // 6. Secondary highlight
+        // 6. Secondary highlight - exact same as original
         const highlight2 = this.scene.add.circle(
-            centerX + radius * 0.3,
-            centerY - radius * 0.35,
+            radius * 0.3,
+            -radius * 0.35,
             radius * 0.25,
             0xFFFFFF,
             0.2
@@ -169,28 +148,30 @@ export class BubbleTextureCache {
      * Get a darker shade of a color
      */
     private getDarkerColor(color: number): number {
-        const r = (color >> 16) & 0xFF;
-        const g = (color >> 8) & 0xFF;
-        const b = color & 0xFF;
+        // Exact same formula as Bubble class
+        const r = (color >> 16) & 0xff;
+        const g = (color >> 8) & 0xff;
+        const b = color & 0xff;
         
-        const dr = Math.max(0, r - 40);
-        const dg = Math.max(0, g - 40);
-        const db = Math.max(0, b - 40);
-        
-        return (dr << 16) | (dg << 8) | db;
+        // Much darker for inner gradient - same as Bubble
+        return (Math.floor(r * 0.5) << 16) | 
+               (Math.floor(g * 0.5) << 8) | 
+               Math.floor(b * 0.5);
     }
 
     /**
      * Get a lighter shade of a color
      */
     private getLighterColor(color: number): number {
-        const r = (color >> 16) & 0xFF;
-        const g = (color >> 8) & 0xFF;
-        const b = color & 0xFF;
+        // Exact same formula as Bubble class
+        const r = (color >> 16) & 0xff;
+        const g = (color >> 8) & 0xff;
+        const b = color & 0xff;
         
-        const lr = Math.min(255, r + 60);
-        const lg = Math.min(255, g + 60);
-        const lb = Math.min(255, b + 60);
+        // Lighter version for rim - same as Bubble
+        const lr = Math.min(255, Math.floor(r * 1.3 + 50));
+        const lg = Math.min(255, Math.floor(g * 1.3 + 50));
+        const lb = Math.min(255, Math.floor(b * 1.3 + 50));
         
         return (lr << 16) | (lg << 8) | lb;
     }

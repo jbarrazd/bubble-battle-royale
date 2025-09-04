@@ -12,7 +12,13 @@ export const ASSET_KEYS = {
         UFO: 'ufo',
         SPACE_OBJECTIVE: 'space_objective',
         OCEAN_DEPTHS_BG: 'ocean_depths_bg',
-        OCEAN_DEPTHS_VORTEX: 'ocean_depths_vortex'
+        OCEAN_DEPTHS_VORTEX: 'ocean_depths_vortex',
+        // Space bubble sprites
+        SPACE_BUBBLE_RED: 'space_bubble_red',
+        SPACE_BUBBLE_BLUE: 'space_bubble_blue',
+        SPACE_BUBBLE_GREEN: 'space_bubble_green',
+        SPACE_BUBBLE_YELLOW: 'space_bubble_yellow',
+        SPACE_BUBBLE_PURPLE: 'space_bubble_purple'
     },
     AUDIO: {
         BUBBLE_SHOOT: 'bubble-shoot',
@@ -92,6 +98,37 @@ export function createAssetManifest(): IAssetManifest {
             {
                 key: ASSET_KEYS.IMAGES.BUBBLE_PLANET,
                 url: 'assets/sprites/bubble_planet.png',
+                type: 'image',
+                data: {}
+            },
+            // Space bubble sprites
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_BUBBLE_RED,
+                url: 'assets/sprites/space-red-bubble-57.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_BUBBLE_BLUE,
+                url: 'assets/sprites/space-blue-bubble-57.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_BUBBLE_GREEN,
+                url: 'assets/sprites/space-green-bubble-57.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_BUBBLE_YELLOW,
+                url: 'assets/sprites/space-yellow-bubble-57.png',
+                type: 'image',
+                data: {}
+            },
+            {
+                key: ASSET_KEYS.IMAGES.SPACE_BUBBLE_PURPLE,
+                url: 'assets/sprites/space-purple-bubble-57.png',
                 type: 'image',
                 data: {}
             }

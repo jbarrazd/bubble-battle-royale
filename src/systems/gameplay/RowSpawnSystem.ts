@@ -249,6 +249,7 @@ export class RowSpawnSystem {
             const shouldSpawnMystery = this.spawnCounter % 2 === 0 && Math.random() < 0.3;
             
             if (shouldSpawnMystery) {
+                // Always use regular MysteryBubble with texture cache
                 const mysteryBubble = new MysteryBubble(this.scene, pixelPos.x, pixelPos.y);
                 mysteryBubble.setGridPosition(spawn.hexPos);
                 this.arenaSystem.bubbles.push(mysteryBubble);
@@ -592,11 +593,8 @@ export class RowSpawnSystem {
             if (makeMystery) {
                 // Create a Mystery Bubble
                 console.log(`Spawning Mystery Bubble at (${bubbleData.hexPos.q},${bubbleData.hexPos.r}) for ${side} side`);
-                const mysteryBubble = new MysteryBubble(
-                    this.scene,
-                    pixelPos.x,
-                    pixelPos.y
-                );
+                // Always use regular MysteryBubble with texture cache
+                const mysteryBubble = new MysteryBubble(this.scene, pixelPos.x, pixelPos.y);
                 bubble = mysteryBubble;
                 mysteryAddedThisSide = true;
             } else {

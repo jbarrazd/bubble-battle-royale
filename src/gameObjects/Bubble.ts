@@ -1,9 +1,10 @@
 import { BubbleColor, IHexPosition } from '@/types/ArenaTypes';
 import { BUBBLE_CONFIG, Z_LAYERS } from '@/config/ArenaConfig';
 import { HD_SCALE } from '@/config/GameConfig';
+import { BubbleTextureCache } from '@/systems/rendering/BubbleTextureCache';
 
 export class Bubble extends Phaser.GameObjects.Container {
-    private bubbleSprite: Phaser.GameObjects.Arc;
+    private bubbleSprite: Phaser.GameObjects.Arc | Phaser.GameObjects.Image;
     private innerGradient?: Phaser.GameObjects.Arc;
     private highlightSprite?: Phaser.GameObjects.Arc;
     private secondaryHighlight?: Phaser.GameObjects.Arc;
@@ -16,68 +17,101 @@ export class Bubble extends Phaser.GameObjects.Container {
     private pooled: boolean = false;
     private shooter: 'player' | 'ai' | 'none' = 'none';
     private idleAnimation?: Phaser.Tweens.Tween;
+    private usingCachedTexture: boolean = false;
+    private static textureCache: BubbleTextureCache | null = null;
+    
+    // Force reinit the cache - useful for design updates
+    public static resetTextureCache(): void {
+        if (Bubble.textureCache) {
+            Bubble.textureCache.destroy();
+            Bubble.textureCache = null;
+        }
+    }
 
     constructor(scene: Phaser.Scene, x: number, y: number, color: BubbleColor) {
         super(scene, x, y);
         
         this.color = color;
-        const radius = BUBBLE_CONFIG.SIZE / 2;
         
-        // Premium bubble design with multiple layers
-        // 1. Simple shadow without blend mode
-        this.shadowSprite = scene.add.circle(3, 5, radius, 0x000000, 0.2);
-        // NO BLEND MODE for performance
-        this.shadowSprite.setScale(0.95);
+        // Initialize texture cache if not already done
+        if (!Bubble.textureCache) {
+            Bubble.textureCache = new BubbleTextureCache(scene);
+            Bubble.textureCache.initialize();
+        }
         
-        // 2. Main bubble base
-        this.bubbleSprite = scene.add.circle(0, 0, radius, color);
+        // Check if we have a cached texture for this color
+        const textureKey = Bubble.textureCache.getTextureKey(color);
         
-        // 3. HD inner gradient with better depth
-        this.innerGradient = scene.add.circle(0, 2, radius - 4, this.getDarkerColor(color));
-        this.innerGradient.setAlpha(0.5);
-        this.innerGradient.setScale(0.9);
-        
-        // 4. HD rim lighting for 3D pop
-        this.rimLight = scene.add.circle(0, 0, radius - 2, this.getLighterColor(color));
-        this.rimLight.setAlpha(0.0); // Will be visible only at edges via stroke
-        this.rimLight.setStrokeStyle(3, this.getLighterColor(color), 0.6);
-        
-        // 5. Simple highlight without blend mode
-        this.highlightSprite = scene.add.circle(
-            -radius * 0.35,
-            -radius * 0.4,
-            radius * 0.4,
-            0xFFFFFF,
-            0.3
-        );
-        // NO BLEND MODE for performance
-        
-        // 6. Simple secondary highlight
-        this.secondaryHighlight = scene.add.circle(
-            radius * 0.3,
-            -radius * 0.35,
-            radius * 0.25,
-            0xFFFFFF,
-            0.2
-        );
-        // NO BLEND MODE for performance
-        
-        // 7. Ultra HD border for crisp definition
-        this.bubbleSprite.setStrokeStyle(3, this.getDarkerColor(color), 1);
-        
-        // 8. Pattern sprite for colorblind patterns
-        this.patternSprite = scene.add.graphics();
-        
-        // Add all elements in proper order for best visual effect
-        this.add([
-            this.shadowSprite,
-            this.bubbleSprite,
-            this.innerGradient,
-            this.rimLight,
-            this.highlightSprite,
-            this.secondaryHighlight,
-            this.patternSprite
-        ]);
+        if (textureKey && scene.textures.exists(textureKey)) {
+            // Use cached texture for performance
+            this.usingCachedTexture = true;
+            this.bubbleSprite = scene.add.image(0, 0, textureKey);
+            this.add(this.bubbleSprite);
+            
+            // Pattern sprite for colorblind patterns (still created dynamically)
+            this.patternSprite = scene.add.graphics();
+            this.add(this.patternSprite);
+        } else {
+            // Fall back to creating graphics dynamically
+            this.usingCachedTexture = false;
+            const radius = BUBBLE_CONFIG.SIZE / 2;
+            
+            // Premium bubble design with multiple layers
+            // 1. Simple shadow without blend mode
+            this.shadowSprite = scene.add.circle(3, 5, radius, 0x000000, 0.2);
+            // NO BLEND MODE for performance
+            this.shadowSprite.setScale(0.95);
+            
+            // 2. Main bubble base
+            this.bubbleSprite = scene.add.circle(0, 0, radius, color);
+            
+            // 3. HD inner gradient with better depth
+            this.innerGradient = scene.add.circle(0, 2, radius - 4, this.getDarkerColor(color));
+            this.innerGradient.setAlpha(0.5);
+            this.innerGradient.setScale(0.9);
+            
+            // 4. HD rim lighting for 3D pop
+            this.rimLight = scene.add.circle(0, 0, radius - 2, this.getLighterColor(color));
+            this.rimLight.setAlpha(0.0); // Will be visible only at edges via stroke
+            this.rimLight.setStrokeStyle(3, this.getLighterColor(color), 0.6);
+            
+            // 5. Simple highlight without blend mode
+            this.highlightSprite = scene.add.circle(
+                -radius * 0.35,
+                -radius * 0.4,
+                radius * 0.4,
+                0xFFFFFF,
+                0.3
+            );
+            // NO BLEND MODE for performance
+            
+            // 6. Simple secondary highlight
+            this.secondaryHighlight = scene.add.circle(
+                radius * 0.3,
+                -radius * 0.35,
+                radius * 0.25,
+                0xFFFFFF,
+                0.2
+            );
+            // NO BLEND MODE for performance
+            
+            // 7. Ultra HD border for crisp definition
+            (this.bubbleSprite as Phaser.GameObjects.Arc).setStrokeStyle(3, this.getDarkerColor(color), 1);
+            
+            // 8. Pattern sprite for colorblind patterns
+            this.patternSprite = scene.add.graphics();
+            
+            // Add all elements in proper order for best visual effect
+            this.add([
+                this.shadowSprite,
+                this.bubbleSprite,
+                this.innerGradient,
+                this.rimLight,
+                this.highlightSprite,
+                this.secondaryHighlight,
+                this.patternSprite
+            ]);
+        }
         
         this.setSize(BUBBLE_CONFIG.SIZE, BUBBLE_CONFIG.SIZE);
         this.setDepth(Z_LAYERS.BUBBLES);
@@ -142,26 +176,100 @@ export class Bubble extends Phaser.GameObjects.Container {
     }
     
     public setColor(color: BubbleColor): void {
+        if (this.color === color) return; // No change needed
+        
         this.color = color;
-        // Update all color-dependent elements
-        this.bubbleSprite.setFillStyle(color);
-        this.bubbleSprite.setStrokeStyle(2, this.getDarkerColor(color), 1);
         
-        if (this.innerGradient) {
-            this.innerGradient.setFillStyle(this.getDarkerColor(color));
+        if (this.usingCachedTexture && Bubble.textureCache) {
+            // Try to use cached texture for the new color
+            const textureKey = Bubble.textureCache.getTextureKey(color);
+            if (textureKey && this.scene.textures.exists(textureKey)) {
+                (this.bubbleSprite as Phaser.GameObjects.Image).setTexture(textureKey);
+            } else {
+                // Need to recreate as dynamic graphics
+                this.recreateAsDynamicGraphics(color);
+            }
+        } else {
+            // Update dynamic graphics colors
+            (this.bubbleSprite as Phaser.GameObjects.Arc).setFillStyle(color);
+            (this.bubbleSprite as Phaser.GameObjects.Arc).setStrokeStyle(2, this.getDarkerColor(color), 1);
+            
+            if (this.innerGradient) {
+                this.innerGradient.setFillStyle(this.getDarkerColor(color));
+            }
+            
+            if (this.rimLight) {
+                this.rimLight.setStrokeStyle(2, this.getLighterColor(color), 0.5);
+            }
         }
+    }
+    
+    private recreateAsDynamicGraphics(color: BubbleColor): void {
+        // Remove cached texture sprite
+        this.removeAll(true);
+        this.usingCachedTexture = false;
         
-        if (this.rimLight) {
-            this.rimLight.setStrokeStyle(2, this.getLighterColor(color), 0.5);
-        }
+        const radius = BUBBLE_CONFIG.SIZE / 2;
+        
+        // Recreate as dynamic graphics
+        this.shadowSprite = this.scene.add.circle(3, 5, radius, 0x000000, 0.2);
+        this.shadowSprite.setScale(0.95);
+        
+        this.bubbleSprite = this.scene.add.circle(0, 0, radius, color);
+        
+        this.innerGradient = this.scene.add.circle(0, 2, radius - 4, this.getDarkerColor(color));
+        this.innerGradient.setAlpha(0.5);
+        this.innerGradient.setScale(0.9);
+        
+        this.rimLight = this.scene.add.circle(0, 0, radius - 2, this.getLighterColor(color));
+        this.rimLight.setAlpha(0.0);
+        this.rimLight.setStrokeStyle(3, this.getLighterColor(color), 0.6);
+        
+        this.highlightSprite = this.scene.add.circle(
+            -radius * 0.35,
+            -radius * 0.4,
+            radius * 0.4,
+            0xFFFFFF,
+            0.3
+        );
+        
+        this.secondaryHighlight = this.scene.add.circle(
+            radius * 0.3,
+            -radius * 0.35,
+            radius * 0.25,
+            0xFFFFFF,
+            0.2
+        );
+        
+        (this.bubbleSprite as Phaser.GameObjects.Arc).setStrokeStyle(3, this.getDarkerColor(color), 1);
+        
+        this.patternSprite = this.scene.add.graphics();
+        
+        this.add([
+            this.shadowSprite,
+            this.bubbleSprite,
+            this.innerGradient,
+            this.rimLight,
+            this.highlightSprite,
+            this.secondaryHighlight,
+            this.patternSprite
+        ]);
     }
 
     public setTint(tint: number): void {
-        this.bubbleSprite.setFillStyle(tint);
+        if (this.usingCachedTexture) {
+            (this.bubbleSprite as Phaser.GameObjects.Image).setTint(tint);
+        } else {
+            (this.bubbleSprite as Phaser.GameObjects.Arc).setFillStyle(tint);
+        }
     }
 
     public clearTint(): void {
-        this.bubbleSprite.setFillStyle(this.color);
+        if (this.usingCachedTexture) {
+            (this.bubbleSprite as Phaser.GameObjects.Image).clearTint();
+        } else {
+            (this.bubbleSprite as Phaser.GameObjects.Arc).setFillStyle(this.color);
+        }
     }
 
     public setSpecial(special: boolean): void {
@@ -197,7 +305,8 @@ export class Bubble extends Phaser.GameObjects.Container {
 
     private removeGlow(): void {
         // Remove the glow element if it exists
-        if (this.length > 6) { // We have 6 base elements, glow would be 7th
+        const baseElementCount = this.usingCachedTexture ? 2 : 7; // 2 for cached (sprite + pattern), 7 for dynamic
+        if (this.length > baseElementCount) {
             const glowElement = this.getAt(0);
             this.scene.tweens.killTweensOf(glowElement);
             this.removeAt(0);

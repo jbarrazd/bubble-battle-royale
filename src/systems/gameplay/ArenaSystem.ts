@@ -3,7 +3,6 @@ import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition, BubbleColor } from 
 import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER_ZONE_CONFIG } from '@/config/ArenaConfig';
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
-import { OptimizedBubble } from '@/gameObjects/OptimizedBubble';
 import { BubbleTextureCache } from '@/systems/rendering/BubbleTextureCache';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { Launcher } from '@/gameObjects/Launcher';
@@ -90,8 +89,12 @@ export class ArenaSystem {
         this.scene = scene;
         this.config = ARENA_CONFIG;
         
-        // Initialize texture cache for optimized bubbles
+        // Always use texture cache for better performance
+        this.useOptimizedBubbles = false; // Deprecated - always use regular Bubble with cache
+        
+        // Initialize texture cache for all bubbles
         this.textureCache = new BubbleTextureCache(scene);
+        this.textureCache.initialize(); // Always initialize for performance
         
         // Initialize input manager
         this.inputManager = new InputManager(scene);
@@ -151,13 +154,17 @@ export class ArenaSystem {
     }
 
     private createBubblePool(): void {
+        // Texture cache is already initialized in constructor for all themes
+        
         for (let i = 0; i < BUBBLE_CONFIG.POOL_SIZE; i++) {
+            // Always use regular Bubble class with texture cache
             const bubble = new Bubble(
                 this.scene,
                 -1000,
                 -1000,
                 Bubble.getRandomColor()
             );
+            
             bubble.setVisible(false);
             this.bubblePool.push(bubble);
         }
@@ -1483,7 +1490,7 @@ export class ArenaSystem {
         // Create bubbles with balanced Mystery Bubble distribution
         allPositions.forEach((pos, index) => {
             if (mysteryPositions.has(index)) {
-                // Create Mystery Bubble
+                // Always use regular MysteryBubble with texture cache
                 const mysteryBubble = new MysteryBubble(this.scene, pos.pixelPos.x, pos.pixelPos.y);
                 mysteryBubble.setGridPosition(pos.hexPos);
                 this.bubbles.push(mysteryBubble);
@@ -2312,11 +2319,7 @@ export class ArenaSystem {
         // If no bubble in pool, create a new one
         if (!bubble) {
             console.log('ArenaSystem: Pool exhausted, creating new bubble');
-            if (this.useOptimizedBubbles) {
-                bubble = new OptimizedBubble(this.scene, x, y, color, this.textureCache) as any;
-            } else {
-                bubble = new Bubble(this.scene, x, y, color);
-            }
+            bubble = new Bubble(this.scene, x, y, color);
         } else {
             bubble.reset(x, y, color);
         }
