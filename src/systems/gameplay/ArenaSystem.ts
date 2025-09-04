@@ -3,6 +3,8 @@ import { IArenaConfig, IZoneBounds, ArenaZone, IHexPosition, BubbleColor } from 
 import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER_ZONE_CONFIG } from '@/config/ArenaConfig';
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
+import { OptimizedBubble } from '@/gameObjects/OptimizedBubble';
+import { BubbleTextureCache } from '@/systems/rendering/BubbleTextureCache';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Objective } from '@/gameObjects/Objective';
@@ -38,6 +40,8 @@ export class ArenaSystem {
     private opponentLauncher!: Launcher;
     private bubbles: Bubble[] = [];
     private bubblePool: Bubble[] = [];
+    private textureCache: BubbleTextureCache;
+    private useOptimizedBubbles: boolean = true;
     private zones: Map<ArenaZone, IZoneBounds> = new Map();
     private debugGraphics?: Phaser.GameObjects.Graphics;
     private debugEnabled: boolean = false;
@@ -85,6 +89,9 @@ export class ArenaSystem {
     constructor(scene: Scene) {
         this.scene = scene;
         this.config = ARENA_CONFIG;
+        
+        // Initialize texture cache for optimized bubbles
+        this.textureCache = new BubbleTextureCache(scene);
         
         // Initialize input manager
         this.inputManager = new InputManager(scene);
@@ -2305,7 +2312,11 @@ export class ArenaSystem {
         // If no bubble in pool, create a new one
         if (!bubble) {
             console.log('ArenaSystem: Pool exhausted, creating new bubble');
-            bubble = new Bubble(this.scene, x, y, color);
+            if (this.useOptimizedBubbles) {
+                bubble = new OptimizedBubble(this.scene, x, y, color, this.textureCache) as any;
+            } else {
+                bubble = new Bubble(this.scene, x, y, color);
+            }
         } else {
             bubble.reset(x, y, color);
         }

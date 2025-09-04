@@ -65,9 +65,9 @@ export function createGameConfig(scenes: any[]): IGameConfig {
             failIfMajorPerformanceCaveat: false,
             powerPreference: 'high-performance',  // Request high-performance GPU
             batchSize: 4096,  // Increased for 120 FPS target
-            // Ultra HD resolution for premium quality
-            // Using higher resolution for sharper graphics
-            resolution: Math.min(window.devicePixelRatio || 1, 3),
+            // Optimized resolution for performance
+            // Lower resolution since bubbles are shown small
+            resolution: Math.min(window.devicePixelRatio || 1, 1.5),
             maxLights: 1,  // Minimum required for shader compilation
             maxTextures: -1,
             mipmapFilter: 'LINEAR',
