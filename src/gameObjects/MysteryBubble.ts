@@ -12,8 +12,6 @@ export class MysteryBubble extends Bubble {
     private powerUpIcon!: Phaser.GameObjects.Text;
     private currentPowerUp: PowerUpType;
     private powerUpCycleTimer?: Phaser.Time.TimerEvent;
-    private glowEffect!: Phaser.GameObjects.Graphics;
-    private iconBg!: Phaser.GameObjects.Graphics;
     
     // Power-up rotation sequence
     private powerUpSequence: PowerUpType[] = [
@@ -51,22 +49,13 @@ export class MysteryBubble extends Bubble {
     }
     
     private createMysteryVisuals(): void {
-        // Make base bubble semi-transparent so we can see the power-up inside
+        // Keep the bubble fully opaque like normal bubbles
         const bubbleSprite = this.list[0] as Phaser.GameObjects.Arc;
         if (bubbleSprite) {
-            bubbleSprite.setAlpha(0.4); // Semi-transparent
+            bubbleSprite.setAlpha(0.7); // Slightly transparent to see the icon
         }
         
-        // Create a subtle glow effect
-        this.glowEffect = this.scene.add.graphics();
-        this.updateGlowEffect();
-        this.addAt(this.glowEffect, 0); // Add behind bubble
-        
-        // Create icon background circle for better visibility - LARGER
-        this.iconBg = this.scene.add.graphics();
-        this.iconBg.fillStyle(0x000000, 0.3);
-        this.iconBg.fillCircle(0, 0, 10 * HD_SCALE);
-        this.add(this.iconBg);
+        // NO GLOW EFFECT - Remove the shadow/glow
         
         // Create power-up icon - MUCH LARGER for visibility
         this.powerUpIcon = this.scene.add.text(0, 0, '', {
@@ -79,9 +68,9 @@ export class MysteryBubble extends Bubble {
         // Update to show current power-up
         this.updatePowerUpDisplay();
         
-        // Add subtle pulse animation
+        // Add subtle pulse animation to just the icon
         this.scene.tweens.add({
-            targets: [this.powerUpIcon, this.iconBg],
+            targets: this.powerUpIcon,
             scale: { from: 0.9, to: 1.1 },
             duration: 1500,
             yoyo: true,
@@ -90,25 +79,11 @@ export class MysteryBubble extends Bubble {
         });
     }
     
-    private updateGlowEffect(): void {
-        if (!this.glowEffect) return;
-        
-        this.glowEffect.clear();
-        const config = this.powerUpIcons[this.currentPowerUp];
-        
-        // Create gradient glow - LARGER for bigger icon
-        this.glowEffect.fillStyle(config.color, 0.2);
-        this.glowEffect.fillCircle(0, 0, 14 * HD_SCALE);
-        this.glowEffect.fillStyle(config.color, 0.1);
-        this.glowEffect.fillCircle(0, 0, 18 * HD_SCALE);
-    }
-    
     private updatePowerUpDisplay(): void {
         const config = this.powerUpIcons[this.currentPowerUp];
         this.powerUpIcon.setText(config.icon);
         
-        // Update glow color
-        this.updateGlowEffect();
+        // NO GLOW UPDATE - Removed
         
         // Add a small pop animation when changing
         this.scene.tweens.add({

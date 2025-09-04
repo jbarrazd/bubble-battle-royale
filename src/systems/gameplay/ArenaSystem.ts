@@ -28,6 +28,10 @@ import { OceanArenaParticles } from '@/systems/visual/OceanArenaParticles';
 // import { GemSpawnSystem } from './GemSpawnSystem'; // Not used - gems are now inside bubbles
 import { GemCollectionSystem } from './GemCollectionSystem';
 import { GemCounterUI } from '@/ui/GemCounterUI';
+import { GameTimerUI } from '@/ui/GameTimerUI';
+import { ResetSystem } from './ResetSystem';
+import { VictorySystem } from './VictorySystem';
+import { CascadeSystem } from './CascadeSystem';
 
 export { AIDifficulty };
 
@@ -93,12 +97,22 @@ export class ArenaSystem {
     // private gemSpawnSystem?: GemSpawnSystem; // Not used - gems are now inside bubbles
     private gemCollectionSystem?: GemCollectionSystem;
     private gemCounterUI?: GemCounterUI;
+    private gameTimerUI?: GameTimerUI;
     
     // Objective gem throwing system
     private objectiveGemTimer?: Phaser.Time.TimerEvent;
     // Gem tracking
-    private playerGemCount: number = 0;
-    private opponentGemCount: number = 0;
+    public playerGemCount: number = 0;
+    public opponentGemCount: number = 0;
+    
+    // Reset system
+    public resetSystem?: ResetSystem;
+    
+    // Victory system
+    public victorySystem?: VictorySystem;
+    
+    // Cascade system
+    public cascadeSystem?: CascadeSystem;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -247,13 +261,29 @@ export class ArenaSystem {
         // this.gemSpawnSystem = new GemSpawnSystem(this.scene); // DISABLED - gems are now inside bubbles
         this.gemCollectionSystem = new GemCollectionSystem(this.scene);
         this.gemCounterUI = new GemCounterUI(this.scene);
+        this.gameTimerUI = new GameTimerUI(this.scene);
         console.log('ArenaSystem: Gem systems and UI initialized');
+        
+        // Initialize reset system
+        this.resetSystem = new ResetSystem(this.scene, this.gridAttachmentSystem);
+        
+        // Initialize victory system
+        this.victorySystem = new VictorySystem(this.scene);
+        
+        // Initialize cascade system
+        this.cascadeSystem = new CascadeSystem(this.scene, this.gridAttachmentSystem);
+        
+        // Store reference in scene for ResetSystem to access
+        (this.scene as any).arenaSystem = this;
         
         // Listen for objective gem collection
         this.scene.events.on('objective-gem-collected', this.handleObjectiveGemCollected, this);
         
         // Listen for gem collection from bubbles
         this.scene.events.on('gem-collected-from-bubble', this.handleBubbleGemCollected, this);
+        
+        // Listen for row spawned events to check reset conditions
+        this.scene.events.on('row-spawned', this.handleRowSpawned, this);
         
         // Start objective gem throwing animation for space theme
         const currentTheme = this.scene.registry.get('gameTheme') || 'ocean';
@@ -1297,7 +1327,7 @@ export class ArenaSystem {
      */
     private createSpaceArenaPattern(): void {
         const center: IHexPosition = { q: 0, r: 0, s: 0 };
-        const allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
+        let allPositions: { hexPos: IHexPosition, pixelPos: { x: number, y: number } }[] = [];
         const positionSet = new Set<string>();
         
         // Helper to add position without duplicates
@@ -1747,6 +1777,12 @@ export class ArenaSystem {
         
         // Update power-up systems (only when active)
         this.powerUpActivation?.update(delta);
+        
+        // Update victory system
+        this.victorySystem?.update(time, delta);
+        
+        // Update game timer
+        this.gameTimerUI?.update();
         
         // OPTIMIZATION: Throttle objective shield checks
         this.shieldCheckCounter++;
@@ -2442,8 +2478,6 @@ export class ArenaSystem {
             total: this.playerGemCount + this.opponentGemCount
         });
         
-        console.log(`Gem collected from bubble! Player: ${this.playerGemCount}, Opponent: ${this.opponentGemCount}`);
-        
         // Create flying gem animation
         this.createFlyingGemAnimation(data.x, data.y, data.isPlayer);
     }
@@ -2467,6 +2501,13 @@ export class ArenaSystem {
                 flyingGem.destroy();
             }
         });
+    }
+    
+    private handleRowSpawned(): void {
+        // Check if reset system needs to trigger
+        if (this.resetSystem) {
+            this.resetSystem.checkAndExecuteReset(true); // true = player field
+        }
     }
     
     private startObjectiveGemThrowing(): void {

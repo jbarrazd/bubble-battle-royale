@@ -133,6 +133,13 @@ export class RowSpawnSystem {
         if (this.isPaused || !this.isEnabled) {
             return;
         }
+        
+        // Check if immunity is active from ResetSystem
+        const arenaSystem = (this.scene as any).arenaSystem;
+        if (arenaSystem?.resetSystem?.isImmunityActive()) {
+            console.log('RowSpawnSystem: Immunity active, skipping spawn');
+            return;
+        }
 
         // Increment spawn counter for Mystery Bubble timing
         this.spawnCounter++;
@@ -713,6 +720,9 @@ export class RowSpawnSystem {
                 // Force a disconnection check after spawning
                 this.scene.time.delayedCall(100, () => {
                     gridAttachment.checkDisconnectedBubbles();
+                    
+                    // Emit row-spawned event for reset system to check
+                    this.scene.events.emit('row-spawned');
                 });
             });
         }

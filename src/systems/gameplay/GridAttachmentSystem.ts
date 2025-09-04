@@ -561,7 +561,7 @@ export class GridAttachmentSystem {
     /**
      * Check for disconnected bubbles after attachment
      */
-    public checkDisconnectedBubbles(): void {
+    public checkDisconnectedBubbles(isPlayerShot: boolean = true): void {
         const disconnected = this.findDisconnectedGroups();
         
         // Apply bidirectional gravity based on Y position, not zone
@@ -571,6 +571,12 @@ export class GridAttachmentSystem {
         });
         
         if (allDisconnected.length > 0) {
+            // Emit event for cascade system
+            this.scene.events.emit('bubbles-disconnected', {
+                bubbles: allDisconnected,
+                isPlayerShot: isPlayerShot
+            });
+            
             this.applyBidirectionalGravity(allDisconnected);
         }
     }
