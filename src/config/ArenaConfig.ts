@@ -1,6 +1,6 @@
 import { IArenaConfig } from '@/types/ArenaTypes';
 
-const HD_SCALE = 1.8;  // Optimized scale for performance while maintaining quality
+const HD_SCALE = 2.2;  // Slightly larger for better visibility
 
 export const ARENA_CONFIG: IArenaConfig = {
     width: 375 * HD_SCALE,  // 825 HD width
