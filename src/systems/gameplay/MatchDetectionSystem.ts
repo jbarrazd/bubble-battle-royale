@@ -246,7 +246,26 @@ export class MatchDetectionSystem {
      * Remove matched bubbles with animation
      */
     private async removeMatches(bubbles: Bubble[], isPlayerShot: boolean): Promise<void> {
-        // First, check for and handle Mystery Bubbles BEFORE removal
+        // First, collect all gems from bubbles that have them
+        let totalGemsCollected = 0;
+        bubbles.forEach(bubble => {
+            if (bubble.getHasGem()) {
+                // Emit gem collection event
+                this.scene.events.emit('gem-collected-from-bubble', {
+                    x: bubble.x,
+                    y: bubble.y,
+                    gemType: bubble.getGemType(),
+                    isPlayer: isPlayerShot
+                });
+                totalGemsCollected++;
+            }
+        });
+        
+        if (totalGemsCollected > 0) {
+            console.log(`Combo collected ${totalGemsCollected} gems for ${isPlayerShot ? 'player' : 'opponent'}`);
+        }
+        
+        // Then, check for and handle Mystery Bubbles BEFORE removal
         bubbles.forEach(bubble => {
             if (bubble instanceof MysteryBubble) {
                 // console.log('Found MysteryBubble in matches, collecting power-up for', isPlayerShot ? 'player' : 'opponent');
@@ -309,17 +328,9 @@ export class MatchDetectionSystem {
                         ease: 'Power2',
                         delay: index * 15,
                         onComplete: () => {
-                            // Check if bubble has a gem inside and collect it
-                            if (bubble.getHasGem()) {
-                                this.scene.events.emit('gem-collected-from-bubble', {
-                                    x: bubble.x,
-                                    y: bubble.y,
-                                    gemType: bubble.getGemType(),
-                                    isPlayer: isPlayerShot
-                                });
-                            }
+                            // Gems already collected at the beginning of removeMatches
                             
-                            // Emit bubble popped event for gem spawning
+                            // Emit bubble popped event
                             this.scene.events.emit('bubble-popped', {
                                 x: bubble.x,
                                 y: bubble.y,
@@ -343,17 +354,9 @@ export class MatchDetectionSystem {
                         ease: 'Back.easeOut',
                         delay: index * 20,
                         onComplete: () => {
-                            // Check if bubble has a gem inside and collect it
-                            if (bubble.getHasGem()) {
-                                this.scene.events.emit('gem-collected-from-bubble', {
-                                    x: bubble.x,
-                                    y: bubble.y,
-                                    gemType: bubble.getGemType(),
-                                    isPlayer: isPlayerShot
-                                });
-                            }
+                            // Gems already collected at the beginning of removeMatches
                             
-                            // Emit bubble popped event for gem spawning
+                            // Emit bubble popped event
                             this.scene.events.emit('bubble-popped', {
                                 x: bubble.x,
                                 y: bubble.y,
@@ -378,17 +381,9 @@ export class MatchDetectionSystem {
                         ease: 'Bounce.easeOut',
                         delay: index * 25,
                         onComplete: () => {
-                            // Check if bubble has a gem inside and collect it
-                            if (bubble.getHasGem()) {
-                                this.scene.events.emit('gem-collected-from-bubble', {
-                                    x: bubble.x,
-                                    y: bubble.y,
-                                    gemType: bubble.getGemType(),
-                                    isPlayer: isPlayerShot
-                                });
-                            }
+                            // Gems already collected at the beginning of removeMatches
                             
-                            // Emit bubble popped event for gem spawning
+                            // Emit bubble popped event
                             this.scene.events.emit('bubble-popped', {
                                 x: bubble.x,
                                 y: bubble.y,
@@ -416,15 +411,7 @@ export class MatchDetectionSystem {
                         ease: 'Cubic.easeOut',
                         delay: index * 20,
                         onComplete: () => {
-                            // Check if bubble has a gem inside and collect it
-                            if (bubble.getHasGem()) {
-                                this.scene.events.emit('gem-collected-from-bubble', {
-                                    x: bubble.x,
-                                    y: bubble.y,
-                                    gemType: bubble.getGemType(),
-                                    isPlayer: isPlayerShot
-                                });
-                            }
+                            // Gems already collected at the beginning of removeMatches
                             
                             this.gridAttachmentSystem.removeGridBubble(bubble);
                             bubble.setGridPosition(null);

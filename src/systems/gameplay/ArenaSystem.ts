@@ -96,8 +96,9 @@ export class ArenaSystem {
     
     // Objective gem throwing system
     private objectiveGemTimer?: Phaser.Time.TimerEvent;
-    private lastPlayerGemCount: number = 0;
-    private lastOpponentGemCount: number = 0;
+    // Gem tracking
+    private playerGemCount: number = 0;
+    private opponentGemCount: number = 0;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -287,6 +288,8 @@ export class ArenaSystem {
         
         this.playerScore = 0;
         this.aiScore = 0;
+        this.playerGemCount = 0;
+        this.opponentGemCount = 0;
         
         // Initialize shooting system with grid attachment
         this.shootingSystem = new ShootingSystem(
@@ -2389,21 +2392,18 @@ export class ArenaSystem {
 
     private handleObjectiveGemCollected(data: { isPlayer: boolean; x: number; y: number }): void {
         // Give gem directly to the player/AI who hit the objective
-        if (data.isPlayer && this.gemCollectionSystem) {
-            // Add gem to player
-            this.scene.events.emit('gems-updated', {
-                playerGems: (this.gemCollectionSystem as any).playerGems + 1,
-                opponentGems: (this.gemCollectionSystem as any).opponentGems,
-                total: (this.gemCollectionSystem as any).totalGemsCollected + 1
-            });
-        } else if (!data.isPlayer && this.gemCollectionSystem) {
-            // Add gem to opponent
-            this.scene.events.emit('gems-updated', {
-                playerGems: (this.gemCollectionSystem as any).playerGems,
-                opponentGems: (this.gemCollectionSystem as any).opponentGems + 1,
-                total: (this.gemCollectionSystem as any).totalGemsCollected + 1
-            });
+        if (data.isPlayer) {
+            this.playerGemCount++;
+        } else {
+            this.opponentGemCount++;
         }
+        
+        // Update UI
+        this.scene.events.emit('gems-updated', {
+            playerGems: this.playerGemCount,
+            opponentGems: this.opponentGemCount,
+            total: this.playerGemCount + this.opponentGemCount
+        });
         
         // Visual feedback - spawn a gem that flies to the scorer
         const targetY = data.isPlayer ? this.scene.cameras.main.height - 50 : 50;
@@ -2427,23 +2427,22 @@ export class ArenaSystem {
     
     private handleBubbleGemCollected(data: { x: number; y: number; gemType: string; isPlayer: boolean }): void {
         // Give gem to the player who popped the bubble
-        if (data.isPlayer && this.gemCollectionSystem) {
-            // Add gem to player
-            const gemsToAdd = data.gemType === 'golden' ? 2 : 1;
-            this.scene.events.emit('gems-updated', {
-                playerGems: (this.gemCollectionSystem as any).playerGems + gemsToAdd,
-                opponentGems: (this.gemCollectionSystem as any).opponentGems,
-                total: (this.gemCollectionSystem as any).totalGemsCollected + gemsToAdd
-            });
-        } else if (!data.isPlayer && this.gemCollectionSystem) {
-            // Add gem to opponent
-            const gemsToAdd = data.gemType === 'golden' ? 2 : 1;
-            this.scene.events.emit('gems-updated', {
-                playerGems: (this.gemCollectionSystem as any).playerGems,
-                opponentGems: (this.gemCollectionSystem as any).opponentGems + gemsToAdd,
-                total: (this.gemCollectionSystem as any).totalGemsCollected + gemsToAdd
-            });
+        const gemsToAdd = data.gemType === 'golden' ? 2 : 1;
+        
+        if (data.isPlayer) {
+            this.playerGemCount += gemsToAdd;
+        } else {
+            this.opponentGemCount += gemsToAdd;
         }
+        
+        // Update UI
+        this.scene.events.emit('gems-updated', {
+            playerGems: this.playerGemCount,
+            opponentGems: this.opponentGemCount,
+            total: this.playerGemCount + this.opponentGemCount
+        });
+        
+        console.log(`Gem collected from bubble! Player: ${this.playerGemCount}, Opponent: ${this.opponentGemCount}`);
         
         // Create flying gem animation
         this.createFlyingGemAnimation(data.x, data.y, data.isPlayer);
