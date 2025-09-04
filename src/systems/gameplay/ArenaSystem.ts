@@ -1271,99 +1271,80 @@ export class ArenaSystem {
             }
         };
         
-        // CREATE A LARGE, FILLED 5-POINTED STAR
-        // We'll make it thick and clear so it's unmistakably a star
+        // CREATE A PERFECT 5-POINTED STAR
+        // Using precise coordinates to form a clear star shape
         
-        // CENTER MASS - Make the star body thick and obvious
+        // STAR CENTER - Core hexagon
         addPosition({ q: 0, r: 0, s: 0 });   // Center
-        addPosition({ q: 0, r: -1, s: 1 });
-        addPosition({ q: 1, r: -1, s: 0 });
-        addPosition({ q: 1, r: 0, s: -1 });
-        addPosition({ q: 0, r: 1, s: -1 });
-        addPosition({ q: -1, r: 1, s: 0 });
-        addPosition({ q: -1, r: 0, s: 1 });
         
-        // TOP POINT (straight up) - Make it long and prominent
-        addPosition({ q: 0, r: -5, s: 5 });  // Tip
+        // TOP POINT (North) - Long and sharp
+        addPosition({ q: 0, r: -6, s: 6 });  // Tip
+        addPosition({ q: 0, r: -5, s: 5 });
         addPosition({ q: 0, r: -4, s: 4 });
         addPosition({ q: 0, r: -3, s: 3 });
         addPosition({ q: 0, r: -2, s: 2 });
-        // Add width to top arm
-        addPosition({ q: -1, r: -3, s: 4 });
-        addPosition({ q: 1, r: -3, s: 2 });
-        addPosition({ q: -1, r: -4, s: 5 });
-        addPosition({ q: 1, r: -4, s: 3 });
+        addPosition({ q: 0, r: -1, s: 1 });
         
-        // UPPER-RIGHT POINT (72 degrees from top)
-        addPosition({ q: 4, r: -3, s: -1 }); // Tip
-        addPosition({ q: 3, r: -2, s: -1 });
-        addPosition({ q: 2, r: -2, s: 0 });
-        addPosition({ q: 2, r: -1, s: -1 });
-        addPosition({ q: 1, r: -1, s: 0 });
-        // Thicken the arm
-        addPosition({ q: 3, r: -3, s: 0 });
+        // TOP-RIGHT POINT (72° clockwise from top)
+        addPosition({ q: 5, r: -2, s: -3 }); // Tip
         addPosition({ q: 4, r: -2, s: -2 });
+        addPosition({ q: 3, r: -1, s: -2 });
+        addPosition({ q: 2, r: -1, s: -1 });
+        addPosition({ q: 1, r: 0, s: -1 });
         
-        // LOWER-RIGHT POINT (144 degrees from upper-right)
-        addPosition({ q: 3, r: 3, s: -6 });  // Tip
-        addPosition({ q: 3, r: 2, s: -5 });
-        addPosition({ q: 2, r: 2, s: -4 });
-        addPosition({ q: 2, r: 1, s: -3 });
-        addPosition({ q: 1, r: 1, s: -2 });
-        // Thicken
+        // BOTTOM-RIGHT POINT (144° from previous)
+        addPosition({ q: 3, r: 4, s: -7 });  // Tip  
+        addPosition({ q: 3, r: 3, s: -6 });
         addPosition({ q: 2, r: 3, s: -5 });
-        
-        // LOWER-LEFT POINT (symmetrical to lower-right)
-        addPosition({ q: -3, r: 3, s: 0 });  // Tip
-        addPosition({ q: -3, r: 2, s: 1 });
-        addPosition({ q: -2, r: 2, s: 0 });
-        addPosition({ q: -2, r: 1, s: 1 });
-        addPosition({ q: -1, r: 1, s: 0 });
-        // Thicken
-        addPosition({ q: -2, r: 3, s: -1 });
-        
-        // UPPER-LEFT POINT (symmetrical to upper-right)
-        addPosition({ q: -4, r: -3, s: 7 }); // Tip
-        addPosition({ q: -3, r: -2, s: 5 });
-        addPosition({ q: -2, r: -2, s: 4 });
-        addPosition({ q: -2, r: -1, s: 3 });
-        addPosition({ q: -1, r: -1, s: 2 });
-        // Thicken
-        addPosition({ q: -3, r: -3, s: 6 });
-        addPosition({ q: -4, r: -2, s: 6 });
-        
-        // CONNECT THE POINTS WITH MORE BUBBLES
-        // This fills in the star shape to make it more solid
-        
-        // Fill between top and upper-right
-        addPosition({ q: 1, r: -2, s: 1 });
-        addPosition({ q: 2, r: -3, s: 1 });
-        
-        // Fill between upper-right and lower-right
-        addPosition({ q: 2, r: 0, s: -2 });
-        addPosition({ q: 3, r: 0, s: -3 });
-        addPosition({ q: 3, r: 1, s: -4 });
-        
-        // Fill between lower-right and lower-left (bottom V)
+        addPosition({ q: 2, r: 2, s: -4 });
         addPosition({ q: 1, r: 2, s: -3 });
-        addPosition({ q: 0, r: 2, s: -2 });
+        addPosition({ q: 1, r: 1, s: -2 });
+        
+        // BOTTOM-LEFT POINT (mirror of bottom-right)
+        addPosition({ q: -3, r: 4, s: -1 });  // Tip
+        addPosition({ q: -3, r: 3, s: 0 });
+        addPosition({ q: -2, r: 3, s: -1 });
+        addPosition({ q: -2, r: 2, s: 0 });
         addPosition({ q: -1, r: 2, s: -1 });
+        addPosition({ q: -1, r: 1, s: 0 });
+        
+        // TOP-LEFT POINT (mirror of top-right)
+        addPosition({ q: -5, r: -2, s: 7 }); // Tip
+        addPosition({ q: -4, r: -2, s: 6 });
+        addPosition({ q: -3, r: -1, s: 4 });
+        addPosition({ q: -2, r: -1, s: 3 });
+        addPosition({ q: -1, r: 0, s: 1 });
+        
+        // INNER PENTAGON to connect all points through center
+        // This creates the classic star inner shape
+        addPosition({ q: 1, r: -1, s: 0 });  // Between top and top-right
+        addPosition({ q: 1, r: 1, s: -2 });  // Between top-right and bottom-right
+        addPosition({ q: -1, r: 1, s: 0 });  // Between bottom points
+        addPosition({ q: -1, r: -1, s: 2 }); // Between top-left and top
+        addPosition({ q: 0, r: 1, s: -1 });  // Bottom of inner pentagon
+        
+        // STAR RAYS - Connect center to each point with clean lines
+        // These make the star points more defined
+        
+        // Ray to top-right
+        addPosition({ q: 2, r: -1, s: -1 });
+        addPosition({ q: 3, r: -2, s: -1 });
+        
+        // Ray to bottom-right  
+        addPosition({ q: 1, r: 1, s: -2 });
+        addPosition({ q: 2, r: 2, s: -4 });
+        
+        // Ray to bottom
+        addPosition({ q: 0, r: 2, s: -2 });
         addPosition({ q: 0, r: 3, s: -3 });
         
-        // Fill between lower-left and upper-left
-        addPosition({ q: -2, r: 0, s: 2 });
-        addPosition({ q: -3, r: 0, s: 3 });
-        addPosition({ q: -3, r: 1, s: 2 });
+        // Ray to bottom-left
+        addPosition({ q: -1, r: 1, s: 0 });
+        addPosition({ q: -2, r: 2, s: 0 });
         
-        // Fill between upper-left and top
-        addPosition({ q: -1, r: -2, s: 3 });
-        addPosition({ q: -2, r: -3, s: 5 });
-        
-        // Additional center mass to make the star body prominent
-        addPosition({ q: 1, r: 0, s: -1 });
-        addPosition({ q: -1, r: 0, s: 1 });
-        addPosition({ q: 0, r: -1, s: 1 });
-        addPosition({ q: 0, r: 1, s: -1 });
+        // Ray to top-left
+        addPosition({ q: -2, r: -1, s: 3 });
+        addPosition({ q: -3, r: -2, s: 5 });
         
         // Add some space debris around the star (fewer, more scattered)
         // Upper space field
