@@ -7,6 +7,7 @@ import { BubbleTextureCache } from '@/systems/rendering/BubbleTextureCache';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Objective } from '@/gameObjects/Objective';
+// import { SpaceObjective } from '@/gameObjects/SpaceObjective'; // Not needed anymore
 import { InputManager } from '@/systems/input/InputManager';
 import { ShootingSystem } from './ShootingSystem';
 import { GridAttachmentSystem } from './GridAttachmentSystem';
@@ -24,6 +25,9 @@ import { AimingModeSystem } from '@/systems/powerups/AimingModeSystem';
 import { PaintSplatterSystem } from '@/systems/visual/PaintSplatterSystem';
 import { SpaceArenaParticles } from '@/systems/visual/SpaceArenaParticles';
 import { OceanArenaParticles } from '@/systems/visual/OceanArenaParticles';
+// import { GemSpawnSystem } from './GemSpawnSystem'; // Not used - gems are now inside bubbles
+import { GemCollectionSystem } from './GemCollectionSystem';
+import { GemCounterUI } from '@/ui/GemCounterUI';
 
 export { AIDifficulty };
 
@@ -84,6 +88,11 @@ export class ArenaSystem {
     // Arena particle managers
     private spaceParticles?: SpaceArenaParticles;
     private oceanParticles?: OceanArenaParticles;
+    
+    // Gem system
+    // private gemSpawnSystem?: GemSpawnSystem; // Not used - gems are now inside bubbles
+    private gemCollectionSystem?: GemCollectionSystem;
+    private gemCounterUI?: GemCounterUI;
 
     constructor(scene: Scene) {
         this.scene = scene;
@@ -227,6 +236,18 @@ export class ArenaSystem {
         // this.playerPowerUpInventory = new PowerUpInventoryUI(this.scene, false);
         // this.opponentPowerUpInventory = new PowerUpInventoryUI(this.scene, true);
         this.aimingModeSystem = new AimingModeSystem(this.scene);
+        
+        // Initialize gem systems (but don't use GemSpawnSystem for floating gems)
+        // this.gemSpawnSystem = new GemSpawnSystem(this.scene); // DISABLED - gems are now inside bubbles
+        this.gemCollectionSystem = new GemCollectionSystem(this.scene);
+        this.gemCounterUI = new GemCounterUI(this.scene);
+        console.log('ArenaSystem: Gem systems and UI initialized');
+        
+        // Listen for objective gem collection
+        this.scene.events.on('objective-gem-collected', this.handleObjectiveGemCollected, this);
+        
+        // Listen for gem collection from bubbles
+        this.scene.events.on('gem-collected-from-bubble', this.handleBubbleGemCollected, this);
         
         // Initialize power-up activation after launcher is created
         if (this.playerLauncher) {
@@ -588,18 +609,8 @@ export class ArenaSystem {
         // Initialize new particle system
         this.spaceParticles = new SpaceArenaParticles(this.scene);
         
-        // Check if space objective texture exists, if not use regular objective
-        if (!this.scene.textures.exists('space_objective')) {
-            console.log('Space objective texture not found, creating regular objective');
-            // Fallback to regular objective
-            this.objective = new Objective(this.scene, {
-                x: x,
-                y: y,
-                size: this.config.objectiveSize,
-                health: 1
-            });
-            return;
-        }
+        // For space theme, modify the original objective to give gems instead of victory
+        // But keep the original visual design
         
         console.log('Creating space objective with materialization at', x, y);
         
@@ -1506,7 +1517,9 @@ export class ArenaSystem {
                 // Create normal bubble
                 const bubble = this.getBubbleFromPool();
                 if (bubble) {
-                    bubble.reset(pos.pixelPos.x, pos.pixelPos.y, Bubble.getRandomColor());
+                    // 15% chance to have a gem inside (adjust as needed)
+                    const hasGem = Math.random() < 0.15;
+                    bubble.reset(pos.pixelPos.x, pos.pixelPos.y, Bubble.getRandomColor(), hasGem);
                     bubble.setGridPosition(pos.hexPos);
                     this.bubbles.push(bubble);
                     this.gridAttachmentSystem.addGridBubble(bubble);
@@ -1738,6 +1751,9 @@ export class ArenaSystem {
         
         // Update unified feedback system
         this.unifiedFeedbackSystem?.update(delta);
+        
+        // Update gem spawn system - DISABLED (gems are now inside bubbles)
+        // this.gemSpawnSystem?.update(time, delta);
     }
     
     private updateLauncherAiming(): void {
@@ -1936,28 +1952,55 @@ export class ArenaSystem {
         
         if (distance < hitRadius) {
             const shooter = bubble.getShooter();
-            const playerWins = shooter === 'player';
+            const isPlayer = shooter === 'player';
             
-            // console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
-            // console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
-            
-            // Call the hit method on the objective to trigger sound and animation
-            this.objective.hit();
-            
-            // Mark game as over immediately to prevent multiple triggers
-            this.gameOver = true;
-            
-            // Stop the bubble
-            bubble.setVisible(false);
-            
-            // Store objective reference before nulling
-            const obj = this.objective;
-            this.objective = null as any;
-            
-            // Play victory animation
-            obj.playVictoryAnimation(() => {
-                this.triggerGameOver(playerWins);
-            });
+            // Check if we're in space theme (gives gems instead of victory)
+            const currentTheme = this.scene.registry.get('gameTheme') || 'ocean';
+            if (currentTheme === 'space') {
+                // In space theme, hitting objective gives gems, not victory
+                this.scene.events.emit('objective-gem-collected', {
+                    isPlayer: isPlayer,
+                    x: this.objective.x,
+                    y: this.objective.y
+                });
+                
+                // Play hit animation on objective
+                this.objective.hit();
+                
+                // Stop and hide the bubble that hit the objective
+                bubble.setVisible(false);
+                bubble.destroy();
+                
+                // Remove from bubbles array
+                const index = this.bubbles.indexOf(bubble);
+                if (index > -1) {
+                    this.bubbles.splice(index, 1);
+                }
+            } else {
+                // Normal objective behavior - instant victory
+                const playerWins = isPlayer;
+                
+                // console.log(`🎯 TREASURE CHEST DIRECT HIT by ${shooter}! Distance: ${distance.toFixed(1)} < ${hitRadius}`);
+                // console.log(`INSTANT VICTORY for ${playerWins ? 'PLAYER' : 'AI'}!`);
+                
+                // Call the hit method on the objective to trigger sound and animation
+                this.objective.hit();
+                
+                // Mark game as over immediately to prevent multiple triggers
+                this.gameOver = true;
+                
+                // Stop the bubble
+                bubble.setVisible(false);
+                
+                // Store objective reference before nulling
+                const obj = this.objective;
+                this.objective = null as any;
+                
+                // Play victory animation
+                obj.playVictoryAnimation(() => {
+                    this.triggerGameOver(playerWins);
+                });
+            }
         }
     }
     
@@ -2144,7 +2187,7 @@ export class ArenaSystem {
                 // Method 2: Backup - traditional reload after delay
                 setTimeout(() => {
                     console.log('Method 2: Traditional reload backup');
-                    window.location.reload(true);
+                    window.location.reload();
                 }, 100);
             }
             
@@ -2319,9 +2362,13 @@ export class ArenaSystem {
         // If no bubble in pool, create a new one
         if (!bubble) {
             console.log('ArenaSystem: Pool exhausted, creating new bubble');
-            bubble = new Bubble(this.scene, x, y, color);
+            // 10% chance for shot bubbles to have gems (slightly lower than grid bubbles)
+            const hasGem = Math.random() < 0.10;
+            bubble = new Bubble(this.scene, x, y, color, hasGem);
         } else {
-            bubble.reset(x, y, color);
+            // 10% chance for shot bubbles to have gems
+            const hasGem = Math.random() < 0.10;
+            bubble.reset(x, y, color, hasGem);
         }
 
         bubble.setVisible(true);
@@ -2332,6 +2379,89 @@ export class ArenaSystem {
         return bubble;
     }
 
+    private handleObjectiveGemCollected(data: { isPlayer: boolean; x: number; y: number }): void {
+        // Give gem directly to the player/AI who hit the objective
+        if (data.isPlayer && this.gemCollectionSystem) {
+            // Add gem to player
+            this.scene.events.emit('gems-updated', {
+                playerGems: (this.gemCollectionSystem as any).playerGems + 1,
+                opponentGems: (this.gemCollectionSystem as any).opponentGems,
+                total: (this.gemCollectionSystem as any).totalGemsCollected + 1
+            });
+        } else if (!data.isPlayer && this.gemCollectionSystem) {
+            // Add gem to opponent
+            this.scene.events.emit('gems-updated', {
+                playerGems: (this.gemCollectionSystem as any).playerGems,
+                opponentGems: (this.gemCollectionSystem as any).opponentGems + 1,
+                total: (this.gemCollectionSystem as any).totalGemsCollected + 1
+            });
+        }
+        
+        // Visual feedback - spawn a gem that flies to the scorer
+        const targetY = data.isPlayer ? this.scene.cameras.main.height - 50 : 50;
+        const targetX = data.isPlayer ? 100 : this.scene.cameras.main.width - 100;
+        
+        const flyingGem = this.scene.add.star(data.x, data.y, 6, 8, 12, 0xFFD700);
+        flyingGem.setDepth(2000);
+        
+        this.scene.tweens.add({
+            targets: flyingGem,
+            x: targetX,
+            y: targetY,
+            scale: 0.5,
+            duration: 800,
+            ease: 'Cubic.easeIn',
+            onComplete: () => {
+                flyingGem.destroy();
+            }
+        });
+    }
+    
+    private handleBubbleGemCollected(data: { x: number; y: number; gemType: string; isPlayer: boolean }): void {
+        // Give gem to the player who popped the bubble
+        if (data.isPlayer && this.gemCollectionSystem) {
+            // Add gem to player
+            const gemsToAdd = data.gemType === 'golden' ? 2 : 1;
+            this.scene.events.emit('gems-updated', {
+                playerGems: (this.gemCollectionSystem as any).playerGems + gemsToAdd,
+                opponentGems: (this.gemCollectionSystem as any).opponentGems,
+                total: (this.gemCollectionSystem as any).totalGemsCollected + gemsToAdd
+            });
+        } else if (!data.isPlayer && this.gemCollectionSystem) {
+            // Add gem to opponent
+            const gemsToAdd = data.gemType === 'golden' ? 2 : 1;
+            this.scene.events.emit('gems-updated', {
+                playerGems: (this.gemCollectionSystem as any).playerGems,
+                opponentGems: (this.gemCollectionSystem as any).opponentGems + gemsToAdd,
+                total: (this.gemCollectionSystem as any).totalGemsCollected + gemsToAdd
+            });
+        }
+        
+        // Create flying gem animation
+        this.createFlyingGemAnimation(data.x, data.y, data.isPlayer);
+    }
+    
+    private createFlyingGemAnimation(x: number, y: number, isPlayer: boolean): void {
+        // Visual feedback - spawn a gem that flies to the scorer
+        const targetY = isPlayer ? this.scene.cameras.main.height - 50 : 50;
+        const targetX = isPlayer ? 100 : this.scene.cameras.main.width - 100;
+        
+        const flyingGem = this.scene.add.star(x, y, 6, 8, 12, 0xFFD700);
+        flyingGem.setDepth(2000);
+        
+        this.scene.tweens.add({
+            targets: flyingGem,
+            x: targetX,
+            y: targetY,
+            scale: 0.5,
+            duration: 800,
+            ease: 'Cubic.easeIn',
+            onComplete: () => {
+                flyingGem.destroy();
+            }
+        });
+    }
+    
     public destroy(): void {
         // Clean up particle systems
         if (this.spaceParticles) {

@@ -251,6 +251,12 @@ export class MatchDetectionSystem {
             if (bubble instanceof MysteryBubble) {
                 // console.log('Found MysteryBubble in matches, collecting power-up for', isPlayerShot ? 'player' : 'opponent');
                 (bubble as MysteryBubble).collectPowerUp(isPlayerShot);
+                
+                // DISABLED - We don't want floating gems anymore
+                // this.scene.events.emit('mystery-bubble-destroyed', {
+                //     x: bubble.x,
+                //     y: bubble.y
+                // });
             }
         });
         
@@ -303,6 +309,24 @@ export class MatchDetectionSystem {
                         ease: 'Power2',
                         delay: index * 15,
                         onComplete: () => {
+                            // Check if bubble has a gem inside and collect it
+                            if (bubble.getHasGem()) {
+                                this.scene.events.emit('gem-collected-from-bubble', {
+                                    x: bubble.x,
+                                    y: bubble.y,
+                                    gemType: bubble.getGemType(),
+                                    isPlayer: isPlayerShot
+                                });
+                            }
+                            
+                            // Emit bubble popped event for gem spawning
+                            this.scene.events.emit('bubble-popped', {
+                                x: bubble.x,
+                                y: bubble.y,
+                                color: bubble.getColor(),
+                                isCombo: true
+                            });
+                            
                             this.gridAttachmentSystem.removeGridBubble(bubble);
                             bubble.setGridPosition(null);
                             bubble.returnToPool();
@@ -319,6 +343,24 @@ export class MatchDetectionSystem {
                         ease: 'Back.easeOut',
                         delay: index * 20,
                         onComplete: () => {
+                            // Check if bubble has a gem inside and collect it
+                            if (bubble.getHasGem()) {
+                                this.scene.events.emit('gem-collected-from-bubble', {
+                                    x: bubble.x,
+                                    y: bubble.y,
+                                    gemType: bubble.getGemType(),
+                                    isPlayer: isPlayerShot
+                                });
+                            }
+                            
+                            // Emit bubble popped event for gem spawning
+                            this.scene.events.emit('bubble-popped', {
+                                x: bubble.x,
+                                y: bubble.y,
+                                color: bubble.getColor(),
+                                isCombo: true
+                            });
+                            
                             this.gridAttachmentSystem.removeGridBubble(bubble);
                             bubble.setGridPosition(null);
                             bubble.returnToPool();
@@ -336,6 +378,24 @@ export class MatchDetectionSystem {
                         ease: 'Bounce.easeOut',
                         delay: index * 25,
                         onComplete: () => {
+                            // Check if bubble has a gem inside and collect it
+                            if (bubble.getHasGem()) {
+                                this.scene.events.emit('gem-collected-from-bubble', {
+                                    x: bubble.x,
+                                    y: bubble.y,
+                                    gemType: bubble.getGemType(),
+                                    isPlayer: isPlayerShot
+                                });
+                            }
+                            
+                            // Emit bubble popped event for gem spawning
+                            this.scene.events.emit('bubble-popped', {
+                                x: bubble.x,
+                                y: bubble.y,
+                                color: bubble.getColor(),
+                                isCombo: true
+                            });
+                            
                             this.gridAttachmentSystem.removeGridBubble(bubble);
                             bubble.setGridPosition(null);
                             bubble.returnToPool();
@@ -356,6 +416,16 @@ export class MatchDetectionSystem {
                         ease: 'Cubic.easeOut',
                         delay: index * 20,
                         onComplete: () => {
+                            // Check if bubble has a gem inside and collect it
+                            if (bubble.getHasGem()) {
+                                this.scene.events.emit('gem-collected-from-bubble', {
+                                    x: bubble.x,
+                                    y: bubble.y,
+                                    gemType: bubble.getGemType(),
+                                    isPlayer: isPlayerShot
+                                });
+                            }
+                            
                             this.gridAttachmentSystem.removeGridBubble(bubble);
                             bubble.setGridPosition(null);
                             bubble.returnToPool();

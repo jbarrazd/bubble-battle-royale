@@ -257,6 +257,12 @@ export class ShootingSystem {
         // Emit bubble shoot event for sound system
         this.scene.events.emit('bubble-shoot');
         
+        // Emit bubble-shot event for gem collection
+        this.scene.events.emit('bubble-shot', {
+            bubble: this.currentBubble,
+            isPlayer: true
+        });
+        
         // Play launcher animation with the color of the bubble being shot
         const shotBubbleColor = this.currentBubble.getColor();
         this.playerLauncher.animateShoot(shotBubbleColor);
@@ -331,6 +337,12 @@ export class ShootingSystem {
         
         // Emit AI bubble shoot event for sound system
         this.scene.events.emit('bubble-shoot', { isAI: true });
+        
+        // Emit bubble-shot event for gem collection
+        this.scene.events.emit('bubble-shot', {
+            bubble: aiBubble,
+            isPlayer: false
+        });
         
         // Visual feedback on opponent launcher
         this.opponentLauncher.setHighlight(true);

@@ -20,6 +20,11 @@ export class Bubble extends Phaser.GameObjects.Container {
     private usingCachedTexture: boolean = false;
     private static textureCache: BubbleTextureCache | null = null;
     
+    // Gem system
+    private hasGem: boolean = false;
+    private gemType: 'normal' | 'golden' = 'normal';
+    private gemVisual?: Phaser.GameObjects.Container;
+    
     // Force reinit the cache - useful for design updates
     public static resetTextureCache(): void {
         if (Bubble.textureCache) {
@@ -28,10 +33,11 @@ export class Bubble extends Phaser.GameObjects.Container {
         }
     }
 
-    constructor(scene: Phaser.Scene, x: number, y: number, color: BubbleColor) {
+    constructor(scene: Phaser.Scene, x: number, y: number, color: BubbleColor, hasGem: boolean = false) {
         super(scene, x, y);
         
         this.color = color;
+        this.hasGem = hasGem;
         
         // Initialize texture cache if not already done
         if (!Bubble.textureCache) {
@@ -118,8 +124,83 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         scene.add.existing(this);
         
+        // Add gem visual if this bubble contains a gem
+        if (hasGem) {
+            this.addGemVisual();
+        }
+        
         // No idle animation - keep bubbles static
         // this.addIdleAnimation();
+    }
+    
+    private addGemVisual(): void {
+        if (!this.scene) return;
+        
+        this.gemVisual = this.scene.add.container(0, 0);
+        
+        // Gem glow inside bubble
+        const gemGlow = this.scene.add.circle(0, 0, 12, 0xFFD700, 0.4);
+        
+        // Gem shape (small diamond)
+        const gemPoints = [
+            0, -8,   // top
+            6, 0,    // right
+            0, 8,    // bottom
+            -6, 0    // left
+        ];
+        const gem = this.scene.add.polygon(0, 0, gemPoints, 0xFFD700);
+        gem.setStrokeStyle(1, 0xFFFFFF, 1);
+        
+        // Small sparkle effect
+        const sparkle = this.scene.add.star(0, -3, 4, 2, 4, 0xFFFFFF, 0.8);
+        sparkle.setScale(0.5);
+        
+        this.gemVisual.add([gemGlow, gem, sparkle]);
+        this.add(this.gemVisual);
+        
+        // Animate gem floating inside bubble
+        this.scene.tweens.add({
+            targets: this.gemVisual,
+            y: { from: -3, to: 3 },
+            angle: { from: -10, to: 10 },
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Sparkle pulse
+        this.scene.tweens.add({
+            targets: sparkle,
+            scale: { from: 0.5, to: 0.8 },
+            alpha: { from: 0.8, to: 1 },
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    public setGem(hasGem: boolean, type: 'normal' | 'golden' = 'normal'): void {
+        if (this.hasGem === hasGem) return;
+        
+        this.hasGem = hasGem;
+        this.gemType = type;
+        
+        if (hasGem && !this.gemVisual) {
+            this.addGemVisual();
+        } else if (!hasGem && this.gemVisual) {
+            this.gemVisual.destroy();
+            this.gemVisual = undefined;
+        }
+    }
+    
+    public getHasGem(): boolean {
+        return this.hasGem;
+    }
+    
+    public getGemType(): 'normal' | 'golden' {
+        return this.gemType;
     }
     
     private addIdleAnimation(): void {
@@ -508,7 +589,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         });
     }
 
-    public reset(x: number, y: number, color?: BubbleColor): void {
+    public reset(x: number, y: number, color?: BubbleColor, hasGem: boolean = false): void {
         this.setPosition(x, y);
         this.setAlpha(1);
         this.setScale(1);
@@ -516,6 +597,9 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.gridPosition = null;
         this.isSpecial = false;
         this.pooled = false;
+        
+        // Reset gem state
+        this.setGem(hasGem);
         
         // Update color if provided
         if (color !== undefined) {

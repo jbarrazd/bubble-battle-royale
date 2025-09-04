@@ -98,6 +98,16 @@ export class ComboManager {
         // Calculate final score
         const finalScore = Math.floor(basePoints * this.comboMultiplier * chainBonus);
         
+        // Emit combo-complete event for gem spawning
+        if (this.currentCombo >= 3 && x !== undefined && y !== undefined) {
+            this.scene.events.emit('combo-complete', {
+                combo: this.currentCombo,
+                matchSize: matchSize,
+                x: x,
+                y: y
+            });
+        }
+        
         // DISABLED: Visual effects now handled by UnifiedFeedbackSystem
         // if (x !== undefined && y !== undefined) {
         //     this.showCombo(comboConfig, finalScore, x, y, matchSize, bubbleColor);

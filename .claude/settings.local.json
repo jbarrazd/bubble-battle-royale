@@ -13,6 +13,9 @@
       "Bash(mkdir:*)"
     ],
     "deny": [],
-    "ask": []
+    "ask": [],
+    "additionalDirectories": [
+      "/Users/josebarraza/proyectos-juegos/phaser/bubbleclashv3.0"
+    ]
   }
 }
