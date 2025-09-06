@@ -246,8 +246,9 @@ export class VisualManager extends BaseGameSystem {
      * Show gem collection effect
      */
     private showGemCollectEffect(data: { x: number, y: number, targetX?: number, targetY?: number, isPlayer?: boolean, delta?: number }): void {
-        // Create gem sprite
-        const gem = this.scene.add.circle(data.x, data.y, 10, 0xFFD700);
+        // Create gem sprite with appropriate color (cyan for player, pink-red for opponent)
+        const gemColor = data.isPlayer ? 0x00ffff : 0xff0066;  // Match UI colors
+        const gem = this.scene.add.circle(data.x, data.y, 10, gemColor);
         gem.setDepth(Z_LAYERS.FLOATING_UI || 1000);
         this.activeEffects.add(gem);
         
@@ -257,7 +258,7 @@ export class VisualManager extends BaseGameSystem {
             const sparkle = this.scene.add.circle(
                 data.x + Phaser.Math.Between(-5, 5),
                 data.y + Phaser.Math.Between(-5, 5),
-                3, 0xFFD700
+                3, gemColor
             );
             sparkle.setAlpha(0.7);
             this.scene.tweens.add({
@@ -271,13 +272,13 @@ export class VisualManager extends BaseGameSystem {
         }
         
         // Create a simple glow effect instead
-        const trail = this.scene.add.circle(data.x, data.y, 15, 0xFFD700, 0.3);
+        const trail = this.scene.add.circle(data.x, data.y, 15, gemColor, 0.3);
         trail.setDepth(Z_LAYERS.EFFECTS || 500);
         this.activeEffects.add(trail);
         
-        // Determine target position based on player
-        const targetX = data.targetX ?? (data.isPlayer ? 100 : this.scene.cameras.main.width - 100);
-        const targetY = data.targetY ?? (data.isPlayer ? this.scene.cameras.main.height - 100 : 100);
+        // All gems go to the same counter at bottom left
+        const targetX = data.targetX ?? 110;  // Gem counter X position
+        const targetY = data.targetY ?? (this.scene.cameras.main.height - 110);  // Gem counter Y position
         
         // Animate to target
         const tween = this.scene.tweens.add({
@@ -296,8 +297,8 @@ export class VisualManager extends BaseGameSystem {
                 this.activeEffects.delete(trail);
                 this.activeTweens.delete(tween);
                 
-                // Flash effect at target
-                this.createFlashEffect(targetX, targetY, 0xFFD700);
+                // Flash effect at target with appropriate color
+                this.createFlashEffect(targetX, targetY, gemColor);
             }
         });
         
