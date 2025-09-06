@@ -71,18 +71,18 @@ export class SpaceObjective extends Objective {
         this.crystalCore.setStrokeStyle(3, 0x00FFFF, 1);
         this.add(this.crystalCore);
         
-        // Inner glow
-        const innerGlow = this.scene.add.circle(0, 0, radius * 0.7, 0xFFD700, 0.3);
+        // Inner glow with space theme
+        const innerGlow = this.scene.add.circle(0, 0, radius * 0.7, 0x00ccff, 0.4);
         this.add(innerGlow);
         
-        // Gem icon in center
-        const gemIcon = this.scene.add.star(0, 0, 6, radius * 0.3, radius * 0.5, 0xFFD700);
-        gemIcon.setStrokeStyle(2, 0xFFFFFF, 1);
-        this.add(gemIcon);
+        // Star icon in center using sprite
+        const starIcon = this.scene.add.image(0, 0, 'star-medium');
+        starIcon.setScale(0.8);
+        this.add(starIcon);
         
         // Floating animation
         this.scene.tweens.add({
-            targets: [this.crystalCore, innerGlow, gemIcon],
+            targets: [this.crystalCore, innerGlow, starIcon],
             y: { from: -5, to: 5 },
             duration: 3000,
             yoyo: true,
@@ -101,7 +101,7 @@ export class SpaceObjective extends Objective {
         
         // Gem icon pulse
         this.scene.tweens.add({
-            targets: gemIcon,
+            targets: starIcon,
             scale: { from: 0.9, to: 1.1 },
             duration: 1500,
             yoyo: true,
@@ -198,27 +198,27 @@ export class SpaceObjective extends Objective {
             }
         });
         
-        // Spawn gem particles
+        // Spawn star particles using sprite asset
         for (let i = 0; i < 8; i++) {
             const angle = (Math.PI * 2 * i) / 8;
-            const gem = this.scene.add.star(
+            const star = this.scene.add.image(
                 this.x,
                 this.y,
-                5, 3, 5,
-                0xFFD700
+                'star-small'
             );
-            gem.setScale(0.5);
+            star.setScale(0.6);
             
             this.scene.tweens.add({
-                targets: gem,
+                targets: star,
                 x: this.x + Math.cos(angle) * 80,
                 y: this.y + Math.sin(angle) * 80,
                 scale: 0,
                 alpha: 0,
+                rotation: Math.PI * 2,
                 duration: 800,
                 ease: 'Cubic.easeOut',
                 onComplete: () => {
-                    gem.destroy();
+                    star.destroy();
                 }
             });
         }
