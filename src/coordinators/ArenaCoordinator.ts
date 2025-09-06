@@ -980,26 +980,26 @@ export class ArenaCoordinator {
      * Animate gem flying from objective to bubble (from original ArenaSystem)
      */
     private animateGemThrow(targetBubble: any, objective: any): void {
-        // Create a gem at the objective position
-        const gem = this.scene.add.star(
+        // Create a star sprite at the objective position
+        const star = this.scene.add.image(
             objective.x,
             objective.y,
-            6, 8, 12, 0xFFD700
+            'star-small'
         );
-        gem.setDepth(1500);
-        gem.setScale(0.5);
+        star.setDepth(1500);
+        star.setScale(1.2);
         
-        // Create sparkle trail
+        // Create sparkle trail with space theme
         const sparkles: Phaser.GameObjects.GameObject[] = [];
         const sparkleTimer = this.scene.time.addEvent({
             delay: 50,
             repeat: 20,
             callback: () => {
                 const sparkle = this.scene.add.circle(
-                    gem.x + Phaser.Math.Between(-5, 5),
-                    gem.y + Phaser.Math.Between(-5, 5),
+                    star.x + Phaser.Math.Between(-5, 5),
+                    star.y + Phaser.Math.Between(-5, 5),
                     Phaser.Math.Between(1, 3),
-                    0xFFD700,
+                    0x00ccff,  // Space blue
                     0.8
                 );
                 sparkle.setDepth(1400);
@@ -1018,12 +1018,12 @@ export class ArenaCoordinator {
             }
         });
         
-        // Animate the gem flying with arc
+        // Animate the star flying with arc
         const midX = (objective.x + targetBubble.x) / 2;
         const midY = Math.min(objective.y, targetBubble.y) - 100; // Arc height
         
         this.scene.tweens.add({
-            targets: gem,
+            targets: star,
             x: targetBubble.x,
             y: targetBubble.y,
             duration: 1000,
@@ -1034,17 +1034,17 @@ export class ArenaCoordinator {
                 if (progress < 0.5) {
                     // First half - move up
                     const t = progress * 2;
-                    gem.y = Phaser.Math.Linear(objective.y, midY, t);
-                    gem.x = Phaser.Math.Linear(objective.x, midX, t);
+                    star.y = Phaser.Math.Linear(objective.y, midY, t);
+                    star.x = Phaser.Math.Linear(objective.x, midX, t);
                 } else {
                     // Second half - move down
                     const t = (progress - 0.5) * 2;
-                    gem.y = Phaser.Math.Linear(midY, targetBubble.y, t);
-                    gem.x = Phaser.Math.Linear(midX, targetBubble.x, t);
+                    star.y = Phaser.Math.Linear(midY, targetBubble.y, t);
+                    star.x = Phaser.Math.Linear(midX, targetBubble.x, t);
                 }
                 
-                // Rotate the gem
-                gem.angle += 5;
+                // Rotate the star
+                star.rotation += 0.1;
             },
             onComplete: () => {
                 // Add gem to the bubble
@@ -1060,7 +1060,7 @@ export class ArenaCoordinator {
                 });
                 
                 // Cleanup
-                gem.destroy();
+                star.destroy();
                 sparkleTimer.destroy();
                 sparkles.forEach(s => s.destroy());
             }
@@ -1731,29 +1731,26 @@ export class ArenaCoordinator {
      * Show gem collection visual effect
      */
     private showGemCollectEffect(x: number, y: number, isPlayer: boolean): void {
-        // Create a gem that flies to the counter
-        const gem = this.scene.add.star(
-            x,
-            y,
-            6, 10, 18, 
-            isPlayer ? 0x4facfe : 0xf43f5e
-        );
-        gem.setScale(0.8);
-        gem.setDepth(2000);
+        // Create a star sprite that flies to the counter
+        const star = this.scene.add.image(x, y, 'star-small');
+        star.setScale(1.0);
+        star.setTint(isPlayer ? 0x00ffff : 0xff0066);  // Cyan for player, pink-red for opponent
+        star.setDepth(2000);
         
         // Target position is always the gem counter (bottom left)
         const targetX = 110;
         const targetY = this.scene.cameras.main.height - 110;
         
-        // Animate gem flying to counter
+        // Animate star flying to counter
         this.scene.tweens.add({
-            targets: gem,
+            targets: star,
             x: targetX,
             y: targetY,
             scale: 0.3,
+            rotation: Math.PI * 2,
             duration: 800,
             ease: 'Power2',
-            onComplete: () => gem.destroy()
+            onComplete: () => star.destroy()
         });
         
         // Create sparkle trail
