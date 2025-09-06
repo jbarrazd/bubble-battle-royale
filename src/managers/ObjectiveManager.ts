@@ -959,7 +959,7 @@ export class ObjectiveManager extends BaseGameSystem {
         });
         
         // Trail effect
-        this.createGemTrail(star, duration);
+        this.createStarTrail(star, duration);
     }
     
     /**
@@ -1006,21 +1006,21 @@ export class ObjectiveManager extends BaseGameSystem {
     }
     
     /**
-     * Create trail effect for flying gem
+     * Create trail effect for flying star
      */
-    private createGemTrail(gem: Phaser.GameObjects.Star, duration: number): void {
-        // Create sparkle trail effect without texture
+    private createStarTrail(star: Phaser.GameObjects.Image, duration: number): void {
+        // Create sparkle trail effect without texture  
         const trailTimer = this.scene.time.addEvent({
             delay: 50,
             repeat: duration / 50,
             callback: () => {
                 const sparkle = this.scene.add.circle(
-                    gem.x + Phaser.Math.Between(-5, 5),
-                    gem.y + Phaser.Math.Between(-5, 5),
-                    2, 0xFFD700
+                    star.x + Phaser.Math.Between(-5, 5),
+                    star.y + Phaser.Math.Between(-5, 5),
+                    2, 0x00ccff  // Space blue color
                 );
-                sparkle.setAlpha(0.6);
-                sparkle.setDepth(gem.depth - 1);
+                sparkle.setAlpha(0.7);
+                sparkle.setDepth(star.depth - 1);
                 
                 this.scene.tweens.add({
                     targets: sparkle,

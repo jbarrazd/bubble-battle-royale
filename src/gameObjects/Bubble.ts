@@ -140,27 +140,28 @@ export class Bubble extends Phaser.GameObjects.Container {
     private addGemVisual(): void {
         if (!this.scene) return;
         
-        this.gemVisual = this.scene.add.container(0, 0);
+        // Position star container in top-right corner of bubble
+        this.gemVisual = this.scene.add.container(12, -12);
         
-        // Star glow inside bubble (blue for space theme)
-        const starGlow = this.scene.add.circle(0, 0, 14, 0x00ccff, 0.5);
+        // Subtle shadow behind star
+        const starShadow = this.scene.add.circle(1, 1, 8, 0x000000, 0.2);
         
-        // Star sprite (using small star asset)
+        // Star sprite (bigger and more visible)
         const star = this.scene.add.image(0, 0, 'star-small');
-        star.setScale(0.7); // Small enough to fit inside bubble
+        star.setScale(1.0); // Larger scale for better visibility
         
-        // Small sparkle effect around star
-        const sparkle = this.scene.add.star(0, -4, 4, 2, 4, 0xFFFFFF, 0.9);
-        sparkle.setScale(0.4);
+        // Small sparkle effect
+        const sparkle = this.scene.add.star(2, -2, 4, 2, 4, 0xFFFFFF, 0.9);
+        sparkle.setScale(0.3);
         
-        this.gemVisual.add([starGlow, star, sparkle]);
+        this.gemVisual.add([starShadow, star, sparkle]);
         this.add(this.gemVisual);
         
-        // Animate star floating inside bubble
+        // Subtle floating animation for the whole container
         this.scene.tweens.add({
             targets: this.gemVisual,
-            y: { from: -2, to: 2 },
-            duration: 2500,
+            y: { from: -12, to: -8 },
+            duration: 2000,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
@@ -170,7 +171,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.scene.tweens.add({
             targets: star,
             rotation: Math.PI * 2,
-            duration: 4000,
+            duration: 3000,
             repeat: -1,
             ease: 'Linear'
         });
@@ -178,9 +179,9 @@ export class Bubble extends Phaser.GameObjects.Container {
         // Sparkle pulse
         this.scene.tweens.add({
             targets: sparkle,
-            scale: { from: 0.4, to: 0.6 },
-            alpha: { from: 0.9, to: 1 },
-            duration: 1200,
+            scale: { from: 0.3, to: 0.5 },
+            alpha: { from: 0.7, to: 1 },
+            duration: 1500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
