@@ -1730,34 +1730,59 @@ export class ArenaCoordinator {
     /**
      * Show gem collection visual effect
      */
-    private showGemCollectEffect(x: number, y: number, _isPlayer: boolean): void {
-        // Create sparkle effect
+    private showGemCollectEffect(x: number, y: number, isPlayer: boolean): void {
+        // Create a gem that flies to the counter
+        const gem = this.scene.add.star(
+            x,
+            y,
+            6, 10, 18, 
+            isPlayer ? 0x4facfe : 0xf43f5e
+        );
+        gem.setScale(0.8);
+        gem.setDepth(2000);
+        
+        // Target position is always the gem counter (bottom left)
+        const targetX = 110;
+        const targetY = this.scene.cameras.main.height - 110;
+        
+        // Animate gem flying to counter
+        this.scene.tweens.add({
+            targets: gem,
+            x: targetX,
+            y: targetY,
+            scale: 0.3,
+            duration: 800,
+            ease: 'Power2',
+            onComplete: () => gem.destroy()
+        });
+        
+        // Create sparkle trail
         for (let i = 0; i < 5; i++) {
-            const sparkle = this.scene.add.star(
-                x + Phaser.Math.Between(-10, 10),
-                y + Phaser.Math.Between(-10, 10),
-                5, 3, 5,
-                0xFFD700
-            );
-            sparkle.setScale(0);
-            sparkle.setDepth(1500);
-            
-            this.scene.tweens.add({
-                targets: sparkle,
-                scale: { from: 0, to: 0.5 },
-                alpha: { from: 1, to: 0 },
-                duration: 500,
-                delay: i * 50,
-                ease: 'Back.easeOut',
-                onComplete: () => sparkle.destroy()
+            this.scene.time.delayedCall(i * 50, () => {
+                const sparkle = this.scene.add.circle(
+                    x + Phaser.Math.Between(-10, 10),
+                    y + Phaser.Math.Between(-10, 10),
+                    3, 0xffd700
+                );
+                sparkle.setDepth(1999);
+                
+                this.scene.tweens.add({
+                    targets: sparkle,
+                    scale: { from: 1, to: 0 },
+                    alpha: { from: 1, to: 0 },
+                    duration: 500,
+                    onComplete: () => sparkle.destroy()
+                });
             });
         }
         
         // Create text effect
-        const text = this.scene.add.text(x, y, '+GEM', {
-            fontSize: '16px',
-            color: '#FFD700',
-            fontStyle: 'bold'
+        const text = this.scene.add.text(x, y, '+1', {
+            fontSize: '20px',
+            fontFamily: 'Arial Black',
+            color: isPlayer ? '#4facfe' : '#f43f5e',
+            stroke: '#ffffff',
+            strokeThickness: 2
         });
         text.setOrigin(0.5);
         text.setDepth(1501);
