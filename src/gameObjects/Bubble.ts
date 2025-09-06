@@ -142,43 +142,45 @@ export class Bubble extends Phaser.GameObjects.Container {
         
         this.gemVisual = this.scene.add.container(0, 0);
         
-        // Gem glow inside bubble
-        const gemGlow = this.scene.add.circle(0, 0, 12, 0xFFD700, 0.4);
+        // Star glow inside bubble (blue for space theme)
+        const starGlow = this.scene.add.circle(0, 0, 14, 0x00ccff, 0.5);
         
-        // Gem shape (small diamond)
-        const gemPoints = [
-            0, -8,   // top
-            6, 0,    // right
-            0, 8,    // bottom
-            -6, 0    // left
-        ];
-        const gem = this.scene.add.polygon(0, 0, gemPoints, 0xFFD700);
-        gem.setStrokeStyle(1, 0xFFFFFF, 1);
+        // Star sprite (using small star asset)
+        const star = this.scene.add.image(0, 0, 'star-small');
+        star.setScale(0.7); // Small enough to fit inside bubble
         
-        // Small sparkle effect
-        const sparkle = this.scene.add.star(0, -3, 4, 2, 4, 0xFFFFFF, 0.8);
-        sparkle.setScale(0.5);
+        // Small sparkle effect around star
+        const sparkle = this.scene.add.star(0, -4, 4, 2, 4, 0xFFFFFF, 0.9);
+        sparkle.setScale(0.4);
         
-        this.gemVisual.add([gemGlow, gem, sparkle]);
+        this.gemVisual.add([starGlow, star, sparkle]);
         this.add(this.gemVisual);
         
-        // Animate gem floating inside bubble
+        // Animate star floating inside bubble
         this.scene.tweens.add({
             targets: this.gemVisual,
-            y: { from: -3, to: 3 },
-            angle: { from: -10, to: 10 },
-            duration: 2000,
+            y: { from: -2, to: 2 },
+            duration: 2500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
         
+        // Star rotation animation
+        this.scene.tweens.add({
+            targets: star,
+            rotation: Math.PI * 2,
+            duration: 4000,
+            repeat: -1,
+            ease: 'Linear'
+        });
+        
         // Sparkle pulse
         this.scene.tweens.add({
             targets: sparkle,
-            scale: { from: 0.5, to: 0.8 },
-            alpha: { from: 0.8, to: 1 },
-            duration: 1000,
+            scale: { from: 0.4, to: 0.6 },
+            alpha: { from: 0.9, to: 1 },
+            duration: 1200,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'

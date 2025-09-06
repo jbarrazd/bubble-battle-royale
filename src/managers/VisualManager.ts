@@ -246,11 +246,16 @@ export class VisualManager extends BaseGameSystem {
      * Show gem collection effect
      */
     private showGemCollectEffect(data: { x: number, y: number, targetX?: number, targetY?: number, isPlayer?: boolean, delta?: number }): void {
-        // Create gem sprite with appropriate color (cyan for player, pink-red for opponent)
-        const gemColor = data.isPlayer ? 0x00ffff : 0xff0066;  // Match UI colors
-        const gem = this.scene.add.circle(data.x, data.y, 10, gemColor);
-        gem.setDepth(Z_LAYERS.FLOATING_UI || 1000);
-        this.activeEffects.add(gem);
+        // Create star sprite for space arena
+        const star = this.scene.add.image(data.x, data.y, 'star-small');
+        star.setScale(0.8); // Small size for animation
+        star.setDepth(Z_LAYERS.FLOATING_UI || 1000);
+        
+        // Tint star based on player (cyan for player, pink-red for opponent)
+        const starTint = data.isPlayer ? 0x00ffff : 0xff0066;
+        star.setTint(starTint);
+        
+        this.activeEffects.add(star);
         
         // Create trail effect - using simple particles without texture
         // Creating sparkle effects instead of particle trail to avoid texture issues
@@ -258,7 +263,7 @@ export class VisualManager extends BaseGameSystem {
             const sparkle = this.scene.add.circle(
                 data.x + Phaser.Math.Between(-5, 5),
                 data.y + Phaser.Math.Between(-5, 5),
-                3, gemColor
+                3, starTint
             );
             sparkle.setAlpha(0.7);
             this.scene.tweens.add({
@@ -272,7 +277,7 @@ export class VisualManager extends BaseGameSystem {
         }
         
         // Create a simple glow effect instead
-        const trail = this.scene.add.circle(data.x, data.y, 15, gemColor, 0.3);
+        const trail = this.scene.add.circle(data.x, data.y, 15, starTint, 0.3);
         trail.setDepth(Z_LAYERS.EFFECTS || 500);
         this.activeEffects.add(trail);
         
@@ -280,25 +285,25 @@ export class VisualManager extends BaseGameSystem {
         const targetX = data.targetX ?? 110;  // Gem counter X position
         const targetY = data.targetY ?? (this.scene.cameras.main.height - 110);  // Gem counter Y position
         
-        // Animate to target
+        // Animate star to target
         const tween = this.scene.tweens.add({
-            targets: gem,
+            targets: star,
             x: targetX,
             y: targetY,
             duration: 800,
             ease: 'Power2',
             onUpdate: () => {
-                trail.setPosition(gem.x, gem.y);
+                trail.setPosition(star.x, star.y);
             },
             onComplete: () => {
-                gem.destroy();
+                star.destroy();
                 trail.destroy();
-                this.activeEffects.delete(gem);
+                this.activeEffects.delete(star);
                 this.activeEffects.delete(trail);
                 this.activeTweens.delete(tween);
                 
                 // Flash effect at target with appropriate color
-                this.createFlashEffect(targetX, targetY, gemColor);
+                this.createFlashEffect(targetX, targetY, starTint);
             }
         });
         

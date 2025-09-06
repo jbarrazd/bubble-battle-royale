@@ -45,6 +45,11 @@ export class PreloadScene extends Scene {
         this.load.audio('victory', 'assets/sounds/victory.mp3');
         this.load.audio('defeat', 'assets/sounds/defeat.mp3');
         
+        // Load star sprites for space arena
+        this.load.image('star-small', 'assets/images/star_small.png');
+        this.load.image('star-medium', 'assets/images/star_medium.png');
+        this.load.image('star-large', 'assets/images/star_large.png');
+        
         this.assetLoader.loadAssets((progress: number) => {
             this.updateProgress(progress);
         });

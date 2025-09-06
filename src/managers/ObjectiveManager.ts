@@ -919,38 +919,38 @@ export class ObjectiveManager extends BaseGameSystem {
      * Animate gem being thrown from objective to bubble
      */
     private animateGemThrow(target: GemThrowTarget): void {
-        // Create gem at objective
-        const gem = this.scene.add.star(
+        // Create star sprite at objective (space arena theme)
+        const star = this.scene.add.image(
             this.objective.x,
             this.objective.y,
-            6, 10, 20,
-            0xFFD700
+            'star-small'
         );
-        gem.setDepth(Z_LAYERS.FLOATING_UI || 1000);
+        star.setScale(1.2); // Make it visible during animation
+        star.setDepth(Z_LAYERS.FLOATING_UI || 1000);
         
         // Objective throw animation
         this.playThrowAnimation();
         
-        // Gem flight path
+        // Star flight path
         const duration = 800 + target.distance * 0.5;
         
         this.scene.tweens.add({
-            targets: gem,
+            targets: star,
             x: target.bubble.x,
             y: target.bubble.y,
-            scale: { from: 1, to: 0.5 },
-            angle: 360,
+            scale: { from:1.2, to: 0.5 },
+            rotation: Math.PI * 2,
             duration: duration,
             ease: 'Power2',
             onComplete: () => {
-                gem.destroy();
+                star.destroy();
                 
-                // Add gem to bubble
+                // Add star to bubble
                 if (target.bubble && target.bubble.addGem) {
                     target.bubble.addGem();
                 }
                 
-                // Emit gem placed event
+                // Emit star placed event
                 this.eventBus.emit('gem-placed', {
                     bubble: target.bubble,
                     isPlayer: target.isPlayer
@@ -959,7 +959,7 @@ export class ObjectiveManager extends BaseGameSystem {
         });
         
         // Trail effect
-        this.createGemTrail(gem, duration);
+        this.createGemTrail(star, duration);
     }
     
     /**

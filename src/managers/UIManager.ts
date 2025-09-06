@@ -224,100 +224,29 @@ export class UIManager extends BaseGameSystem {
         
         this.gemCounter.add(bg);
         
-        // Create a proper diamond/gem shape with graphics
-        const gemGraphics = this.scene.add.graphics();
+        // Create star sprite for space arena
+        const starIcon = this.scene.add.image(0, -30, 'star-large');
+        starIcon.setScale(1.0); // Good resolution at 48px
+        this.gemCounter.add(starIcon);
         
-        // Diamond shape coordinates (3D effect)
-        const diamondTop = -35;
-        const diamondMiddle = -20;
-        const diamondBottom = -5;
-        const diamondWidth = 20;
-        
-        // Main diamond facets with gradient colors
-        // Left facet (darker)
-        gemGraphics.fillStyle(0x4facfe, 1);
-        gemGraphics.fillTriangle(
-            0, diamondTop,
-            -diamondWidth, diamondMiddle,
-            0, diamondMiddle
-        );
-        
-        // Right facet (lighter)
-        gemGraphics.fillStyle(0x00f2fe, 1);
-        gemGraphics.fillTriangle(
-            0, diamondTop,
-            diamondWidth, diamondMiddle,
-            0, diamondMiddle
-        );
-        
-        // Bottom left facet
-        gemGraphics.fillStyle(0x4f46e5, 1);
-        gemGraphics.fillTriangle(
-            0, diamondMiddle,
-            -diamondWidth, diamondMiddle,
-            -diamondWidth/2, diamondBottom
-        );
-        
-        // Bottom right facet
-        gemGraphics.fillStyle(0x7c3aed, 1);
-        gemGraphics.fillTriangle(
-            0, diamondMiddle,
-            diamondWidth, diamondMiddle,
-            diamondWidth/2, diamondBottom
-        );
-        
-        // Bottom center facet
-        gemGraphics.fillStyle(0x6366f1, 1);
-        gemGraphics.fillTriangle(
-            -diamondWidth/2, diamondBottom,
-            diamondWidth/2, diamondBottom,
-            0, diamondBottom + 5
-        );
-        
-        // White shine on top for sparkle
-        gemGraphics.fillStyle(0xffffff, 0.8);
-        gemGraphics.fillTriangle(
-            0, diamondTop,
-            -5, diamondTop + 8,
-            5, diamondTop + 8
-        );
-        
-        // Add outline for definition
-        gemGraphics.lineStyle(1, 0xffffff, 0.6);
-        gemGraphics.strokeTriangle(
-            0, diamondTop,
-            -diamondWidth, diamondMiddle,
-            0, diamondBottom + 5
-        );
-        gemGraphics.strokeTriangle(
-            0, diamondTop,
-            diamondWidth, diamondMiddle,
-            0, diamondBottom + 5
-        );
-        
-        this.gemCounter.add(gemGraphics);
-        
-        // Animated sparkle effect
-        const sparkle = this.scene.add.graphics();
-        sparkle.fillStyle(0xffffff, 0);
-        this.gemCounter.add(sparkle);
-        
-        // Continuous sparkle animation
+        // Animated star effects
         this.scene.tweens.add({
-            targets: sparkle,
-            alpha: { from: 0, to: 1 },
-            duration: 1500,
+            targets: starIcon,
+            scaleX: 1.3,
+            scaleY: 1.3,
+            duration: 2000,
             yoyo: true,
             repeat: -1,
-            onUpdate: () => {
-                sparkle.clear();
-                sparkle.fillStyle(0xffffff, sparkle.alpha * 0.7);
-                sparkle.fillCircle(
-                    Phaser.Math.Between(-15, 15),
-                    diamondTop + Phaser.Math.Between(0, 20),
-                    2
-                );
-            }
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Subtle rotation animation
+        this.scene.tweens.add({
+            targets: starIcon,
+            rotation: Math.PI * 2,
+            duration: 8000,
+            repeat: -1,
+            ease: 'Linear'
         });
         
         // Player gems - VIVID BLUE
@@ -355,8 +284,8 @@ export class UIManager extends BaseGameSystem {
         this.opponentGemText.setOrigin(0.5);
         this.gemCounter.add(this.opponentGemText);
         
-        // Win condition text with high contrast
-        const winText = this.scene.add.text(0, 45, '⭐ First to 15 Wins! ⭐', {
+        // Win condition text with high contrast  
+        const winText = this.scene.add.text(0, 45, '⭐ First to 15 Stars Wins! ⭐', {
             fontSize: '14px',
             fontFamily: 'Arial Black',
             color: '#ffff00',  // Bright yellow
