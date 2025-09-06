@@ -242,21 +242,21 @@ export class UIManager extends BaseGameSystem {
         // More compact modern space panel design
         const bg = this.scene.add.graphics();
         
-        // Outer shadow for depth
-        bg.fillStyle(0x000000, 0.4);
-        bg.fillRoundedRect(-92, -52, 184, 104, 20);
+        // Subtle drop shadow for depth (offset down and right)
+        bg.fillStyle(0x000000, 0.25);
+        bg.fillRoundedRect(-88, -47, 180, 100, 18);
         
         // Main background - dark space blue with subtle gradient
         bg.fillGradientStyle(0x0a0e27, 0x1a1a2e, 0x16213e, 0x0a0e27, 0.95);
         bg.fillRoundedRect(-90, -50, 180, 100, 18);
         
         // Gradient overlay - cyan to purple space effect
-        bg.fillStyle(0x00ccff, 0.12);
+        bg.fillStyle(0x00ccff, 0.08);
         bg.fillRoundedRect(-88, -48, 176, 96, 17);
         
-        // Top section highlight - purple accent
-        bg.fillStyle(0x9966ff, 0.18);
-        bg.fillRoundedRect(-88, -48, 176, 28, 17);
+        // Subtle top highlight - simulates light from above
+        bg.fillStyle(0xffffff, 0.05);
+        bg.fillRoundedRect(-88, -48, 176, 20, 17);
         
         // Premium outer glow effect
         bg.lineStyle(4, 0x00ffff, 0.3);
