@@ -154,6 +154,29 @@ export class RealSoundSystem {
     }
 
     /**
+     * Play arsenal sound
+     */
+    public playArsenalSound(): void {
+        this.playArsenalPickupSound();
+    }
+    
+    /**
+     * Play objective hit sound
+     */
+    public playObjectiveHitSound(): void {
+        this.playSuccessObjectiveSound();
+    }
+    
+    /**
+     * Play danger warning sound (use combo sound at low volume)
+     */
+    public playDangerWarningSound(): void {
+        if (this.muted) return;
+        // Use a subtle sound for danger warning
+        this.playSound(ASSET_KEYS.AUDIO.BUBBLE_ATTACH, this.volumes.attach * 0.3, 0.7);
+    }
+    
+    /**
      * Play background music
      */
     public playBackgroundMusic(): Phaser.Sound.BaseSound | undefined {

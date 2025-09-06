@@ -96,7 +96,7 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
         victoryText.setScale(0);
         victoryGlow.setScale(0);
         
-        // Entrance animations
+        // Fade in container
         scene.tweens.add({
             targets: this,
             alpha: 1,
@@ -104,31 +104,44 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
             ease: 'Power2'
         });
         
+        // Scale up panel
         scene.tweens.add({
             targets: panelBg,
             scaleX: 1,
             scaleY: 1,
-            duration: 400,
+            duration: 500,
             ease: 'Back.easeOut',
             delay: 100
         });
         
+        // Scale up banner
         scene.tweens.add({
-            targets: [banner, victoryText, victoryGlow],
+            targets: [banner],
             scaleX: 1,
             scaleY: 1,
-            duration: 500,
+            duration: 600,
             ease: 'Back.easeOut',
-            delay: 300
+            delay: 200
         });
         
-        // Star rotation
+        // Scale up victory text with bounce
+        scene.tweens.add({
+            targets: [victoryText, victoryGlow],
+            scaleX: 1,
+            scaleY: 1,
+            duration: 800,
+            ease: 'Elastic.easeOut',
+            delay: 400
+        });
+        
+        // Star rotation for all stars
         scene.tweens.add({
             targets: [star1, star2, star3],
             angle: 360,
-            duration: 3000,
+            duration: 5000,
             repeat: -1,
-            ease: 'Linear'
+            ease: 'Linear',
+            delay: 600
         });
         
         // Score count up
@@ -160,7 +173,8 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
         // Camera shake for impact
         scene.cameras.main.shake(300, 0.005);
         
-        this.setDepth(2000);
+        // Set proper depth for UI overlay
+        this.setDepth(2000); // UI layer depth
         scene.add.existing(this);
     }
     
@@ -219,24 +233,18 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
         });
         
         bg.on('pointerdown', () => {
-            console.log(`💆 VictoryScreen button clicked: ${text}`);
             
             // Emit UI click event for sound system
             scene.events.emit('ui-click');
             
             // Execute callback IMMEDIATELY without waiting for tween
-            console.log(`🚀 Executing callback for: ${text}`);
             
             try {
                 if (callback && typeof callback === 'function') {
-                    console.log(`💫 Callback type check passed, executing...`);
                     callback();
-                    console.log(`✅ Callback executed successfully!`);
                 } else {
-                    console.error('❌ Callback is not a function:', callback, 'Type:', typeof callback);
                 }
             } catch (error) {
-                console.error('❌ Error executing callback:', error);
             }
             
             // Visual feedback AFTER callback
@@ -249,14 +257,15 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
             });
         });
         
-        // Initial animation
-        button.setScale(0);
+        // Initial animation - start mostly visible
+        button.setScale(0.9);
+        button.setAlpha(1);
         scene.tweens.add({
             targets: button,
             scale: 1,
-            duration: 400,
+            duration: 300,
             ease: 'Back.easeOut',
-            delay: 1000 + (y > 150 ? 200 : 0)
+            delay: 200 + (y > 150 ? 100 : 0)
         });
         
         return button;
@@ -265,45 +274,42 @@ export class VictoryScreen extends Phaser.GameObjects.Container {
     private createConfetti(scene: Phaser.Scene): void {
         const colors = [0xFFD700, 0xFFA500, 0xFF69B4, 0x00CED1, 0x98FB98, 0xFF6347];
         
-        // Create confetti manually using shapes
+        // Create confetti effect
         const confettiTimer = scene.time.addEvent({
             delay: 100,
-            repeat: 30,
+            repeat: 20,
             callback: () => {
-                for (let i = 0; i < 6; i++) {
+                for (let i = 0; i < 5; i++) {
                     const x = Phaser.Math.Between(-100, 100);
                     const y = -250;
                     
-                    // Random shape (circle or rectangle)
-                    const shape = Math.random() > 0.5 ?
-                        scene.add.circle(x, y, Phaser.Math.Between(3, 6), Phaser.Utils.Array.GetRandom(colors), 0.9) :
-                        scene.add.rectangle(x, y, Phaser.Math.Between(8, 12), Phaser.Math.Between(4, 6), Phaser.Utils.Array.GetRandom(colors), 0.9);
+                    // Simple circles only to reduce complexity
+                    const shape = scene.add.circle(x, y, Phaser.Math.Between(4, 6), 
+                        Phaser.Utils.Array.GetRandom(colors), 0.9);
                     
-                    shape.setRotation(Math.random() * Math.PI * 2);
                     this.add(shape);
                     
                     const angle = Phaser.Math.Between(-110, -70) * Math.PI / 180;
-                    const speed = Phaser.Math.Between(100, 350);
+                    const speed = Phaser.Math.Between(150, 250);
                     const vx = Math.cos(angle) * speed;
                     const vy = Math.sin(angle) * speed;
                     
+                    // Simpler tween
                     scene.tweens.add({
                         targets: shape,
                         x: shape.x + vx,
-                        y: shape.y + vy + 600, // Gravity effect
-                        rotation: shape.rotation + Phaser.Math.Between(-6, 6),
+                        y: shape.y + vy + 400,
                         alpha: 0,
-                        scale: 0,
-                        duration: 3000,
-                        ease: 'Power2',
+                        duration: 2000,
+                        ease: 'Quad.easeOut',
                         onComplete: () => shape.destroy()
                     });
                 }
             }
         });
         
-        // Stop confetti after 3 seconds
-        scene.time.delayedCall(3000, () => {
+        // Stop confetti after 2 seconds
+        scene.time.delayedCall(2000, () => {
             confettiTimer.destroy();
         });
     }

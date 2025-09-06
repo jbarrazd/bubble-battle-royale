@@ -2,8 +2,12 @@ import { Scene } from 'phaser';
 import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
 import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
+import { ArenaCoordinator } from '@/coordinators/ArenaCoordinator';
+import { ArenaSystemAdapter } from '@/migration/ArenaSystemAdapter';
+import { migrationConfig } from '@/config/MigrationConfig';
 import { RowSpawnSystem } from '@/systems/gameplay/RowSpawnSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
+import { OptimizationMonitor, getOptimizationStats } from '@/optimization';
 import { RealSoundSystem } from '@/systems/audio/RealSoundSystem';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { TweenOptimizer } from '@/systems/visual/TweenOptimizer';
@@ -12,7 +16,10 @@ import { BackgroundSystem } from '@/systems/visual/BackgroundSystem';
 export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
+    private optimizationMonitor?: OptimizationMonitor;
     private arenaSystem!: ArenaSystem;
+    private arenaCoordinator?: ArenaCoordinator;
+    private isUsingNewArchitecture: boolean = true; // Switch to new architecture
     private rowSpawnSystem!: RowSpawnSystem;
     private soundSystem!: RealSoundSystem;
     private backgroundSystem!: BackgroundSystem;
@@ -41,7 +48,6 @@ export class GameScene extends Scene {
     }
 
     public init(data: ISceneData): void {
-        console.log('GameScene: Initializing game arena...');
         
         // Clean up any existing background music before reinitializing
         if (this.backgroundMusic) {
@@ -74,22 +80,19 @@ export class GameScene extends Scene {
             // Initialize TweenOptimizer for performance
             this.tweenOptimizer = new TweenOptimizer(this);
             
-            console.log('GameScene: Creating background...');
             this.createBackground();
             
-            console.log('GameScene: Initializing sound system...');
             this.createSoundSystem();
             
-            console.log('GameScene: Starting background music...');
             this.createBackgroundMusic();
             
-            console.log('GameScene: Creating arena...');
             this.createArena();
             
-            console.log('GameScene: Creating UI...');
+            // Initialize optimization monitor
+            this.optimizationMonitor = new OptimizationMonitor(this);
+            
             this.createUI();
             
-            console.log('GameScene: Setting up input handlers...');
             this.setupInputHandlers();
             
             // Emit arena ready event
@@ -97,7 +100,6 @@ export class GameScene extends Scene {
                 scene: SceneKeys.GAME
             });
             
-            console.log('GameScene: Arena setup complete');
         } catch (error) {
             console.error('GameScene: Error during creation:', error);
         }
@@ -106,7 +108,6 @@ export class GameScene extends Scene {
     private createSoundSystem(): void {
         try {
             this.soundSystem = new RealSoundSystem(this);
-            console.log('GameScene: Sound system initialized successfully');
         } catch (error) {
             console.error('GameScene: Failed to initialize sound system:', error);
             // Continue without sound system - game should still be playable
@@ -245,22 +246,34 @@ export class GameScene extends Scene {
 
     private createArena(): void {
         try {
-            console.log('GameScene: Instantiating ArenaSystem...');
-            this.arenaSystem = new ArenaSystem(this);
+            if (this.isUsingNewArchitecture) {
+                // Use new modular ArenaCoordinator
+                console.log('GameScene: Using NEW ArenaCoordinator (Modular Architecture)...');
+                this.arenaCoordinator = new ArenaCoordinator(this);
+                
+                this.arenaCoordinator.initialize(true, AIDifficulty.HARD);
+            } else {
+                // Fallback to original ArenaSystem
+                console.log('GameScene: Using ArenaSystem...');
+                this.arenaSystem = new ArenaSystem(this);
+                
+                console.log('GameScene: Setting up arena with AI opponent (HARD)...');
+                // Setup single player mode with AI difficulty - Always HARD
+                this.arenaSystem.setupArena(true, AIDifficulty.HARD);
+            }
             
-            console.log('GameScene: Setting up arena with AI opponent (HARD)...');
-            // Setup single player mode with AI difficulty - Always HARD
-            this.arenaSystem.setupArena(true, AIDifficulty.HARD);
             
-            console.log('GameScene: Initializing RowSpawnSystem (BGC-001)...');
-            // Initialize the row spawning system
-            this.rowSpawnSystem = new RowSpawnSystem(this, this.arenaSystem);
-            
-            // Start automatic row spawning after a longer delay  
-            this.time.delayedCall(8000, () => {
-                console.log('GameScene: Starting automatic row spawning...');
-                this.rowSpawnSystem.startSpawning();
-            });
+            if (!this.isUsingNewArchitecture) {
+                // Initialize the row spawning system for old architecture
+                this.rowSpawnSystem = new RowSpawnSystem(this, this.arenaSystem);
+                
+                // Start automatic row spawning after a longer delay  
+                this.time.delayedCall(8000, () => {
+                    console.log('GameScene: Starting automatic row spawning...');
+                    this.rowSpawnSystem.startSpawning();
+                });
+            }
+            // New architecture handles row spawning internally
             
             // Setup combo events to pause spawning
             this.setupRowSpawnEvents();
@@ -268,7 +281,8 @@ export class GameScene extends Scene {
             // Connect sound system to game events
             this.setupSoundEvents();
             
-            console.log('GameScene: Arena created successfully with AI opponent and row spawning');
+            const archType = this.isUsingNewArchitecture ? 'NEW Modular Architecture' : 'Original ArenaSystem';
+            console.log(`GameScene: Arena created successfully with ${archType} and AI opponent`);
         } catch (error) {
             console.error('GameScene: Error creating arena:', error);
             throw error;
@@ -497,6 +511,14 @@ export class GameScene extends Scene {
             }
         });
         
+        // L key to log optimization stats
+        this.input.keyboard?.on('keydown-L', () => {
+            if (this.optimizationMonitor) {
+                this.optimizationMonitor.logReport();
+            }
+            const stats = getOptimizationStats();
+        });
+        
         // Number keys 5-9 to change background themes (for testing)
         if (!this.registry.get('isCapacitor')) { // Only on desktop for testing
             this.input.keyboard?.on('keydown-FIVE', () => {
@@ -622,8 +644,23 @@ export class GameScene extends Scene {
         // Update FPS counter
         this.updateFPSDisplay();
         
-        // Update arena system
-        this.arenaSystem?.update(time, delta);
+        // Update arena system - continue updating even after game ends
+        // This is necessary for UI interactions and animations
+        if (this.isUsingNewArchitecture) {
+            this.arenaCoordinator?.update(time, delta);
+        } else {
+            this.arenaSystem?.update(time, delta);
+        }
+        
+        // Record optimization metrics every frame
+        if (this.optimizationMonitor) {
+            this.optimizationMonitor.recordMetrics();
+            
+            // Log performance report every 5 seconds
+            if (Math.floor(time / 5000) !== Math.floor((time - delta) / 5000)) {
+                // Performance stats calculation removed
+            }
+        }
     }
     
     private updateFPSDisplay(): void {
@@ -636,17 +673,21 @@ export class GameScene extends Scene {
         // Update FPS every 1000ms to reduce overhead when targeting 120 FPS
         if (elapsed >= 1000) {
             const fps = Math.round((this.frameCount * 1000) / elapsed);
-            this.fpsText.setText(`FPS: ${fps}`);
             
-            // Color code based on performance
-            if (fps >= 100) {
-                this.fpsText.setColor('#00FF00'); // Green for excellent
-            } else if (fps >= 60) {
-                this.fpsText.setColor('#FFFF00'); // Yellow for good  
-            } else if (fps >= 30) {
-                this.fpsText.setColor('#FFA500'); // Orange for okay
-            } else {
-                this.fpsText.setColor('#FF0000'); // Red for poor
+            // Safety check before updating text
+            if (this.fpsText && this.fpsText.active) {
+                this.fpsText.setText(`FPS: ${fps}`);
+                
+                // Color code based on performance
+                if (fps >= 100) {
+                    this.fpsText.setColor('#00FF00'); // Green for excellent
+                } else if (fps >= 60) {
+                    this.fpsText.setColor('#FFFF00'); // Yellow for good  
+                } else if (fps >= 30) {
+                    this.fpsText.setColor('#FFA500'); // Orange for okay
+                } else {
+                    this.fpsText.setColor('#FF0000'); // Red for poor
+                }
             }
             
             this.frameCount = 0;
@@ -662,12 +703,23 @@ export class GameScene extends Scene {
             this.backgroundMusic = undefined;
         }
         
-        // Clean up row spawn system
-        this.rowSpawnSystem?.destroy();
-        
-        this.arenaSystem?.destroy();
+        // Clean up systems
+        if (this.isUsingNewArchitecture) {
+            this.arenaCoordinator?.destroy();
+            this.arenaCoordinator = undefined as any; // Clear reference
+        } else {
+            this.rowSpawnSystem?.destroy();
+            this.rowSpawnSystem = undefined;
+            this.arenaSystem?.destroy();
+            this.arenaSystem = undefined;
+        }
         this.soundSystem?.destroy();
+        this.soundSystem = undefined;
         this.backgroundSystem?.destroy();
+        this.backgroundSystem = undefined;
         this.performanceMonitor?.reset();
+        
+        // Clear FPS text reference
+        this.fpsText = undefined;
     }
 }

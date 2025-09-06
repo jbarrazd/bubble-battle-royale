@@ -1090,6 +1090,12 @@ export class Launcher extends Phaser.GameObjects.Container {
     }
 
     public setHighlight(enabled: boolean): void {
+        // Check if scene and tweens are still valid
+        if (!this.scene || !this.scene.tweens) {
+            // Silently skip - this can happen during cleanup
+            return;
+        }
+        
         const alpha = enabled ? 1.0 : 0.95;
         
         // Enhanced highlight with better mobile feedback
@@ -1576,10 +1582,15 @@ export class Launcher extends Phaser.GameObjects.Container {
         chamberGraphics.lineStyle(1 * HD_SCALE, this.currentTheme.glow.pulse, 0.5);
         for (let i = 0; i < 3; i++) {
             const lineY = tubeY - tubeHeight/2 + (i + 1) * (tubeHeight / 4);
-            chamberGraphics.setLineDash([5 * HD_SCALE, 5 * HD_SCALE]);
-            chamberGraphics.lineBetween(tubeStartX, lineY, tubeEndX, lineY);
+            // Dashed line effect using multiple segments
+            const dashLength = 5 * HD_SCALE;
+            const totalLength = tubeEndX - tubeStartX;
+            const numDashes = Math.floor(totalLength / (dashLength * 2));
+            for (let d = 0; d < numDashes; d++) {
+                const dashX = tubeStartX + d * dashLength * 2;
+                chamberGraphics.lineBetween(dashX, lineY, Math.min(dashX + dashLength, tubeEndX), lineY);
+            }
         }
-        chamberGraphics.setLineDash([]);
         
         // === DECORATIVE ELEMENTS ===
         // Corner accents
@@ -2060,22 +2071,42 @@ export class Launcher extends Phaser.GameObjects.Container {
      * Cleanup method
      */
     public override destroy(): void {
+        // Kill all tweens targeting this launcher and its components
+        if (this.scene && this.scene.tweens) {
+            this.scene.tweens.killTweensOf(this);
+            if (this.bubbleChamber) {
+                this.scene.tweens.killTweensOf(this.bubbleChamber);
+            }
+            if (this.launcherBody) {
+                this.scene.tweens.killTweensOf(this.launcherBody);
+            }
+            if (this.arrow) {
+                this.scene.tweens.killTweensOf(this.arrow);
+            }
+        }
+        
         // Clean up arsenal
-        this.arsenalSlots.forEach(slot => {
-            this.scene.tweens.killTweensOf(slot.container);
-        });
+        if (this.arsenalSlots && this.scene && this.scene.tweens) {
+            this.arsenalSlots.forEach(slot => {
+                this.scene.tweens.killTweensOf(slot.container);
+            });
+        }
         
         // Clean up animations
         if (this.idleAnimation) {
             this.idleAnimation.destroy();
+            this.idleAnimation = null;
         }
         if (this.chargingTween) {
             this.chargingTween.destroy();
+            this.chargingTween = null;
         }
         
         // Remove event listeners
-        this.scene.events.off('power-up-collected');
-        this.scene.events.off('activate-power-up');
+        if (this.scene && this.scene.events) {
+            this.scene.events.off('power-up-collected');
+            this.scene.events.off('activate-power-up');
+        }
         
         super.destroy();
     }

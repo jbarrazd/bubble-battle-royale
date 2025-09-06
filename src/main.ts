@@ -8,6 +8,13 @@ import { GameScene } from '@scenes/GameScene';
 import { CapacitorOptimizations } from '@utils/capacitorOptimizations';
 import { Capacitor } from '@capacitor/core';
 
+// Import dev console in development mode
+if (import.meta.env.DEV) {
+    import('@/dev/DevConsole').then(module => {
+        console.log('🛠️ Dev Console loaded');
+    });
+}
+
 class BubbleBattleRoyale {
     private game: Phaser.Game | null = null;
 

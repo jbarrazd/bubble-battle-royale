@@ -39,6 +39,9 @@ export class ResetSystem {
     private warningGraphics?: Phaser.GameObjects.Graphics;
     private warningTween?: Phaser.Tweens.Tween;
     
+    // Grace period to prevent unfair losses
+    private shootingGracePeriod: boolean = false;
+    
     constructor(scene: Scene, gridAttachmentSystem: GridAttachmentSystem) {
         this.scene = scene;
         this.gridAttachmentSystem = gridAttachmentSystem;
@@ -52,13 +55,30 @@ export class ResetSystem {
     }
     
     private setupEventListeners(): void {
+        // Listen for shooting events to manage grace period
+        this.scene.events.on('shooting-started', () => {
+            this.shootingGracePeriod = true;
+        });
+        
+        this.scene.events.on('shooting-complete', () => {
+            // Small delay before ending grace period
+            this.scene.time.delayedCall(100, () => {
+                this.shootingGracePeriod = false;
+                // Check condition after grace period ends
+                this.checkResetCondition();
+            });
+        });
+        
         // Listen for events that should trigger reset check
         this.scene.events.on('row-spawned', () => {
-            console.log('Row spawned event received in ResetSystem');
-            this.checkResetCondition();
+            // Don't check during shooting grace period
+            if (!this.shootingGracePeriod) {
+                this.checkResetCondition();
+            } else {
+            }
         });
         this.scene.events.on('bubble-attached', () => {
-            console.log('Bubble attached event received in ResetSystem');
+            // Always check on bubble attach (shooting should be complete)
             this.checkResetCondition();
         });
         
@@ -70,17 +90,19 @@ export class ResetSystem {
      * Check if reset condition is met (field is too full)
      */
     public checkResetCondition(): boolean {
-        // Don't check during reset
+        // Don't check during reset or grace period
         if (this.resetState.isResetting) return false;
+        if (this.shootingGracePeriod) {
+            return false;
+        }
         
-        // Check if in sudden death (after 2:30)
-        const gameTime = this.scene.registry.get('gameTime') || 0;
-        const isInSuddenDeath = gameTime >= 150000; // 2:30 in ms
+        // Check if in sudden death - use the registry flag set by VictorySystem
+        const isInSuddenDeath = this.scene.registry.get('inSuddenDeath') || false;
         
         // Check both player and opponent fields
         const { playerRow, opponentRow } = this.getBothSidesRows();
         
-        console.log(`Reset System Check: Player row = ${playerRow}, Opponent row = ${opponentRow}, threshold = ${this.DEATH_ROW_THRESHOLD}`);
+        // Silent check
         
         // Check OPPONENT side (negative values, so we check absolute value)
         if (Math.abs(opponentRow) >= this.DEATH_ROW_THRESHOLD) {
@@ -93,7 +115,7 @@ export class ResetSystem {
                 return true;
             } else {
                 // Not in sudden death, trigger reset for opponent
-                console.log('⚠️ Triggering reset for OPPONENT');
+                console.log('⚠️ Triggering RESET PARCIAL for OPPONENT (not sudden death)');
                 this.executeReset(false); // isPlayer = false for opponent
                 return true;
             }
@@ -110,7 +132,7 @@ export class ResetSystem {
                 return true;
             } else {
                 // Not in sudden death, trigger reset for player
-                console.log('⚠️ Triggering reset for PLAYER');
+                console.log('⚠️ Triggering RESET PARCIAL for PLAYER (not sudden death)');
                 this.executeReset(true); // isPlayer = true for player
                 return true;
             }
@@ -187,10 +209,7 @@ export class ResetSystem {
             opponentDanger = true;
         }
         
-        // Log for debugging
-        console.log(`Reset System: Player max row = ${maxPlayerRow}, Opponent min row = ${minOpponentRow}`);
-        if (playerDanger) console.log(`⚠️ PLAYER IN DANGER! Row ${maxPlayerRow} >= ${this.DEATH_ROW_THRESHOLD}`);
-        if (opponentDanger) console.log(`⚠️ OPPONENT IN DANGER! Row ${minOpponentRow} <= ${-this.DEATH_ROW_THRESHOLD}`);
+        // Silent check
         
         // For now, return the player's row since we're focusing on player reset
         // Return 0 if no bubbles on player side
@@ -289,7 +308,6 @@ export class ResetSystem {
     public async executeReset(isPlayer: boolean): Promise<void> {
         if (this.resetState.isResetting) return;
         
-        console.log(`Executing reset for ${isPlayer ? 'player' : 'opponent'}`);
         
         this.resetState.isResetting = true;
         this.resetState.resetCount++;
@@ -358,11 +376,13 @@ export class ResetSystem {
      * Phase 2: Remove gems from player
      */
     private async gemLossPhase(isPlayer: boolean): Promise<number> {
-        // Get current gems from ArenaSystem
-        const arenaSystem = (this.scene as any).arenaSystem;
-        if (!arenaSystem) return 0;
+        // Emit event to request gem removal from ArenaCoordinator
+        // Let ArenaCoordinator handle the actual gem state change
+        const currentGems = isPlayer ? 
+            (this.scene.registry.get('playerGems') || 0) : 
+            (this.scene.registry.get('opponentGems') || 0);
         
-        const currentGems = isPlayer ? arenaSystem.playerGemCount : arenaSystem.opponentGemCount;
+        // Calculate how many gems to lose (50%)
         const gemsToLose = Math.floor(currentGems * this.GEM_LOSS_PERCENTAGE);
         
         // Apply min/max limits
@@ -371,18 +391,10 @@ export class ResetSystem {
             this.MAX_GEM_LOSS
         );
         
-        // Update gem count
-        if (isPlayer) {
-            arenaSystem.playerGemCount = Math.max(0, currentGems - finalLoss);
-        } else {
-            arenaSystem.opponentGemCount = Math.max(0, currentGems - finalLoss);
-        }
-        
-        // Update UI
-        this.scene.events.emit('gems-updated', {
-            playerGems: arenaSystem.playerGemCount,
-            opponentGems: arenaSystem.opponentGemCount,
-            total: arenaSystem.playerGemCount + arenaSystem.opponentGemCount
+        // Emit event for ArenaCoordinator to handle gem removal
+        this.scene.events.emit('reset-remove-gems', {
+            isPlayer,
+            gemsToRemove: finalLoss
         });
         
         // Visual feedback - shake gem counter
@@ -488,7 +500,6 @@ export class ResetSystem {
             }
         });
         
-        console.log(`Clearing ${bubblesToRemove.length} bubbles from ${isPlayer ? 'player' : 'opponent'} field`);
         
         // Animate removal
         const promises = bubblesToRemove.map(bubble => {
@@ -532,7 +543,6 @@ export class ResetSystem {
         
         await Promise.all(promises);
         
-        console.log(`Cleared ${bubblesToRemove.length} bubbles from ${isPlayer ? 'player' : 'opponent'} field`);
     }
     
     /**

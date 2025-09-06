@@ -115,6 +115,8 @@ export class ScoreEventManager {
     private processQueue(): void {
         if (this.processing || this.eventQueue.length === 0) return;
         
+        console.log(`[ScoreEventManager] Processing queue with ${this.eventQueue.length} events`);
+        
         this.processing = true;
         
         // Process up to 5 events per frame to maintain performance
@@ -124,6 +126,7 @@ export class ScoreEventManager {
             const event = this.eventQueue.shift();
             if (!event || event.processed) continue;
             
+            console.log('[ScoreEventManager] Processing event:', event.context);
             this.processEvent(event);
         }
         
@@ -155,6 +158,8 @@ export class ScoreEventManager {
         }
         
         if (finalResult) {
+            console.log('[ScoreEventManager] Final result calculated:', finalResult);
+            
             // Update scores
             if (context.isPlayer) {
                 this.totalPlayerScore += finalResult.finalScore;
@@ -165,6 +170,7 @@ export class ScoreEventManager {
             }
             
             // Trigger visual effects
+            console.log('[ScoreEventManager] Notifying visual effect');
             this.notifyVisualEffect(finalResult, context.position);
             
             // Emit scene event for other systems
@@ -199,6 +205,67 @@ export class ScoreEventManager {
     
     public getOpponentScore(): number {
         return this.totalOpponentScore;
+    }
+    
+    /**
+     * Handle match found event (from ArenaCoordinator)
+     */
+    public handleMatchFound(data: any): void {
+        console.log('[ScoreEventManager] handleMatchFound called with:', data);
+        
+        if (!data.matchedBubbles || data.matchedBubbles.length < 3) {
+            console.log('[ScoreEventManager] Invalid match data, skipping');
+            return;
+        }
+        
+        // Calculate center position of the match
+        let centerX = 0;
+        let centerY = 0;
+        data.matchedBubbles.forEach((bubble: any) => {
+            centerX += bubble.x;
+            centerY += bubble.y;
+        });
+        centerX /= data.matchedBubbles.length;
+        centerY /= data.matchedBubbles.length;
+        
+        const eventContext = {
+            type: ScoreEventType.BUBBLE_MATCH,
+            baseValue: 10,
+            isPlayer: data.isPlayer !== false, // Default to player
+            position: { x: centerX, y: centerY },
+            matchSize: data.matchedBubbles.length,  // Put matchSize at root level
+            bubbleColor: data.matchedBubbles[0]?.color || 0xFFD700,
+            metadata: {
+                matchSize: data.matchedBubbles.length,
+                bubbleColor: data.matchedBubbles[0]?.color || 0xFFD700
+            }
+        };
+        
+        console.log('[ScoreEventManager] Queueing event:', eventContext);
+        
+        // Create score event
+        this.queueEvent(eventContext);
+    }
+    
+    /**
+     * Handle bubble shot event
+     */
+    public handleBubbleShot(data: any): void {
+        // Could track shots for statistics if needed
+    }
+    
+    /**
+     * Handle bubble destroyed event
+     */
+    public handleBubbleDestroyed(data: any): void {
+        // Could add score for individual bubble destruction if needed
+    }
+    
+    /**
+     * Handle combo complete event
+     */
+    public handleComboComplete(data: any): void {
+        // Combo is already handled in the match scoring, but we could add bonus here
     }
     
     public reset(): void {
@@ -238,32 +305,37 @@ class BubbleMatchModule implements IScoringModule {
         const matchSize = context.matchSize ?? 3;
         const basePoints = this.BASE_POINTS[Math.min(matchSize, 7)] || this.BASE_POINTS[7];
         
-        // Calculate multiplier and text based on match size
+        // Calculate multiplier and text based on UnifiedFeedbackSystem comments
         let multiplier = 1.0;
         let displayText = `+${basePoints}`;
         let effectLevel = 1;
         
         if (matchSize >= 7) {
+            // Mega combo (7+ bubbles) - "PERFECT!"
             multiplier = 2.0;
             const finalScore = Math.floor(basePoints * multiplier);
             displayText = `PERFECT!\n+${finalScore}`;
             effectLevel = 5;
         } else if (matchSize >= 6) {
+            // Large combo (6 bubbles) - "AMAZING!"
             multiplier = 1.8;
             const finalScore = Math.floor(basePoints * multiplier);
             displayText = `AMAZING!\n+${finalScore}`;
             effectLevel = 4;
         } else if (matchSize >= 5) {
+            // Medium combo (5 bubbles) - "GREAT!"
             multiplier = 1.5;
             const finalScore = Math.floor(basePoints * multiplier);
             displayText = `GREAT!\n+${finalScore}`;
             effectLevel = 3;
         } else if (matchSize >= 4) {
+            // Small combo (4 bubbles) - "GOOD!"
             multiplier = 1.2;
             const finalScore = Math.floor(basePoints * multiplier);
             displayText = `GOOD!\n+${finalScore}`;
             effectLevel = 2;
         }
+        // For 3 matches: just show points (no combo text) - already set above
         
         return {
             finalScore: Math.floor(basePoints * multiplier),

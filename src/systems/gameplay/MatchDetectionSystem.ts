@@ -5,21 +5,30 @@ import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleColor, IHexPosition, ArenaZone } from '@/types/ArenaTypes';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
+import { GameEventBus } from '@/core/EventBus';
+// import { getParticlePool } from '@/optimization'; // Temporarily disabled
 
 export class MatchDetectionSystem {
     private scene: Scene;
     private bubbleGrid: BubbleGrid;
     private gridAttachmentSystem: GridAttachmentSystem;
+    private eventBus: GameEventBus;
+    
+    // System state
+    public enabled: boolean = true;
     
     // Match settings
     private minimumMatchSize: number = 3;
     private isProcessing: boolean = false;
+    private matchQueue: Array<{bubble: Bubble, isAIMatch: boolean}> = [];
     
     // Scoring
     private totalScore: number = 0;
     private combo: number = 0;
     private lastMatchTime: number = 0;
     private comboTimeout: number = 2000; // 2 seconds
+    
+    private comboManager: any; // ComboManager reference
     
     constructor(
         scene: Scene,
@@ -29,21 +38,39 @@ export class MatchDetectionSystem {
         this.scene = scene;
         this.bubbleGrid = bubbleGrid;
         this.gridAttachmentSystem = gridAttachmentSystem;
+        this.eventBus = GameEventBus.getInstance();
+    }
+    
+    /**
+     * Set combo manager reference
+     */
+    public setComboManager(comboManager: any): void {
+        this.comboManager = comboManager;
     }
     
     /**
      * Check for matches after a bubble attaches
      */
     public async checkForMatches(attachedBubble: Bubble): Promise<void> {
-        if (this.isProcessing || !attachedBubble.visible) return;
+        // Don't check if system is disabled
+        if (!this.enabled) return;
         
-        const color = attachedBubble.getColor();
-        if (color === undefined || color === null) {
-            // Only log critical errors
-            console.error('Bubble has no color, skipping match detection');
+        // If processing, add to queue instead of ignoring
+        if (this.isProcessing) {
+            this.matchQueue.push({bubble: attachedBubble, isAIMatch: false});
             return;
         }
         
+        if (!attachedBubble.visible) {
+            return;
+        }
+        
+        const color = attachedBubble.getColor();
+        if (color === undefined || color === null) {
+            return;
+        }
+        
+        // Mark as processing
         this.isProcessing = true;
         
         // Find connected bubbles of same color
@@ -76,14 +103,33 @@ export class MatchDetectionSystem {
             // Wait a moment to show the highlight
             await new Promise(resolve => setTimeout(resolve, 200));
             
-            // Update combo
-            this.updateCombo();
+            // Calculate score using ComboManager if available
+            let score = 0;
+            if (this.comboManager) {
+                // Use ComboManager for proper combo calculation and display
+                score = this.comboManager.calculateScore(matches.size, avgX, avgY, bubbleColor);
+                this.totalScore += score;
+            } else {
+                // Fallback to internal calculation
+                this.updateCombo();
+                score = this.calculateScore(matches);
+                this.totalScore += score;
+            }
             
-            // Calculate score
-            const score = this.calculateScore(matches);
-            this.totalScore += score;
+            // Emit match found event to GameEventBus for proper handling
+            this.eventBus.emit('match-found', {
+                matchedBubbles: Array.from(matches),
+                matchSize: matches.size,
+                combo: this.combo,
+                isAI: isAIMatch,
+                isPlayer: !isAIMatch,
+                x: avgX,
+                y: avgY,
+                bubbleColor: bubbleColor,
+                color: bubbleColor
+            });
             
-            // Emit match found event for sound system
+            // Also emit to scene for backward compatibility
             this.scene.events.emit('match-found', {
                 matchSize: matches.size,
                 combo: this.combo,
@@ -145,9 +191,22 @@ export class MatchDetectionSystem {
                 totalScore: this.totalScore,
                 combo: this.combo
             });
+            
         }
         
+        // Reset processing flag
         this.isProcessing = false;
+        
+        // Process next match in queue if any
+        if (this.matchQueue.length > 0) {
+            const next = this.matchQueue.shift();
+            if (next && next.bubble && next.bubble.visible) {
+                // Small delay to avoid stack overflow
+                this.scene.time.delayedCall(10, () => {
+                    this.checkForMatches(next.bubble);
+                });
+            }
+        }
     }
     
     /**
@@ -166,11 +225,15 @@ export class MatchDetectionSystem {
             visited.add(current);
             
             // Check if bubble color matches target color
-            const colorMatches = current.getColor() === targetColor;
+            const currentColor = current.getColor();
             
-            // Skip if wrong color or not visible
+            // Skip if bubble has no color, is not visible, or color doesn't match
+            if (!current.visible || currentColor === undefined || currentColor === null) {
+                continue;
+            }
+            
             // Mystery Bubbles must ALSO match the color, they're not wildcards
-            if (!current.visible || !colorMatches) {
+            if (currentColor !== targetColor) {
                 continue;
             }
             
@@ -179,6 +242,7 @@ export class MatchDetectionSystem {
             
             // Get neighbors
             const neighbors = this.getNeighborBubbles(current);
+            
             for (const neighbor of neighbors) {
                 if (!visited.has(neighbor)) {
                     queue.push(neighbor);
@@ -195,7 +259,9 @@ export class MatchDetectionSystem {
     private getNeighborBubbles(bubble: Bubble): Bubble[] {
         const neighbors: Bubble[] = [];
         const hexPos = bubble.getGridPosition();
-        if (!hexPos) return neighbors;
+        if (!hexPos) {
+            return neighbors;
+        }
         
         // Get hex neighbors
         const hexNeighbors = this.bubbleGrid.getNeighbors(hexPos);
@@ -207,7 +273,8 @@ export class MatchDetectionSystem {
                 return pos && 
                        pos.q === neighborHex.q && 
                        pos.r === neighborHex.r &&
-                       b.visible;
+                       b.visible &&
+                       b.active;  // Also check if bubble is active
             });
             
             if (neighborBubble) {
@@ -262,7 +329,6 @@ export class MatchDetectionSystem {
         });
         
         if (totalGemsCollected > 0) {
-            console.log(`Combo collected ${totalGemsCollected} gems for ${isPlayerShot ? 'player' : 'opponent'}`);
         }
         
         // Then, check for and handle Mystery Bubbles BEFORE removal
@@ -477,6 +543,12 @@ export class MatchDetectionSystem {
      * Check for floating bubbles after removal
      */
     private checkFloatingBubbles(): void {
+        // Safety check: if there are no grid bubbles left, skip
+        const gridBubbles = this.gridAttachmentSystem.getGridBubbles();
+        if (!gridBubbles || gridBubbles.length === 0) {
+            return;
+        }
+        
         const disconnected = this.gridAttachmentSystem.findDisconnectedGroups();
         
         // Collect all disconnected bubbles
@@ -711,35 +783,97 @@ export class MatchDetectionSystem {
     }
     
     /**
-     * Create particle effects
+     * Create particle effects - Enhanced explosion system
      */
     private createParticles(x: number, y: number, color: BubbleColor): void {
-        const particleCount = 6;
+        // Main explosion particles
+        const particleCount = 12;
+        const innerParticles = 8;
         
+        // Create bright flash at center
+        const flash = this.scene.add.circle(x, y, 25, 0xFFFFFF, 0.8);
+        flash.setDepth(Z_LAYERS.EFFECTS);
+        flash.setBlendMode(Phaser.BlendModes.ADD);
+        
+        this.scene.tweens.add({
+            targets: flash,
+            scale: { from: 0, to: 2 },
+            alpha: { from: 0.8, to: 0 },
+            duration: 200,
+            ease: 'Power2',
+            onComplete: () => flash.destroy()
+        });
+        
+        // Main particles - outer burst
         for (let i = 0; i < particleCount; i++) {
             const particle = this.scene.add.circle(
-                x, y, 4,
+                x, y, 
+                Phaser.Math.Between(3, 6),
                 color,
                 1
             );
-            particle.setDepth(Z_LAYERS.BUBBLES);
+            particle.setDepth(Z_LAYERS.EFFECTS);
+            particle.setBlendMode(Phaser.BlendModes.ADD);
             
-            const angle = (i / particleCount) * Math.PI * 2;
-            const speed = Phaser.Math.Between(50, 150);
+            const angle = (i / particleCount) * Math.PI * 2 + Phaser.Math.FloatBetween(-0.2, 0.2);
+            const speed = Phaser.Math.Between(80, 200);
             
             this.scene.tweens.add({
                 targets: particle,
                 x: x + Math.cos(angle) * speed,
                 y: y + Math.sin(angle) * speed,
-                alpha: 0,
-                scale: 0,
-                duration: 400,
+                alpha: { from: 1, to: 0 },
+                scale: { from: 1, to: 0.3 },
+                duration: Phaser.Math.Between(400, 600),
                 ease: 'Power2',
-                onComplete: () => {
-                    particle.destroy();
-                }
+                onComplete: () => particle.destroy()
             });
         }
+        
+        // Inner sparkles - smaller, faster
+        for (let i = 0; i < innerParticles; i++) {
+            const sparkle = this.scene.add.circle(
+                x + Phaser.Math.Between(-5, 5), 
+                y + Phaser.Math.Between(-5, 5),
+                2,
+                0xFFFFFF,
+                0.9
+            );
+            sparkle.setDepth(Z_LAYERS.EFFECTS + 1);
+            sparkle.setBlendMode(Phaser.BlendModes.ADD);
+            
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Phaser.Math.Between(30, 60);
+            
+            this.scene.tweens.add({
+                targets: sparkle,
+                x: sparkle.x + Math.cos(angle) * speed,
+                y: sparkle.y + Math.sin(angle) * speed,
+                alpha: 0,
+                scale: 0,
+                duration: Phaser.Math.Between(200, 300),
+                delay: Phaser.Math.Between(0, 50),
+                ease: 'Cubic.easeOut',
+                onComplete: () => sparkle.destroy()
+            });
+        }
+        
+        // Create expanding ring for extra impact
+        const ring = this.scene.add.graphics();
+        ring.lineStyle(3, color, 0.6);
+        ring.strokeCircle(0, 0, 20);
+        ring.setPosition(x, y);
+        ring.setDepth(Z_LAYERS.EFFECTS);
+        ring.setBlendMode(Phaser.BlendModes.ADD);
+        
+        this.scene.tweens.add({
+            targets: ring,
+            scale: { from: 0.5, to: 2.5 },
+            alpha: { from: 0.6, to: 0 },
+            duration: 350,
+            ease: 'Power2',
+            onComplete: () => ring.destroy()
+        });
     }
     
     // Score popup removed - handled by ComboManager

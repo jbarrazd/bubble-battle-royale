@@ -9,6 +9,8 @@ import { GridAttachmentSystem } from './GridAttachmentSystem';
 import { BubbleGrid } from './BubbleGrid';
 import { ARENA_CONFIG, Z_LAYERS, BUBBLE_CONFIG } from '@/config/ArenaConfig';
 import { HD_SCALE } from '@/config/GameConfig';
+import { getCollisionOptimizer } from '@/optimization';
+import { GameEventBus } from '@/core/EventBus';
 
 export interface IProjectile {
     bubble: Bubble;
@@ -21,6 +23,7 @@ export class ShootingSystem {
     private inputManager: InputManager;
     private playerLauncher: Launcher;
     private opponentLauncher?: Launcher;
+    public enabled: boolean = true; // Add enabled property, default to true
     
     // Shooting mechanics
     private projectiles: IProjectile[] = [];
@@ -82,9 +85,13 @@ export class ShootingSystem {
     }
     
     private setupShooting(): void {
+        console.log('ShootingSystem.setupShooting: Setting up input events');
+        
         // Listen for pointer events
         this.scene.input.on('pointerdown', this.onPointerDown, this);
         this.scene.input.on('pointerup', this.onShoot, this);
+        
+        console.log('ShootingSystem: Input events registered');
         
         // Listen for AI shoot events
         this.scene.events.on('ai-shoot', this.onAIShoot, this);
@@ -104,6 +111,13 @@ export class ShootingSystem {
     }
     
     private onPointerDown(): void {
+        // Check if game has ended
+        if (!this.enabled) {
+            return;
+        }
+        
+        console.log('ShootingSystem: onPointerDown - canShoot:', this.canShoot, 'currentBubble:', !!this.currentBubble);
+        
         // Always show trajectory preview when pressing
         const angle = this.playerLauncher.getAimAngle();
         
@@ -192,13 +206,13 @@ export class ShootingSystem {
         // Get current color (first in queue)
         const currentColor = this.nextBubbleColors[0] || BubbleColor.BLUE;
         
-        // console.log('ShootingSystem: Loading bubble color:', currentColor);
         
         // Load bubble into launcher
         this.playerLauncher.loadBubble(currentColor);
         
         // Get the loaded bubble from the launcher
         this.currentBubble = this.playerLauncher.getLoadedBubble();
+        
         
         // Shift queue and add new color
         this.nextBubbleColors.shift(); // Remove current color
@@ -212,10 +226,18 @@ export class ShootingSystem {
     }
     
     private onShoot(): void {
+        // Check if game has ended
+        if (!this.enabled) {
+            return;
+        }
+        
         // Hide trajectory preview
         this.trajectoryPreview.hide();
         
-        if (!this.canShoot || !this.currentBubble) return;
+        if (!this.canShoot || !this.currentBubble) {
+            console.log('ShootingSystem: Cannot shoot - canShoot:', this.canShoot, 'currentBubble:', !!this.currentBubble);
+            return;
+        }
         
         // No turn checking - allow simultaneous shooting
         
@@ -273,14 +295,19 @@ export class ShootingSystem {
         
         this.scene.time.delayedCall(this.cooldownTime, () => {
             this.canShoot = true;
-            this.playerLauncher.setHighlight(false);
+            // Check if launcher still exists before calling methods
+            if (this.playerLauncher && this.playerLauncher.scene) {
+                this.playerLauncher.setHighlight(false);
+            }
             this.cooldownBarBg?.setVisible(false);
             // Load next bubble after cooldown completes (like opponent)
             this.loadNextBubble();
         });
         
         // Visual feedback during cooldown
-        this.playerLauncher.setHighlight(true);
+        if (this.playerLauncher && this.playerLauncher.scene) {
+            this.playerLauncher.setHighlight(true);
+        }
         
         // Clear current bubble immediately
         this.currentBubble = null;
@@ -345,13 +372,32 @@ export class ShootingSystem {
         });
         
         // Visual feedback on opponent launcher
-        this.opponentLauncher.setHighlight(true);
-        this.scene.time.delayedCall(200, () => {
-            this.opponentLauncher.setHighlight(false);
-        });
+        if (this.opponentLauncher && this.opponentLauncher.scene) {
+            this.opponentLauncher.setHighlight(true);
+            this.scene.time.delayedCall(200, () => {
+                if (this.opponentLauncher && this.opponentLauncher.scene) {
+                    this.opponentLauncher.setHighlight(false);
+                }
+            });
+        }
     }
     
     public update(delta: number): void {
+        // Update launcher aim based on mouse position
+        const pointer = this.scene.input.activePointer;
+        if (pointer) {
+            // Calculate angle from launcher to pointer
+            const dx = pointer.x - this.playerLauncher.x;
+            const dy = pointer.y - this.playerLauncher.y;
+            let angle = Phaser.Math.RadToDeg(Math.atan2(dy, dx));
+            
+            // Normalize angle to 0-360
+            if (angle < 0) angle += 360;
+            
+            // Update launcher aim
+            this.playerLauncher.setAimAngle(angle);
+        }
+        
         // Update trajectory preview if aiming
         if (this.inputManager.isPointerActive()) {
             const angle = this.playerLauncher.getAimAngle();
@@ -385,7 +431,7 @@ export class ShootingSystem {
             projectile.bubble.y += projectile.velocity.y * (delta / 1000);
             
             // Emit position update for chest collision detection
-            this.scene.events.emit('bubble-position-update', projectile.bubble);
+            GameEventBus.getInstance().emit('bubble-position-update', projectile.bubble);
             
             // Check if this bubble was marked as hit (chest collision)
             if (!projectile.bubble.visible) {

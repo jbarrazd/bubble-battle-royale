@@ -44,6 +44,8 @@ export class UnifiedFeedbackSystem {
     }
     
     public queueFeedback(result: ScoreResult, position: { x: number; y: number }): void {
+        console.log('[UnifiedFeedbackSystem] queueFeedback called with:', result, position);
+        
         // Add to queue
         this.feedbackQueue.push({
             result,
@@ -286,6 +288,10 @@ export class UnifiedFeedbackSystem {
     }
     
     public update(delta: number): void {
+        // Process pending feedback queue
+        this.processQueue();
+        
+        // Update effect pool
         this.effectPool.update(delta);
     }
     
@@ -295,7 +301,21 @@ export class UnifiedFeedbackSystem {
         this.effectPool.reset();
     }
     
+    /**
+     * Clear all active animations and feedback
+     */
+    public clearAll(): void {
+        // Clear the queue
+        this.feedbackQueue = [];
+        this.processing = false;
+        this.activeFeedbacks = [];
+        
+        // Note: We don't destroy tweens here as it can cause animation freezing
+        // The scene will handle cleanup when needed
+    }
+    
     public destroy(): void {
+        this.clearAll();
         this.reset();
         this.effectPool.destroy();
     }

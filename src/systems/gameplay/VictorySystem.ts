@@ -58,15 +58,27 @@ export class VictorySystem {
     /**
      * Handle game over from other systems (field full, etc)
      */
-    private handleGameOver(data: { reason: string, isPlayer: boolean }): void {
+    private handleGameOver(data: { reason?: string, isPlayer?: boolean, playerWins?: boolean }): void {
         if (this.gameEnded) return;
         
-        // In field-full scenarios:
-        // If it's the player's field that's full, player loses (opponent wins)
-        // If it's the opponent's field that's full, player wins
-        // data.isPlayer indicates WHOSE field is full
-        const playerWins = !data.isPlayer;
-        this.triggerVictory(playerWins, data.reason);
+        // Handle different types of game over events
+        if (data.reason === 'field-full-sudden-death') {
+            // In field-full scenarios:
+            // If it's the player's field that's full, player loses (opponent wins)
+            // If it's the opponent's field that's full, player wins
+            // data.isPlayer indicates WHOSE field is full
+            const playerWins = !data.isPlayer;
+            console.log(`VictorySystem: Field full in sudden death - Player ${data.isPlayer ? 'LOSES' : 'WINS'}`);
+            this.triggerVictory(playerWins, data.reason);
+        } else if (data.reason === 'time-up' && data.playerWins !== undefined) {
+            // Time up events from ArenaCoordinator
+            // Don't handle here, let ArenaCoordinator handle the UI
+            return;
+        } else if (data.reason) {
+            // For other reasons, just ignore
+            console.log(`VictorySystem: Ignoring game-over event with reason: ${data.reason}`);
+            return;
+        }
     }
     
     /**
@@ -206,9 +218,9 @@ export class VictorySystem {
         this.gameEnded = true;
         console.log(`🏆 GAME OVER! ${isPlayerVictory ? 'PLAYER' : 'OPPONENT'} WINS! Reason: ${reason}`);
         
-        // Stop all game systems
-        this.scene.physics.pause();
-        this.scene.time.removeAllEvents();
+        // DO NOT pause physics or remove time events
+        // We want animations to continue in the background
+        // Only stop game progression, not rendering
         
         // Create victory overlay
         this.createVictoryOverlay(isPlayerVictory, reason);

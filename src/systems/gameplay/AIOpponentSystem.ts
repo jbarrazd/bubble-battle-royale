@@ -70,16 +70,27 @@ export class AIOpponentSystem {
     
     public stop(): void {
         this.isActive = false;
+        
+        // Destroy all timers
         if (this.shootTimer) {
             this.shootTimer.destroy();
             this.shootTimer = undefined;
         }
+        
+        // Cancel cooldown state
+        this.isOnCooldown = false;
         
         // Clean up current bubble when stopping
         if (this.currentBubble) {
             this.currentBubble.destroy();
             this.currentBubble = null;
         }
+        
+        // Clear the bubble queue
+        this.nextBubbleColors = [];
+        
+        // Remove all delayed calls related to this system
+        // Note: We can't selectively remove them, but setting isActive=false prevents execution
     }
     
     /**
@@ -140,6 +151,9 @@ export class AIOpponentSystem {
         }
         
         this.shootTimer = this.scene.time.delayedCall(thinkingTime, () => {
+            if (!this.isActive) {
+                return;
+            }
             if (this.isActive && !this.isOnCooldown) {
                 this.performShot();
             }
@@ -190,6 +204,9 @@ export class AIOpponentSystem {
         // Start cooldown (same as player!)
         this.isOnCooldown = true;
         this.scene.time.delayedCall(this.COOLDOWN_TIME, () => {
+            if (!this.isActive) {
+                return;
+            }
             this.isOnCooldown = false;
             // Load next bubble after cooldown
             this.loadNextBubble();

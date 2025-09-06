@@ -60,19 +60,8 @@ export class GridAttachmentSystem {
             centerPixel.x, centerPixel.y
         );
         
-        // If very close to center and no bubble there, attach to center
-        if (centerDistance < BUBBLE_CONFIG.SIZE && !this.isPositionOccupied({ q: 0, r: 0, s: 0 })) {
-            // Create a virtual bubble at center for attachment reference
-            const virtualBubble = new Bubble(
-                this.scene,
-                centerPixel.x,
-                centerPixel.y,
-                0x000000
-            );
-            virtualBubble.setGridPosition({ q: 0, r: 0, s: 0 });
-            virtualBubble.setVisible(false);
-            return virtualBubble;
-        }
+        // NEVER allow attachment at center (0,0) - that's where the objective is!
+        // Skip this check entirely
         
         // OPTIMIZED: Only check nearby bubbles using spatial partitioning
         const nearbyBubbles = this.getNearbyBubbles(projectilePos.x, projectilePos.y);
@@ -284,8 +273,8 @@ export class GridAttachmentSystem {
      * Check if position is valid (has at least one neighbor)
      */
     private isValidPosition(hexPos: IHexPosition): boolean {
-        // Center position is always valid
-        if (hexPos.q === 0 && hexPos.r === 0) return true;
+        // Center position (0,0) is NEVER valid - that's where the objective is!
+        if (hexPos.q === 0 && hexPos.r === 0) return false;
         
         // Check if position has at least one neighbor bubble
         const neighbors = this.bubbleGrid.getNeighbors(hexPos);
@@ -298,29 +287,39 @@ export class GridAttachmentSystem {
     private isPositionOccupied(hexPos: IHexPosition): boolean {
         // OPTIMIZED: Use position map for O(1) lookup instead of O(n) iteration
         const key = this.hexToKey(hexPos);
+        
+        // First check the position map
         if (this.gridPositions.has(key)) {
             const bubble = this.gridPositions.get(key);
             // Clean up stale entries
-            if (!bubble || !bubble.visible) {
+            if (!bubble || !bubble.visible || !bubble.active) {
                 this.gridPositions.delete(key);
                 return false;
             }
             return true;
         }
         
-        // Double-check with actual grid bubbles to be sure
-        const occupied = this.gridBubbles.some(bubble => {
-            if (!bubble.visible) return false;
+        // Also check if any bubble is currently animating to this position
+        // This prevents double-occupation during attachment animations
+        const targetPixel = this.bubbleGrid.hexToPixel(hexPos);
+        const isBeingOccupied = this.gridBubbles.some(bubble => {
+            if (!bubble.visible || !bubble.active) return false;
             
+            // Check if bubble has this as its grid position
             const pos = bubble.getGridPosition();
-            if (!pos) return false;
+            if (pos && pos.q === hexPos.q && pos.r === hexPos.r) {
+                return true;
+            }
             
-            return pos.q === hexPos.q && pos.r === hexPos.r;
+            // Also check if bubble is very close to this position (might be animating)
+            const distance = Phaser.Math.Distance.Between(
+                bubble.x, bubble.y,
+                targetPixel.x, targetPixel.y
+            );
+            return distance < BUBBLE_CONFIG.SIZE * 0.5; // Within half bubble size
         });
         
-        // Don't use pixel proximity as it causes false positives
-        // We only care about exact hex position matches
-        return occupied;
+        return isBeingOccupied;
     }
     
     /**
@@ -334,9 +333,15 @@ export class GridAttachmentSystem {
      * Attach bubble to grid at specified position
      */
     public attachToGrid(bubble: Bubble, hexPos: IHexPosition, onComplete?: () => void): void {
-        if (this.attachmentInProgress) {
-            // console.warn('Attachment already in progress, queueing bubble');
-            // Queue this attachment for later
+        // Allow parallel attachments for different bubbles
+        // Only queue if it's the same position being targeted
+        const posKey = `${hexPos.q},${hexPos.r}`;
+        const isPositionBusy = this.attachmentQueue.some(item => 
+            `${item.hexPos.q},${item.hexPos.r}` === posKey
+        );
+        
+        if (this.attachmentInProgress && isPositionBusy) {
+            // Queue this attachment only if same position is targeted
             this.attachmentQueue.push({ bubble, hexPos, onComplete });
             return;
         }
@@ -351,7 +356,8 @@ export class GridAttachmentSystem {
             return;
         }
         
-        this.attachmentInProgress = true;
+        // Don't block other attachments globally, only for same position
+        // this.attachmentInProgress = true; // Commented to allow parallel processing
         
         // Get exact pixel position for this hex coordinate
         const pixelPos = this.bubbleGrid.hexToPixel(hexPos);
@@ -417,16 +423,15 @@ export class GridAttachmentSystem {
             
             // Check for matches FIRST
             if (this.matchDetectionSystem) {
-                // console.log('MatchDetectionSystem available, checking bubble color:', bubble.getColor()?.toString(16));
                 await this.matchDetectionSystem.checkForMatches(bubble);
             } else {
-                console.warn('MatchDetectionSystem not available!');
+                console.warn('[GridAttachment] MatchDetectionSystem not available!');
             }
             
             // Then check for disconnected bubbles
             this.checkDisconnectedBubbles();
             
-            this.attachmentInProgress = false;
+            // this.attachmentInProgress = false; // No longer using global flag
             
             // Emit bubble attached event with data
             // Only emit if bubble is visible and has a valid position
@@ -510,32 +515,33 @@ export class GridAttachmentSystem {
      * Clean up any misaligned bubbles at position
      */
     private cleanupMisalignedBubbles(hexPos: IHexPosition, newBubble: Bubble): void {
-        // Only remove bubbles that are in the EXACT same hex position
-        // This prevents removing nearby valid bubbles
+        // More aggressive cleanup to prevent overlapping bubbles
         const toRemove: Bubble[] = [];
+        const targetPixel = this.bubbleGrid.hexToPixel(hexPos);
+        const key = this.hexToKey(hexPos);
         
+        // Check all grid bubbles
         this.gridBubbles.forEach(bubble => {
             if (bubble === newBubble || !bubble.visible) return;
             
             const bubblePos = bubble.getGridPosition();
-            if (!bubblePos) return;
             
-            // Check if it's the EXACT same hex position
-            if (bubblePos.q === hexPos.q && bubblePos.r === hexPos.r) {
-                // Double check with pixel distance to be absolutely sure
-                const targetPixel = this.bubbleGrid.hexToPixel(hexPos);
-                const bubbleDistance = Phaser.Math.Distance.Between(
-                    bubble.x, bubble.y,
-                    targetPixel.x, targetPixel.y
-                );
-                
-                // Only remove if truly at the same position (within 5 pixels)
-                if (bubbleDistance < 5) {
-                    console.warn(`Found duplicate bubble at exact position (${hexPos.q},${hexPos.r}), removing old one`);
-                    toRemove.push(bubble);
-                } else {
-                    console.log(`Bubble claims position (${hexPos.q},${hexPos.r}) but is ${bubbleDistance}px away, not removing`);
-                }
+            // Remove if it claims the same hex position
+            if (bubblePos && bubblePos.q === hexPos.q && bubblePos.r === hexPos.r) {
+                console.warn(`Found duplicate bubble at hex position (${hexPos.q},${hexPos.r}), removing old one`);
+                toRemove.push(bubble);
+                return;
+            }
+            
+            // Also remove if physically overlapping (within 80% of bubble size)
+            const distance = Phaser.Math.Distance.Between(
+                bubble.x, bubble.y,
+                targetPixel.x, targetPixel.y
+            );
+            
+            if (distance < BUBBLE_CONFIG.SIZE * 0.8) {
+                console.warn(`Found overlapping bubble at pixel distance ${distance.toFixed(1)}, removing`);
+                toRemove.push(bubble);
             }
         });
         
@@ -554,7 +560,6 @@ export class GridAttachmentSystem {
         });
         
         if (toRemove.length > 0) {
-            console.log(`Cleaned up ${toRemove.length} duplicate bubble(s) at position (${hexPos.q},${hexPos.r})`);
         }
     }
     
@@ -615,11 +620,19 @@ export class GridAttachmentSystem {
         
         // If no anchors (no bubbles near objective), all bubbles are disconnected
         if (anchors.length === 0) {
-            // console.log('No anchors found - all bubbles are floating!');
+            // If there are no grid bubbles at all, return empty map
+            if (this.gridBubbles.length === 0) {
+                return disconnected;
+            }
+            
+            // Otherwise, all existing bubbles are floating
             this.gridBubbles.forEach(bubble => {
-                if (bubble.visible) {
+                if (bubble.visible && bubble.active) {
                     const zone = this.getZoneForBubble(bubble);
-                    disconnected.get(zone)?.push(bubble);
+                    const zoneArray = disconnected.get(zone);
+                    if (zoneArray) {
+                        zoneArray.push(bubble);
+                    }
                 }
             });
             return disconnected;

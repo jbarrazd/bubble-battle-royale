@@ -4,6 +4,7 @@ import { ARENA_CONFIG, BUBBLE_CONFIG, GRID_CONFIG, ZONE_COLORS, Z_LAYERS, DANGER
 import { BubbleGrid } from './BubbleGrid';
 import { Bubble } from '@/gameObjects/Bubble';
 import { BubbleTextureCache } from '@/systems/rendering/BubbleTextureCache';
+import { getParticlePool, getCollisionOptimizer } from '@/optimization';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { Launcher } from '@/gameObjects/Launcher';
 import { Objective } from '@/gameObjects/Objective';
@@ -46,8 +47,9 @@ export class ArenaSystem {
     private playerLauncher!: Launcher;
     private opponentLauncher!: Launcher;
     private bubbles: Bubble[] = [];
-    private bubblePool: Bubble[] = [];
+    private bubblePool: Bubble[] = []; // Still needed for compatibility
     private textureCache: BubbleTextureCache;
+    private useOptimizedParticles: boolean = true; // Safe to use
     private useOptimizedBubbles: boolean = true;
     private zones: Map<ArenaZone, IZoneBounds> = new Map();
     private debugGraphics?: Phaser.GameObjects.Graphics;
@@ -125,6 +127,17 @@ export class ArenaSystem {
         this.textureCache = new BubbleTextureCache(scene);
         this.textureCache.initialize(); // Always initialize for performance
         
+        // Initialize safe optimization systems
+        if (this.useOptimizedParticles) {
+            try {
+                getParticlePool(scene); // Initialize particle pool
+                getCollisionOptimizer(scene); // Initialize collision optimizer
+                console.log('✅ Particle and collision optimizations initialized');
+            } catch (error) {
+                console.warn('Failed to initialize optimizations:', error);
+            }
+        }
+        
         // Initialize input manager
         this.inputManager = new InputManager(scene);
         
@@ -183,8 +196,7 @@ export class ArenaSystem {
     }
 
     private createBubblePool(): void {
-        // Texture cache is already initialized in constructor for all themes
-        
+        // Use original pool system for stability
         for (let i = 0; i < BUBBLE_CONFIG.POOL_SIZE; i++) {
             // Always use regular Bubble class with texture cache
             const bubble = new Bubble(
@@ -1577,6 +1589,7 @@ export class ArenaSystem {
     }
 
     private getBubbleFromPool(): Bubble | null {
+        // Use original system for stability
         const bubble = this.bubblePool.find(b => b.isPooled() || !b.visible);
         if (bubble) {
             const index = this.bubblePool.indexOf(bubble);
@@ -1588,6 +1601,7 @@ export class ArenaSystem {
     }
 
     private returnBubbleToPool(bubble: Bubble): void {
+        // Use original system for stability
         bubble.returnToPool();
         this.bubblePool.push(bubble);
         
@@ -1748,6 +1762,16 @@ export class ArenaSystem {
     }
 
     public update(time: number, delta: number): void {
+        // Update particle pool for optimized effects
+        if (this.useOptimizedParticles) {
+            try {
+                getParticlePool(this.scene).update();
+                getCollisionOptimizer(this.scene).update();
+            } catch (error) {
+                // Silently handle errors to prevent game crash
+            }
+        }
+        
         // OPTIMIZATION: Only update input every frame if pointer is active
         const isPointerActive = this.inputManager.isPointerActive();
         if (isPointerActive) {

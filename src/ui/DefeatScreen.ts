@@ -93,17 +93,18 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
         
         // Initial state for animations
         this.setAlpha(0);
-        panelBg.setScale(0.8);
+        panelBg.setScale(0);
         defeatText.setScale(0);
         
-        // Gentle entrance animations
+        // Fade in container
         scene.tweens.add({
             targets: this,
             alpha: 1,
-            duration: 500,
+            duration: 400,
             ease: 'Power2'
         });
         
+        // Scale up panel
         scene.tweens.add({
             targets: panelBg,
             scaleX: 1,
@@ -113,23 +114,25 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
             delay: 100
         });
         
+        // Scale up defeat text
         scene.tweens.add({
             targets: defeatText,
             scaleX: 1,
             scaleY: 1,
-            duration: 400,
-            ease: 'Quad.easeOut',
+            duration: 700,
+            ease: 'Back.easeOut',
             delay: 300
         });
         
-        // Gentle pulsing on encourage text
+        // Add gentle pulsing on encourage text
         scene.tweens.add({
             targets: encourageText,
             scale: 1.05,
             duration: 1500,
             yoyo: true,
             repeat: -1,
-            ease: 'Sine.easeInOut'
+            ease: 'Sine.easeInOut',
+            delay: 500
         });
         
         // Score display (immediate, no count up for defeat)
@@ -145,7 +148,8 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
         // Add some floating bubbles for visual interest
         this.createFloatingBubbles(scene);
         
-        this.setDepth(2000);
+        // Set proper depth for UI overlay
+        this.setDepth(2000); // UI layer depth
         scene.add.existing(this);
     }
     
@@ -186,7 +190,7 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
             scene.tweens.add({
                 targets: bg,
                 scale: 1.05,
-                duration: 1000,
+                duration: 1200,
                 yoyo: true,
                 repeat: -1,
                 ease: 'Sine.easeInOut'
@@ -215,24 +219,18 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
         });
         
         bg.on('pointerdown', () => {
-            console.log(`💆 DefeatScreen button clicked: ${text}`);
             
             // Emit UI click event for sound system
             scene.events.emit('ui-click');
             
             // Execute callback IMMEDIATELY without waiting for tween
-            console.log(`🚀 Executing callback for: ${text}`);
             
             try {
                 if (callback && typeof callback === 'function') {
-                    console.log(`💫 Callback type check passed, executing...`);
                     callback();
-                    console.log(`✅ Callback executed successfully!`);
                 } else {
-                    console.error('❌ Callback is not a function:', callback, 'Type:', typeof callback);
                 }
             } catch (error) {
-                console.error('❌ Error executing callback:', error);
             }
             
             // Visual feedback AFTER callback
@@ -245,14 +243,15 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
             });
         });
         
-        // Initial animation
-        button.setAlpha(0);
+        // Initial animation - start visible
+        button.setAlpha(1);
+        button.setScale(0.9);
         scene.tweens.add({
             targets: button,
-            alpha: 1,
-            duration: 500,
-            ease: 'Power2',
-            delay: 800 + (isPrimary ? 0 : 200)
+            scale: 1,
+            duration: 300,
+            ease: 'Back.easeOut',
+            delay: 200 + (isPrimary ? 0 : 100)
         });
         
         return button;
@@ -261,32 +260,23 @@ export class DefeatScreen extends Phaser.GameObjects.Container {
     private createFloatingBubbles(scene: Phaser.Scene): void {
         const colors = [0x7B68EE, 0x4B0082, 0x6A5ACD];
         
-        for (let i = 0; i < 5; i++) {
-            const x = Phaser.Math.Between(-150, 150);
-            const y = Phaser.Math.Between(-200, 200);
+        // Create fewer bubbles with simpler animations
+        for (let i = 0; i < 2; i++) {
+            const x = Phaser.Math.Between(-100, 100);
+            const y = Phaser.Math.Between(-150, 150);
             
-            const bubble = scene.add.circle(x, y, 15, colors[i % colors.length], 0.2);
+            const bubble = scene.add.circle(x, y, 12, colors[i % colors.length], 0.15);
             this.add(bubble);
             
-            // Floating animation
+            // Single simple animation
             scene.tweens.add({
                 targets: bubble,
-                y: y - 30,
-                duration: 3000 + i * 500,
+                y: y - 20,
+                alpha: { from: 0.15, to: 0.3 },
+                duration: 3000,
                 yoyo: true,
                 repeat: -1,
-                ease: 'Sine.easeInOut',
-                delay: i * 200
-            });
-            
-            scene.tweens.add({
-                targets: bubble,
-                x: x + Phaser.Math.Between(-20, 20),
-                duration: 2000 + i * 300,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut',
-                delay: i * 150
+                ease: 'Sine.easeInOut'
             });
         }
     }

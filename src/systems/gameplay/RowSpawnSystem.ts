@@ -29,34 +29,35 @@ export class RowSpawnSystem {
     private centerY: number;
     private spawnCounter: number = 0; // Track spawns for Mystery Bubble timing
     private spawnAcceleration: number = 0; // Track how many times we've spawned
+    private isPlayerShooting: boolean = false; // Track if player is currently shooting
     
     // Arena-specific configurations
     private readonly ARENA_CONFIGS: Record<string, RowSpawnConfig> = {
         ocean: {
-            interval: 15000,  // 15 seconds - balanced pace
+            interval: 25000,  // 25 seconds - much slower pace
             pattern: 'random',
             colors: 5
         },
         space: {
-            interval: 12000,   // 12 seconds initially - reduced from 7
+            interval: 20000,   // 20 seconds initially - much slower
             pattern: 'random',
             colors: 5
         },
         volcanic: {
-            interval: 14000,  // 14 seconds - moderate pace
+            interval: 22000,  // 22 seconds - slower pace
             pattern: 'random',
             colors: 5
         },
         crystal: {
-            interval: 10000,   // 10 seconds - still faster but manageable
+            interval: 18000,   // 18 seconds - slower but still faster than others
             pattern: 'random',
             colors: 6
         }
     };
     
     // Progressive difficulty settings
-    private readonly MIN_INTERVAL = 5000; // Minimum spawn interval (5 seconds) - more manageable
-    private readonly ACCELERATION_RATE = 0.97; // Each spawn makes next one 3% faster - slower acceleration
+    private readonly MIN_INTERVAL = 8000; // Minimum spawn interval (8 seconds) - much more manageable
+    private readonly ACCELERATION_RATE = 0.98; // Each spawn makes next one 2% faster - even slower acceleration
 
     constructor(scene: Scene, arenaSystem: ArenaSystem) {
         this.scene = scene;
@@ -69,8 +70,21 @@ export class RowSpawnSystem {
         
         // Initialize available colors based on config
         this.initializeColors();
+        
+        // Listen for shooting events
+        this.setupShootingListeners();
     }
 
+    private setupShootingListeners(): void {
+        this.scene.events.on('shooting-started', () => {
+            this.isPlayerShooting = true;
+        });
+        
+        this.scene.events.on('shooting-complete', () => {
+            this.isPlayerShooting = false;
+        });
+    }
+    
     private initializeColors(): void {
         this.availableColors = [];
         const colorCount = this.currentConfig.colors;
@@ -109,7 +123,6 @@ export class RowSpawnSystem {
             loop: true
         });
         
-        console.log(`RowSpawnSystem: Started spawning with ${this.spawnInterval}ms interval`);
     }
 
     /**
@@ -123,7 +136,6 @@ export class RowSpawnSystem {
             this.spawnTimer = null;
         }
         
-        console.log('RowSpawnSystem: Stopped spawning');
     }
 
     /**
@@ -134,10 +146,31 @@ export class RowSpawnSystem {
             return;
         }
         
+        // Don't spawn while player is shooting to prevent unfair losses
+        if (this.isPlayerShooting) {
+            // Reschedule this spawn for 1 second later
+            this.scene.time.delayedCall(1000, () => {
+                if (!this.isPlayerShooting) {
+                    this.spawnNewRows();
+                }
+            });
+            return;
+        }
+        
         // Check if immunity is active from ResetSystem
         const arenaSystem = (this.scene as any).arenaSystem;
         if (arenaSystem?.resetSystem?.isImmunityActive()) {
-            console.log('RowSpawnSystem: Immunity active, skipping spawn');
+            return;
+        }
+        
+        // Check if field has too few bubbles and needs emergency refill
+        const currentBubbles = this.arenaSystem.getAllBubbles();
+        const activeBubbleCount = currentBubbles.filter(b => b.visible).length;
+        const MIN_BUBBLES_THRESHOLD = 10; // Minimum bubbles before forcing refill
+        
+        if (activeBubbleCount < MIN_BUBBLES_THRESHOLD) {
+            // Force multiple row spawns to refill the field
+            this.performEmergencyRefill();
             return;
         }
 
@@ -166,11 +199,9 @@ export class RowSpawnSystem {
                     loop: true
                 });
                 
-                console.log(`RowSpawnSystem: Accelerating! New interval: ${Math.round(this.spawnInterval)}ms`);
             }
         }
         
-        console.log(`RowSpawnSystem: Adding new rows (spawn #${this.spawnCounter}, interval: ${Math.round(this.spawnInterval)}ms)`);
         
         const bubbleGrid = this.arenaSystem.bubbleGrid;
         const gridAttachment = this.arenaSystem.gridAttachmentSystem;
@@ -974,13 +1005,114 @@ export class RowSpawnSystem {
      * Update spawn interval (for difficulty scaling)
      */
     public setSpawnInterval(interval: number): void {
+        const wasEnabled = this.isEnabled;
         this.spawnInterval = interval;
         
-        // Restart timer with new interval if active
-        if (this.isEnabled && this.spawnTimer) {
-            this.stopSpawning();
-            this.startSpawning(interval);
+        // Only restart if currently spawning
+        if (wasEnabled && this.spawnTimer) {
+            // Store current state
+            const wasPaused = this.isPaused;
+            
+            // Stop current timer
+            this.spawnTimer.destroy();
+            
+            // Create new timer with new interval
+            this.spawnTimer = this.scene.time.addEvent({
+                delay: this.spawnInterval,
+                callback: this.spawnNewRows,
+                callbackScope: this,
+                loop: true
+            });
+            
+            // Restore pause state if needed
+            if (wasPaused) {
+                this.spawnTimer.paused = true;
+                this.isPaused = true;
+            }
+            
+            console.log(`RowSpawnSystem: Updated interval to ${interval}ms`);
         }
+    }
+    
+    /**
+     * Perform emergency refill when field has too few bubbles
+     */
+    private performEmergencyRefill(): void {
+        console.log('RowSpawnSystem: Performing emergency refill!');
+        
+        const bubbleGrid = this.arenaSystem.bubbleGrid;
+        const gridAttachment = this.arenaSystem.gridAttachmentSystem;
+        
+        // Add bubbles in the center area
+        const centerPositions: IHexPosition[] = [
+            { q: 0, r: -2, s: 2 },
+            { q: 1, r: -2, s: 1 },
+            { q: -1, r: -2, s: 3 },
+            { q: 0, r: -1, s: 1 },
+            { q: 1, r: -1, s: 0 },
+            { q: -1, r: -1, s: 2 },
+            { q: 2, r: -1, s: -1 },
+            { q: -2, r: -1, s: 3 },
+            { q: 0, r: 0, s: 0 },
+            { q: 1, r: 0, s: -1 },
+            { q: -1, r: 0, s: 1 },
+            { q: 2, r: 0, s: -2 },
+            { q: -2, r: 0, s: 2 },
+            { q: 0, r: 1, s: -1 },
+            { q: 1, r: 1, s: -2 },
+            { q: -1, r: 1, s: 0 },
+            { q: 2, r: 1, s: -3 },
+            { q: -2, r: 1, s: 1 },
+            { q: 0, r: 2, s: -2 },
+            { q: 1, r: 2, s: -3 },
+            { q: -1, r: 2, s: -1 }
+        ];
+        
+        // Check which positions are empty and add bubbles
+        let bubblesAdded = 0;
+        const existingBubbles = this.arenaSystem.getAllBubbles();
+        
+        for (const pos of centerPositions) {
+            // Check if position is occupied
+            const isOccupied = existingBubbles.some(b => {
+                const bPos = b.getGridPosition();
+                return bPos && bPos.q === pos.q && bPos.r === pos.r && b.visible;
+            });
+            
+            if (!isOccupied) {
+                const pixelPos = bubbleGrid.hexToPixel(pos);
+                const color = this.getRandomColor();
+                const bubble = this.arenaSystem.createBubbleAt(
+                    pixelPos.x,
+                    pixelPos.y,
+                    color
+                );
+                
+                if (bubble) {
+                    bubble.setGridPosition(pos);
+                    gridAttachment.addGridBubble(bubble);
+                    bubblesAdded++;
+                }
+            }
+        }
+        
+        console.log(`RowSpawnSystem: Emergency refill complete, added ${bubblesAdded} bubbles`);
+        
+        // Emit event for UI notification
+        this.scene.events.emit('emergency-refill', { bubblesAdded });
+    }
+    
+    /**
+     * Enter sudden death mode - speeds up spawning dramatically
+     */
+    public enterSuddenDeath(): void {
+        console.log('RowSpawnSystem: Entering SUDDEN DEATH mode!');
+        
+        // Just change the interval for next spawn without stopping
+        this.spawnInterval = 5000; // 5 seconds
+        
+        // Don't restart the timer immediately, let it apply on next natural spawn
+        console.log('RowSpawnSystem: Sudden death will apply on next spawn cycle');
     }
 
     /**
@@ -1006,5 +1138,7 @@ export class RowSpawnSystem {
         // Clean up event listeners
         this.scene.events.off('combo-start');
         this.scene.events.off('combo-complete');
+        this.scene.events.off('shooting-started');
+        this.scene.events.off('shooting-complete');
     }
 }

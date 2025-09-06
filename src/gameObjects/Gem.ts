@@ -11,7 +11,7 @@ export enum GemType {
 
 export class Gem extends Phaser.GameObjects.Container {
     private gemSprite: Phaser.GameObjects.Polygon;
-    private glowEffect: Phaser.GameObjects.Circle;
+    private glowEffect: Phaser.GameObjects.Arc;
     private sparkleEffect: Phaser.GameObjects.Graphics;
     private collectEffect?: Phaser.GameObjects.Particles.ParticleEmitter;
     private gemType: GemType;
@@ -38,7 +38,7 @@ export class Gem extends Phaser.GameObjects.Container {
         this.value = config.value;
         
         // Create glow effect (behind gem)
-        this.glowEffect = scene.add.circle(0, 0, 20, config.color, 0.2);
+        this.glowEffect = scene.add.arc(0, 0, 20, 0, 360, false, config.color, 0.2);
         this.add(this.glowEffect);
         
         // Create gem shape (polygon for crystal look)
@@ -53,7 +53,7 @@ export class Gem extends Phaser.GameObjects.Container {
         this.add(this.sparkleEffect);
         
         // Set depth
-        this.setDepth(Z_LAYERS.POWER_UPS);
+        this.setDepth(Z_LAYERS.BUBBLES_FRONT);
         
         // Add floating animation
         this.addFloatingAnimation();

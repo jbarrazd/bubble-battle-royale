@@ -39,6 +39,10 @@ export class Bubble extends Phaser.GameObjects.Container {
         this.color = color;
         this.hasGem = hasGem;
         
+        // Add this container to the scene
+        scene.add.existing(this);
+        this.setDepth(Z_LAYERS.BUBBLES);
+        
         // Initialize texture cache if not already done
         if (!Bubble.textureCache) {
             Bubble.textureCache = new BubbleTextureCache(scene);
@@ -264,7 +268,7 @@ export class Bubble extends Phaser.GameObjects.Container {
         if (this.usingCachedTexture && Bubble.textureCache) {
             // Try to use cached texture for the new color
             const textureKey = Bubble.textureCache.getTextureKey(color);
-            if (textureKey && this.scene.textures.exists(textureKey)) {
+            if (textureKey && this.scene && this.scene.textures && this.scene.textures.exists(textureKey)) {
                 (this.bubbleSprite as Phaser.GameObjects.Image).setTexture(textureKey);
             } else {
                 // Need to recreate as dynamic graphics
@@ -590,6 +594,12 @@ export class Bubble extends Phaser.GameObjects.Container {
     }
 
     public reset(x: number, y: number, color?: BubbleColor, hasGem: boolean = false): void {
+        // Ensure we still have a valid scene reference
+        if (!this.scene) {
+            console.error('Bubble.reset: Scene reference lost! Cannot reset bubble.');
+            return;
+        }
+        
         this.setPosition(x, y);
         this.setAlpha(1);
         this.setScale(1);
