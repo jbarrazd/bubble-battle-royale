@@ -1760,7 +1760,7 @@ export class ArenaCoordinator {
                 const sparkle = this.scene.add.circle(
                     x + Phaser.Math.Between(-10, 10),
                     y + Phaser.Math.Between(-10, 10),
-                    3, 0xffd700
+                    3, isPlayer ? 0x00ffff : 0xff0066  // Match star color: cyan for player, pink for opponent
                 );
                 sparkle.setDepth(1999);
                 

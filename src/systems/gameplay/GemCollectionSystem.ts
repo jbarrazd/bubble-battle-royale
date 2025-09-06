@@ -133,7 +133,7 @@ export class GemCollectionSystem {
         const text = this.scene.add.text(x, y, `+${value}`, {
             fontSize: '20px',
             fontFamily: 'Arial Black',
-            color: '#FFD700',
+            color: '#00FFFF',  // Cyan color matching the star
             stroke: '#000000',
             strokeThickness: 3
         });
@@ -158,7 +158,7 @@ export class GemCollectionSystem {
                 x + Phaser.Math.Between(-20, 20),
                 y + Phaser.Math.Between(-20, 20),
                 2,
-                0xFFD700,
+                0x00FFFF,  // Cyan color matching the star
                 1
             );
             sparkle.setDepth(1999);
