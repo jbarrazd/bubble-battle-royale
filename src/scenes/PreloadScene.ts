@@ -52,6 +52,12 @@ export class PreloadScene extends Scene {
         this.load.image('star3', 'assets/images/star3_small.png'); // Star with built-in sparkles (optimized size)
         this.load.image('star-bubble', 'assets/images/star_bubble_36.png'); // Optimized star for bubbles (36x36)
         
+        // Color-specific stars for bubbles
+        this.load.image('star-green-bubble', 'assets/images/star-green-bubble.png');
+        this.load.image('star-purple-bubble', 'assets/images/star-purple-bubble.png');
+        this.load.image('star-red-bubble', 'assets/images/star-red-bubble.png');
+        this.load.image('star-yellow-bubble', 'assets/images/star-yellow-bubble.png');
+        
         this.assetLoader.loadAssets((progress: number) => {
             this.updateProgress(progress);
         });

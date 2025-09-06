@@ -143,17 +143,37 @@ export class Bubble extends Phaser.GameObjects.Container {
         // Position star container at center of bubble
         this.gemVisual = this.scene.add.container(0, 0);
         
-        // Main star sprite (optimized 48x48 size)
-        const star = this.scene.add.image(0, 0, 'star-bubble');
+        // Select star image based on bubble color
+        let starImageKey = 'star-bubble'; // Default cyan for blue bubbles
+        
+        // Map bubble colors to star images
+        const colorMap: { [key: number]: string } = {
+            0xff0000: 'star-red-bubble',     // Red
+            0x00ff00: 'star-green-bubble',   // Green
+            0xffff00: 'star-yellow-bubble',  // Yellow
+            0xff00ff: 'star-purple-bubble',  // Purple/Magenta
+            // Blue uses default cyan star-bubble
+        };
+        
+        // Use the color-specific star if available
+        if (colorMap[this.color]) {
+            starImageKey = colorMap[this.color];
+        }
+        
+        // Main star sprite (optimized 36x36 size)
+        const star = this.scene.add.image(0, 0, starImageKey);
         star.setScale(1.0); // No scaling needed, already at perfect size
         
         // Create sparkles similar to star3 asset - 4 corner sparkles
+        // Match sparkle color to bubble color for consistency
+        const sparkleColor = this.color === 0x0000ff ? 0x00E5FF : this.color; // Use cyan for blue, bubble color for others
+        
         const createSparkle = (x: number, y: number, size: number = 1) => {
             const sparkleContainer = this.scene.add.container(x, y);
             
             // Cross shape sparkle
-            const hLine = this.scene.add.rectangle(0, 0, size * 8, size, 0x00E5FF, 0.6);
-            const vLine = this.scene.add.rectangle(0, 0, size, size * 8, 0x00E5FF, 0.6);
+            const hLine = this.scene.add.rectangle(0, 0, size * 8, size, sparkleColor, 0.6);
+            const vLine = this.scene.add.rectangle(0, 0, size, size * 8, sparkleColor, 0.6);
             
             sparkleContainer.add([hLine, vLine]);
             return sparkleContainer;
