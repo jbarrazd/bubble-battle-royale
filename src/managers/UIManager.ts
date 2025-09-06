@@ -225,194 +225,313 @@ export class UIManager extends BaseGameSystem {
     }
     
     private createGemCounter(width: number, height: number): void {
-        // Clean space-themed star counter - repositioned for prominence
-        this.gemCounter = this.scene.add.container(130, height - 130);
+        // Premium compact star counter - more vertical space efficient
+        this.gemCounter = this.scene.add.container(130, height - 115);
         this.gemCounter.setDepth(Z_LAYERS.UI + 8);
         
-        // Modern space panel design - no ugly gold/brown colors
+        // More compact modern space panel design
         const bg = this.scene.add.graphics();
         
         // Outer shadow for depth
         bg.fillStyle(0x000000, 0.4);
-        bg.fillRoundedRect(-87, -67, 174, 134, 22);
+        bg.fillRoundedRect(-92, -52, 184, 104, 20);
         
-        // Main background - dark space blue
-        bg.fillStyle(0x0a0e27, 0.95);
-        bg.fillRoundedRect(-85, -65, 170, 130, 20);
+        // Main background - dark space blue with subtle gradient
+        bg.fillGradientStyle(0x0a0e27, 0x1a1a2e, 0x16213e, 0x0a0e27, 0.95);
+        bg.fillRoundedRect(-90, -50, 180, 100, 18);
         
-        // Gradient overlay - cyan to purple
-        bg.fillStyle(0x00ccff, 0.15);
-        bg.fillRoundedRect(-83, -63, 166, 126, 19);
+        // Gradient overlay - cyan to purple space effect
+        bg.fillStyle(0x00ccff, 0.12);
+        bg.fillRoundedRect(-88, -48, 176, 96, 17);
         
         // Top section highlight - purple accent
-        bg.fillStyle(0x9966ff, 0.2);
-        bg.fillRoundedRect(-83, -63, 166, 40, 19);
+        bg.fillStyle(0x9966ff, 0.18);
+        bg.fillRoundedRect(-88, -48, 176, 28, 17);
+        
+        // Premium outer glow effect
+        bg.lineStyle(4, 0x00ffff, 0.3);
+        bg.strokeRoundedRect(-92, -52, 184, 104, 20);
         
         // Clean modern border - cyan
-        bg.lineStyle(3, 0x00ffff, 0.9);
-        bg.strokeRoundedRect(-85, -65, 170, 130, 20);
+        bg.lineStyle(2.5, 0x00ffff, 0.9);
+        bg.strokeRoundedRect(-90, -50, 180, 100, 18);
         
         // Inner white glow
-        bg.lineStyle(1.5, 0xffffff, 0.5);
-        bg.strokeRoundedRect(-83, -63, 166, 126, 19);
-        
-        // Corner star decorations
-        const starPositions = [
-            {x: -65, y: -45, size: 0.5},
-            {x: 65, y: -45, size: 0.5},
-            {x: -65, y: 45, size: 0.4},
-            {x: 65, y: 45, size: 0.4}
-        ];
-        
-        starPositions.forEach(pos => {
-            const star = this.scene.add.star(pos.x, pos.y, 5, 3, 6, 0x00ffff, 0.6);
-            star.setScale(pos.size);
-            this.gemCounter.add(star);
-            
-            // Twinkle animation
-            this.scene.tweens.add({
-                targets: star,
-                alpha: { from: 0.3, to: 0.8 },
-                duration: 1000 + Math.random() * 1000,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-        });
+        bg.lineStyle(1.5, 0xffffff, 0.6);
+        bg.strokeRoundedRect(-88, -48, 176, 96, 17);
         
         this.gemCounter.add(bg);
         
-        // Premium gem counter display - moved up before star
-        const scoreContainer = this.scene.add.container(0, 15);
+        // Add floating star particles around the container
+        this.createFloatingParticles();
         
-        // Star as background behind the scores
+        // Corner star decorations - repositioned for compact design
+        const starPositions = [
+            {x: -70, y: -30, size: 0.4},
+            {x: 70, y: -30, size: 0.4},
+            {x: -70, y: 30, size: 0.35},
+            {x: 70, y: 30, size: 0.35}
+        ];
+        
+        starPositions.forEach(pos => {
+            const star = this.scene.add.star(pos.x, pos.y, 5, 3, 6, 0x00ffff, 0.7);
+            star.setScale(pos.size);
+            this.gemCounter.add(star);
+            
+            // Enhanced twinkle animation
+            this.scene.tweens.add({
+                targets: star,
+                alpha: { from: 0.4, to: 0.9 },
+                scale: { from: pos.size * 0.8, to: pos.size * 1.2 },
+                duration: 1200 + Math.random() * 800,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut',
+                delay: Math.random() * 1000
+            });
+        });
+        
+        // Premium gem counter display - more horizontally spaced
+        const scoreContainer = this.scene.add.container(0, 5);
+        
+        // Star as background behind the scores - more subtle and beautiful
         const starBg = this.scene.add.container(0, 0);
         
-        // Star glow - larger and more subtle
-        const starGlow = this.scene.add.circle(0, 0, 45, 0x00ccff, 0.15);
-        starBg.add(starGlow);
+        // Multi-layered star glow effect
+        const outerGlow = this.scene.add.circle(0, 0, 50, 0x00ccff, 0.08);
+        const midGlow = this.scene.add.circle(0, 0, 40, 0x9966ff, 0.12);
+        const innerGlow = this.scene.add.circle(0, 0, 32, 0x00ccff, 0.18);
         
-        // Main star icon - larger as background element
+        starBg.add([outerGlow, midGlow, innerGlow]);
+        
+        // Main star icon - elegant background element
         const starIcon = this.scene.add.image(0, 0, 'star-bubble');
-        starIcon.setScale(2.2);
-        starIcon.setAlpha(0.4); // More transparent as background
+        starIcon.setScale(2.0);
+        starIcon.setAlpha(0.35);
+        starIcon.setTint(0x66ccff); // Subtle cyan tint
         starBg.add(starIcon);
         
-        // Add star background BEFORE score container so it appears behind
         scoreContainer.add(starBg);
         
-        // No rotation - star stays static as background
-        
-        // Gentle glow pulse
+        // Elegant multi-layer glow pulse
         this.scene.tweens.add({
-            targets: starGlow,
-            alpha: { from: 0.1, to: 0.25 },
+            targets: [outerGlow, midGlow, innerGlow],
+            alpha: { from: 0.05, to: 0.25 },
+            scale: { from: 0.9, to: 1.1 },
+            duration: 3000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut',
+            stagger: 200
+        });
+        
+        // Subtle star rotation for life
+        this.scene.tweens.add({
+            targets: starIcon,
+            rotation: Math.PI * 2,
+            duration: 15000,
+            repeat: -1,
+            ease: 'Linear'
+        });
+        
+        // Player gem section - moved further left for more spacing
+        const playerGemBg = this.scene.add.graphics();
+        playerGemBg.fillStyle(0x4facfe, 0.25);
+        playerGemBg.fillRoundedRect(-70, -20, 45, 40, 20);
+        playerGemBg.lineStyle(2, 0x4facfe, 0.8);
+        playerGemBg.strokeRoundedRect(-70, -20, 45, 40, 20);
+        
+        // Add subtle inner glow to player section
+        playerGemBg.fillStyle(0xffffff, 0.1);
+        playerGemBg.fillRoundedRect(-68, -18, 41, 36, 18);
+        
+        scoreContainer.add(playerGemBg);
+        
+        this.playerGemText = this.scene.add.text(-48, 0, '0', {
+            fontSize: '34px',
+            fontFamily: 'Arial Black',
+            color: '#4facfe',
+            stroke: '#000000',
+            strokeThickness: 3,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 3, fill: true }
+        });
+        this.playerGemText.setOrigin(0.5);
+        scoreContainer.add(this.playerGemText);
+        
+        // VS divider with subtle glow effect
+        const divider = this.scene.add.text(0, 0, 'VS', {
+            fontSize: '20px',
+            fontFamily: 'Arial Black',
+            color: '#ffffff',
+            stroke: '#000033',
+            strokeThickness: 3,
+            shadow: { offsetX: 0, offsetY: 2, color: '#000000', blur: 4, fill: true }
+        });
+        divider.setOrigin(0.5);
+        scoreContainer.add(divider);
+        
+        // Add subtle pulsing to VS text
+        this.scene.tweens.add({
+            targets: divider,
+            alpha: { from: 0.8, to: 1.0 },
             scale: { from: 0.95, to: 1.05 },
-            duration: 2000,
+            duration: 2500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
         
-        // Player gem section - adjusted position for star background
-        const playerGemBg = this.scene.add.graphics();
-        playerGemBg.fillStyle(0x4facfe, 0.2);
-        playerGemBg.fillRoundedRect(-55, -18, 40, 36, 18);
-        playerGemBg.lineStyle(1, 0x4facfe, 0.6);
-        playerGemBg.strokeRoundedRect(-55, -18, 40, 36, 18);
-        scoreContainer.add(playerGemBg);
-        
-        this.playerGemText = this.scene.add.text(-38, 0, '0', {
-            fontSize: '32px',
-            fontFamily: 'Arial Black',
-            color: '#4facfe',
-            stroke: '#000000',
-            strokeThickness: 2,
-            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
-        });
-        this.playerGemText.setOrigin(0.5);
-        scoreContainer.add(this.playerGemText);
-        
-        // VS divider - no background, just text
-        
-        const divider = this.scene.add.text(0, 0, 'VS', {
-            fontSize: '18px',
-            fontFamily: 'Arial Black',
-            color: '#ffffff',
-            stroke: '#000033',
-            strokeThickness: 2,
-            shadow: { offsetX: 0, offsetY: 1, color: '#000000', blur: 2, fill: true }
-        });
-        divider.setOrigin(0.5);
-        scoreContainer.add(divider);
-        
-        // Opponent gem section - adjusted position for star background
+        // Opponent gem section - moved further right for more spacing
         const opponentGemBg = this.scene.add.graphics();
-        opponentGemBg.fillStyle(0xf43f5e, 0.2);
-        opponentGemBg.fillRoundedRect(15, -18, 40, 36, 18);
-        opponentGemBg.lineStyle(1, 0xf43f5e, 0.6);
-        opponentGemBg.strokeRoundedRect(15, -18, 40, 36, 18);
+        opponentGemBg.fillStyle(0xf43f5e, 0.25);
+        opponentGemBg.fillRoundedRect(25, -20, 45, 40, 20);
+        opponentGemBg.lineStyle(2, 0xf43f5e, 0.8);
+        opponentGemBg.strokeRoundedRect(25, -20, 45, 40, 20);
+        
+        // Add subtle inner glow to opponent section
+        opponentGemBg.fillStyle(0xffffff, 0.1);
+        opponentGemBg.fillRoundedRect(27, -18, 41, 36, 18);
+        
         scoreContainer.add(opponentGemBg);
         
-        this.opponentGemText = this.scene.add.text(38, 0, '0', {
-            fontSize: '32px',
+        this.opponentGemText = this.scene.add.text(48, 0, '0', {
+            fontSize: '34px',
             fontFamily: 'Arial Black',
             color: '#f43f5e',
             stroke: '#000000',
-            strokeThickness: 2,
-            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
+            strokeThickness: 3,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 3, fill: true }
         });
         this.opponentGemText.setOrigin(0.5);
         scoreContainer.add(this.opponentGemText);
         
         this.gemCounter.add(scoreContainer);
         
-        // Enhanced "RACE TO 15" banner - space themed without ugly gold
+        // Enhanced "RACE TO 15" banner - more compact and premium
         const raceBanner = this.scene.add.graphics();
         
-        // Dark space background with depth
-        raceBanner.fillStyle(0x000022, 0.85);
-        raceBanner.fillRoundedRect(-90, 48, 180, 32, 14);
+        // Premium dark space background with gradient
+        raceBanner.fillGradientStyle(0x000022, 0x001133, 0x002244, 0x000022, 0.9);
+        raceBanner.fillRoundedRect(-95, 35, 190, 28, 12);
         
-        // Cyan gradient glow
-        raceBanner.fillStyle(0x00ccff, 0.12);
-        raceBanner.fillRoundedRect(-88, 50, 176, 28, 13);
+        // Cyan gradient glow with energy effect
+        raceBanner.fillStyle(0x00ccff, 0.15);
+        raceBanner.fillRoundedRect(-93, 37, 186, 24, 11);
         
-        // Purple accent highlight
-        raceBanner.fillStyle(0x9966ff, 0.15);
-        raceBanner.fillRoundedRect(-88, 50, 176, 12, 13);
+        // Purple accent highlight - more vibrant
+        raceBanner.fillStyle(0x9966ff, 0.2);
+        raceBanner.fillRoundedRect(-93, 37, 186, 10, 11);
         
-        // Bright cyan border
-        raceBanner.lineStyle(2, 0x00ffff, 0.85);
-        raceBanner.strokeRoundedRect(-90, 48, 180, 32, 14);
+        // Premium outer glow
+        raceBanner.lineStyle(3, 0x00ffff, 0.4);
+        raceBanner.strokeRoundedRect(-96, 34, 192, 30, 13);
         
-        // Inner white shine
-        raceBanner.lineStyle(1, 0xffffff, 0.4);
-        raceBanner.strokeRoundedRect(-88, 50, 176, 28, 13);
+        // Bright cyan border with energy
+        raceBanner.lineStyle(2, 0x00ffff, 0.9);
+        raceBanner.strokeRoundedRect(-95, 35, 190, 28, 12);
+        
+        // Inner white shine with sparkle
+        raceBanner.lineStyle(1, 0xffffff, 0.6);
+        raceBanner.strokeRoundedRect(-93, 37, 186, 24, 11);
         
         this.gemCounter.add(raceBanner);
         
-        const raceText = this.scene.add.text(0, 64, 'RACE TO 15 STARS', {
-            fontSize: '15px',
+        const raceText = this.scene.add.text(0, 49, 'RACE TO 15 STARS', {
+            fontSize: '16px',
             fontFamily: 'Arial Black',
             color: '#ffffff',
             stroke: '#000022',
-            strokeThickness: 3,
-            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
+            strokeThickness: 4,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 3, fill: true }
         });
         raceText.setOrigin(0.5);
         this.gemCounter.add(raceText);
         
-        // Add pulsing effect to the race banner
+        // Enhanced pulsing effect with color cycling
         this.scene.tweens.add({
             targets: raceText,
-            scaleX: 1.05,
-            scaleY: 1.05,
-            duration: 2000,
+            scaleX: 1.08,
+            scaleY: 1.08,
+            duration: 2500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
+        
+        // Simple pulsing animation for the text
+        this.scene.tweens.add({
+            targets: raceText,
+            alpha: { from: 0.85, to: 1.0 },
+            duration: 1500,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+    }
+    
+    /**
+     * Create floating star particles around the gem counter
+     */
+    private createFloatingParticles(): void {
+        const particleCount = 8;
+        const radius = 110;
+        
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const x = Math.cos(angle) * radius;
+            const y = Math.sin(angle) * radius;
+            
+            // Create small star particle
+            const particle = this.scene.add.star(x, y, 4, 2, 4, 0x00ffff, 0.6);
+            particle.setScale(0.3 + Math.random() * 0.2);
+            this.gemCounter.add(particle);
+            
+            // Floating animation with random variation
+            this.scene.tweens.add({
+                targets: particle,
+                x: x + Math.cos(angle + Math.PI) * 15,
+                y: y + Math.sin(angle + Math.PI) * 15,
+                alpha: { from: 0.3, to: 0.8 },
+                scale: { from: particle.scale * 0.8, to: particle.scale * 1.4 },
+                rotation: Math.PI * 2,
+                duration: 4000 + Math.random() * 2000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut',
+                delay: i * 500 + Math.random() * 1000
+            });
+            
+            // Additional sparkle effect
+            const sparkle = this.scene.add.circle(x, y, 1, 0xffffff, 0.8);
+            this.gemCounter.add(sparkle);
+            
+            this.scene.tweens.add({
+                targets: sparkle,
+                alpha: { from: 0, to: 1 },
+                scale: { from: 0.5, to: 1.5 },
+                duration: 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut',
+                delay: Math.random() * 2000
+            });
+        }
+        
+        // Add energy waves that pulse from center
+        for (let i = 0; i < 3; i++) {
+            const wave = this.scene.add.circle(0, 0, 30 + i * 15, 0x00ccff, 0.1);
+            this.gemCounter.add(wave);
+            
+            this.scene.tweens.add({
+                targets: wave,
+                scale: { from: 1, to: 2.5 },
+                alpha: { from: 0.15, to: 0 },
+                duration: 3000,
+                repeat: -1,
+                ease: 'Power2',
+                delay: i * 1000
+            });
+        }
     }
     
     private createTimerDisplay(width: number, height: number): void {
