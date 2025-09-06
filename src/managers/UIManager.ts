@@ -275,31 +275,31 @@ export class UIManager extends BaseGameSystem {
         // Add floating star particles around the container
         // this.createFloatingParticles(); // Disabled - distracting animation
         
-        // Corner star decorations - repositioned for compact design
-        const starPositions = [
-            {x: -70, y: -30, size: 0.4},
-            {x: 70, y: -30, size: 0.4},
-            {x: -70, y: 30, size: 0.35},
-            {x: 70, y: 30, size: 0.35}
-        ];
+        // Corner star decorations - DISABLED - doesn't make sense visually
+        // const starPositions = [
+        //     {x: -70, y: -30, size: 0.4},
+        //     {x: 70, y: -30, size: 0.4},
+        //     {x: -70, y: 30, size: 0.35},
+        //     {x: 70, y: 30, size: 0.35}
+        // ];
         
-        starPositions.forEach(pos => {
-            const star = this.scene.add.star(pos.x, pos.y, 5, 3, 6, 0x00ffff, 0.7);
-            star.setScale(pos.size);
-            this.gemCounter.add(star);
+        // starPositions.forEach(pos => {
+        //     const star = this.scene.add.star(pos.x, pos.y, 5, 3, 6, 0x00ffff, 0.7);
+        //     star.setScale(pos.size);
+        //     this.gemCounter.add(star);
             
-            // Enhanced twinkle animation
-            this.scene.tweens.add({
-                targets: star,
-                alpha: { from: 0.4, to: 0.9 },
-                scale: { from: pos.size * 0.8, to: pos.size * 1.2 },
-                duration: 1200 + Math.random() * 800,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut',
-                delay: Math.random() * 1000
-            });
-        });
+        //     // Enhanced twinkle animation
+        //     this.scene.tweens.add({
+        //         targets: star,
+        //         alpha: { from: 0.4, to: 0.9 },
+        //         scale: { from: pos.size * 0.8, to: pos.size * 1.2 },
+        //         duration: 1200 + Math.random() * 800,
+        //         yoyo: true,
+        //         repeat: -1,
+        //         ease: 'Sine.easeInOut',
+        //         delay: Math.random() * 1000
+        //     });
+        // });
         
         // Premium gem counter display - more horizontally spaced
         const scoreContainer = this.scene.add.container(0, -5);
@@ -317,7 +317,7 @@ export class UIManager extends BaseGameSystem {
         // Main star icon - more visible background element
         const starIcon = this.scene.add.image(0, 0, 'star-bubble');
         starIcon.setScale(2.0);
-        starIcon.setAlpha(0.6); // More visible but still background
+        starIcon.setAlpha(0.85); // More visible as main element
         starIcon.setTint(0x66ccff); // Subtle cyan tint
         starBg.add(starIcon);
         
