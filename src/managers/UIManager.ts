@@ -10,7 +10,7 @@ import { GameStateManager } from '@/core/GameStateManager';
 import { Z_LAYERS } from '@/config/ArenaConfig';
 
 interface UIConfig {
-    showScore: boolean;
+    showScore: boolean; // Hidden from UI but tracked internally
     showGems: boolean;
     showTimer: boolean;
     showPowerUps: boolean;
@@ -58,7 +58,7 @@ export class UIManager extends BaseGameSystem {
     constructor(scene: Scene, config?: Partial<UIConfig>) {
         super(scene);
         this.config = {
-            showScore: true,
+            showScore: false, // Keep internal tracking but hide from UI
             showGems: true,
             showTimer: true,
             showPowerUps: true,
@@ -82,10 +82,10 @@ export class UIManager extends BaseGameSystem {
     private createUIElements(): void {
         const { width, height } = this.scene.cameras.main;
         
-        // Create score display
-        if (this.config.showScore) {
-            this.createScoreDisplay(width, height);
-        }
+        // Score display removed from UI - still track internally for end-game stats
+        // if (this.config.showScore) {
+        //     this.createScoreDisplay(width, height);
+        // }
         
         // Create gem counter
         if (this.config.showGems) {
@@ -104,250 +104,377 @@ export class UIManager extends BaseGameSystem {
     }
     
     private createScoreDisplay(width: number, height: number): void {
-        // Score display - positioned at top right
-        this.scoreDisplay = this.scene.add.container(width - 120, 35);
+        // Score display - positioned at top right with premium frame design
+        this.scoreDisplay = this.scene.add.container(width - 130, 45);
         this.scoreDisplay.setDepth(Z_LAYERS.UI + 5);
         
-        // High contrast vivid bubble background
+        // Premium layered frame design
         const bg = this.scene.add.graphics();
         
-        // Strong black shadow for contrast
-        bg.fillStyle(0x000000, 0.6);
-        bg.fillRoundedRect(-102, -18, 204, 44, 20);
+        // Outer glow shadow
+        bg.fillStyle(0x000000, 0.4);
+        bg.fillRoundedRect(-115, -28, 230, 56, 28);
         
-        // Vivid bright blue background
-        bg.fillStyle(0x0066ff, 0.95);
-        bg.fillRoundedRect(-100, -20, 200, 40, 18);
+        // Main premium frame with gradient effect
+        bg.fillGradientStyle(0x1a1a2e, 0x16213e, 0x0f3460, 0x16213e, 1);
+        bg.fillRoundedRect(-110, -25, 220, 50, 25);
         
-        // Bright cyan accent layer
-        bg.fillStyle(0x00ffff, 0.25);
-        bg.fillRoundedRect(-98, -18, 196, 36, 17);
+        // Inner glow layer
+        bg.fillStyle(0x4facfe, 0.2);
+        bg.fillRoundedRect(-105, -22, 210, 44, 22);
         
-        // Strong white highlight for pop
-        bg.fillStyle(0xffffff, 0.3);
-        bg.fillRoundedRect(-95, -17, 190, 15, 15);
+        // Highlight strip
+        bg.fillStyle(0xffffff, 0.15);
+        bg.fillRoundedRect(-105, -22, 210, 12, 22);
         
-        // Vivid yellow border for high contrast
-        bg.lineStyle(3, 0xffff00, 1);
-        bg.strokeRoundedRect(-100, -20, 200, 40, 18);
-        bg.lineStyle(1.5, 0xffffff, 0.8);
-        bg.strokeRoundedRect(-98, -18, 196, 36, 17);
+        // Premium border with glow
+        bg.lineStyle(2, 0x4facfe, 1);
+        bg.strokeRoundedRect(-110, -25, 220, 50, 25);
+        
+        // Inner border accent
+        bg.lineStyle(1, 0xffffff, 0.6);
+        bg.strokeRoundedRect(-107, -22, 214, 44, 22);
+        
+        // Corner gems decoration
+        for (let i = 0; i < 4; i++) {
+            const x = i < 2 ? -105 : 105;
+            const y = i % 2 === 0 ? -22 : 22;
+            bg.fillStyle(0x4facfe, 0.8);
+            bg.fillCircle(x, y, 3);
+            bg.fillStyle(0xffffff, 0.6);
+            bg.fillCircle(x, y, 1);
+        }
         
         this.scoreDisplay.add(bg);
         
-        // Player score with vivid colors
-        this.playerScoreText = this.scene.add.text(-60, 0, '0', {
-            fontSize: '32px',
+        // Player score section with premium styling
+        const playerSection = this.scene.add.container(-70, 0);
+        
+        // Player score background
+        const playerBg = this.scene.add.graphics();
+        playerBg.fillStyle(0x4facfe, 0.2);
+        playerBg.fillRoundedRect(-25, -15, 50, 30, 15);
+        playerSection.add(playerBg);
+        
+        this.playerScoreText = this.scene.add.text(0, 0, '0', {
+            fontSize: '28px',
             fontFamily: 'Arial Black',
-            color: '#00ffff',  // Bright cyan
+            color: '#4facfe',
             stroke: '#000000',
-            strokeThickness: 4,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
+            strokeThickness: 3,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
         });
         this.playerScoreText.setOrigin(0.5);
-        this.scoreDisplay.add(this.playerScoreText);
+        playerSection.add(this.playerScoreText);
+        this.scoreDisplay.add(playerSection);
         
-        // VS text with high contrast
+        // VS section with premium design
+        const vsSection = this.scene.add.container(0, 0);
+        
+        // VS background with diamond shape
+        const vsBg = this.scene.add.graphics();
+        vsBg.fillStyle(0xffd700, 0.9);
+        vsBg.fillRoundedRect(-18, -12, 36, 24, 12);
+        vsBg.lineStyle(2, 0xffffff, 0.8);
+        vsBg.strokeRoundedRect(-18, -12, 36, 24, 12);
+        vsSection.add(vsBg);
+        
         const vsText = this.scene.add.text(0, 0, 'VS', {
-            fontSize: '20px',
+            fontSize: '14px',
             fontFamily: 'Arial Black',
-            color: '#ffff00',  // Bright yellow
-            stroke: '#000000',
-            strokeThickness: 3
+            color: '#1a1a2e',
+            stroke: '#ffd700',
+            strokeThickness: 1
         });
         vsText.setOrigin(0.5);
-        this.scoreDisplay.add(vsText);
+        vsSection.add(vsText);
         
-        // Animate VS text with subtle pulse
+        // Enhanced VS animation with glow effect
         this.scene.tweens.add({
-            targets: vsText,
+            targets: vsSection,
             scaleX: 1.1,
             scaleY: 1.1,
-            duration: 1000,
+            duration: 1500,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
         
-        // Opponent score with vivid colors  
-        this.opponentScoreText = this.scene.add.text(60, 0, '0', {
-            fontSize: '32px',
+        this.scoreDisplay.add(vsSection);
+        
+        // Opponent score section
+        const opponentSection = this.scene.add.container(70, 0);
+        
+        // Opponent score background
+        const opponentBg = this.scene.add.graphics();
+        opponentBg.fillStyle(0xf43f5e, 0.2);
+        opponentBg.fillRoundedRect(-25, -15, 50, 30, 15);
+        opponentSection.add(opponentBg);
+        
+        this.opponentScoreText = this.scene.add.text(0, 0, '0', {
+            fontSize: '28px',
             fontFamily: 'Arial Black',
-            color: '#ff00ff',  // Bright magenta
+            color: '#f43f5e',
             stroke: '#000000',
-            strokeThickness: 4,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
+            strokeThickness: 3,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
         });
         this.opponentScoreText.setOrigin(0.5);
-        this.scoreDisplay.add(this.opponentScoreText);
+        opponentSection.add(this.opponentScoreText);
+        this.scoreDisplay.add(opponentSection);
     }
     
     private createGemCounter(width: number, height: number): void {
-        // Position gem counter bottom left where gems fly to - PROMINENT
-        this.gemCounter = this.scene.add.container(110, height - 110);
-        this.gemCounter.setDepth(Z_LAYERS.UI + 8); // Higher priority
+        // Clean space-themed star counter - repositioned for prominence
+        this.gemCounter = this.scene.add.container(130, height - 130);
+        this.gemCounter.setDepth(Z_LAYERS.UI + 8);
         
-        // Vivid high-contrast gem container
+        // Modern space panel design - no ugly gold/brown colors
         const bg = this.scene.add.graphics();
         
-        // Strong black shadow
-        bg.fillStyle(0x000000, 0.7);
-        bg.fillRoundedRect(-74, -55, 148, 118, 22);
+        // Outer shadow for depth
+        bg.fillStyle(0x000000, 0.4);
+        bg.fillRoundedRect(-87, -67, 174, 134, 22);
         
-        // Bright purple background
-        bg.fillStyle(0x9900ff, 0.95);
-        bg.fillRoundedRect(-72, -57, 144, 114, 20);
+        // Main background - dark space blue
+        bg.fillStyle(0x0a0e27, 0.95);
+        bg.fillRoundedRect(-85, -65, 170, 130, 20);
         
-        // Vivid pink accent
-        bg.fillStyle(0xff00ff, 0.3);
-        bg.fillRoundedRect(-69, -54, 138, 108, 19);
+        // Gradient overlay - cyan to purple
+        bg.fillStyle(0x00ccff, 0.15);
+        bg.fillRoundedRect(-83, -63, 166, 126, 19);
         
-        // Strong white highlight
-        bg.fillStyle(0xffffff, 0.25);
-        bg.fillRoundedRect(-69, -54, 138, 35, 19);
+        // Top section highlight - purple accent
+        bg.fillStyle(0x9966ff, 0.2);
+        bg.fillRoundedRect(-83, -63, 166, 40, 19);
         
-        // Bright yellow border for maximum contrast
-        bg.lineStyle(4, 0xffff00, 1);
-        bg.strokeRoundedRect(-72, -57, 144, 114, 20);
+        // Clean modern border - cyan
+        bg.lineStyle(3, 0x00ffff, 0.9);
+        bg.strokeRoundedRect(-85, -65, 170, 130, 20);
         
-        // White inner border
-        bg.lineStyle(2, 0xffffff, 0.8);
-        bg.strokeRoundedRect(-69, -54, 138, 108, 19);
+        // Inner white glow
+        bg.lineStyle(1.5, 0xffffff, 0.5);
+        bg.strokeRoundedRect(-83, -63, 166, 126, 19);
         
-        // Bright decoration dots
-        for (let i = 0; i < 3; i++) {
-            const x = -50 + i * 50;
-            const y = -45;
-            bg.fillStyle(0x00ffff, 0.8);
-            bg.fillCircle(x, y, 4);
-        }
+        // Corner star decorations
+        const starPositions = [
+            {x: -65, y: -45, size: 0.5},
+            {x: 65, y: -45, size: 0.5},
+            {x: -65, y: 45, size: 0.4},
+            {x: 65, y: 45, size: 0.4}
+        ];
+        
+        starPositions.forEach(pos => {
+            const star = this.scene.add.star(pos.x, pos.y, 5, 3, 6, 0x00ffff, 0.6);
+            star.setScale(pos.size);
+            this.gemCounter.add(star);
+            
+            // Twinkle animation
+            this.scene.tweens.add({
+                targets: star,
+                alpha: { from: 0.3, to: 0.8 },
+                duration: 1000 + Math.random() * 1000,
+                yoyo: true,
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        });
         
         this.gemCounter.add(bg);
         
-        // Create star sprite for space arena
-        const starIcon = this.scene.add.image(0, -30, 'star-large');
-        starIcon.setScale(1.0); // Good resolution at 48px
-        this.gemCounter.add(starIcon);
+        // Premium gem counter display - moved up before star
+        const scoreContainer = this.scene.add.container(0, 15);
         
-        // Animated star effects
+        // Star as background behind the scores
+        const starBg = this.scene.add.container(0, 0);
+        
+        // Star glow - larger and more subtle
+        const starGlow = this.scene.add.circle(0, 0, 45, 0x00ccff, 0.15);
+        starBg.add(starGlow);
+        
+        // Main star icon - larger as background element
+        const starIcon = this.scene.add.image(0, 0, 'star-bubble');
+        starIcon.setScale(2.2);
+        starIcon.setAlpha(0.4); // More transparent as background
+        starBg.add(starIcon);
+        
+        // Add star background BEFORE score container so it appears behind
+        scoreContainer.add(starBg);
+        
+        // No rotation - star stays static as background
+        
+        // Gentle glow pulse
         this.scene.tweens.add({
-            targets: starIcon,
-            scaleX: 1.3,
-            scaleY: 1.3,
+            targets: starGlow,
+            alpha: { from: 0.1, to: 0.25 },
+            scale: { from: 0.95, to: 1.05 },
             duration: 2000,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
         
-        // Subtle rotation animation
-        this.scene.tweens.add({
-            targets: starIcon,
-            rotation: Math.PI * 2,
-            duration: 8000,
-            repeat: -1,
-            ease: 'Linear'
-        });
+        // Player gem section - adjusted position for star background
+        const playerGemBg = this.scene.add.graphics();
+        playerGemBg.fillStyle(0x4facfe, 0.2);
+        playerGemBg.fillRoundedRect(-55, -18, 40, 36, 18);
+        playerGemBg.lineStyle(1, 0x4facfe, 0.6);
+        playerGemBg.strokeRoundedRect(-55, -18, 40, 36, 18);
+        scoreContainer.add(playerGemBg);
         
-        // Player gems - VIVID BLUE
-        this.playerGemText = this.scene.add.text(-25, 15, '0', {
-            fontSize: '42px',
-            fontFamily: 'Arial Black',
-            color: '#00ffff',  // Bright cyan
-            stroke: '#000000',
-            strokeThickness: 3,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
-        });
-        this.playerGemText.setOrigin(0.5);
-        this.gemCounter.add(this.playerGemText);
-        
-        // High contrast divider
-        const divider = this.scene.add.text(0, 15, '/', {
+        this.playerGemText = this.scene.add.text(-38, 0, '0', {
             fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#ffff00',  // Bright yellow
+            color: '#4facfe',
             stroke: '#000000',
-            strokeThickness: 3
+            strokeThickness: 2,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
+        });
+        this.playerGemText.setOrigin(0.5);
+        scoreContainer.add(this.playerGemText);
+        
+        // VS divider - no background, just text
+        
+        const divider = this.scene.add.text(0, 0, 'VS', {
+            fontSize: '18px',
+            fontFamily: 'Arial Black',
+            color: '#ffffff',
+            stroke: '#000033',
+            strokeThickness: 2,
+            shadow: { offsetX: 0, offsetY: 1, color: '#000000', blur: 2, fill: true }
         });
         divider.setOrigin(0.5);
-        this.gemCounter.add(divider);
+        scoreContainer.add(divider);
         
-        // Opponent gems - VIVID RED
-        this.opponentGemText = this.scene.add.text(25, 15, '0', {
-            fontSize: '42px',
+        // Opponent gem section - adjusted position for star background
+        const opponentGemBg = this.scene.add.graphics();
+        opponentGemBg.fillStyle(0xf43f5e, 0.2);
+        opponentGemBg.fillRoundedRect(15, -18, 40, 36, 18);
+        opponentGemBg.lineStyle(1, 0xf43f5e, 0.6);
+        opponentGemBg.strokeRoundedRect(15, -18, 40, 36, 18);
+        scoreContainer.add(opponentGemBg);
+        
+        this.opponentGemText = this.scene.add.text(38, 0, '0', {
+            fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#ff0066',  // Bright pink-red
+            color: '#f43f5e',
             stroke: '#000000',
-            strokeThickness: 3,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
+            strokeThickness: 2,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
         });
         this.opponentGemText.setOrigin(0.5);
-        this.gemCounter.add(this.opponentGemText);
+        scoreContainer.add(this.opponentGemText);
         
-        // Win condition text with high contrast  
-        const winText = this.scene.add.text(0, 45, '⭐ First to 15 Stars Wins! ⭐', {
-            fontSize: '14px',
+        this.gemCounter.add(scoreContainer);
+        
+        // Enhanced "RACE TO 15" banner - space themed without ugly gold
+        const raceBanner = this.scene.add.graphics();
+        
+        // Dark space background with depth
+        raceBanner.fillStyle(0x000022, 0.85);
+        raceBanner.fillRoundedRect(-90, 48, 180, 32, 14);
+        
+        // Cyan gradient glow
+        raceBanner.fillStyle(0x00ccff, 0.12);
+        raceBanner.fillRoundedRect(-88, 50, 176, 28, 13);
+        
+        // Purple accent highlight
+        raceBanner.fillStyle(0x9966ff, 0.15);
+        raceBanner.fillRoundedRect(-88, 50, 176, 12, 13);
+        
+        // Bright cyan border
+        raceBanner.lineStyle(2, 0x00ffff, 0.85);
+        raceBanner.strokeRoundedRect(-90, 48, 180, 32, 14);
+        
+        // Inner white shine
+        raceBanner.lineStyle(1, 0xffffff, 0.4);
+        raceBanner.strokeRoundedRect(-88, 50, 176, 28, 13);
+        
+        this.gemCounter.add(raceBanner);
+        
+        const raceText = this.scene.add.text(0, 64, 'RACE TO 15 STARS', {
+            fontSize: '15px',
             fontFamily: 'Arial Black',
-            color: '#ffff00',  // Bright yellow
-            stroke: '#000000',
-            strokeThickness: 3
+            color: '#ffffff',
+            stroke: '#000022',
+            strokeThickness: 3,
+            shadow: { offsetX: 1, offsetY: 1, color: '#000000', blur: 2, fill: true }
         });
-        winText.setOrigin(0.5);
-        this.gemCounter.add(winText);
+        raceText.setOrigin(0.5);
+        this.gemCounter.add(raceText);
+        
+        // Add pulsing effect to the race banner
+        this.scene.tweens.add({
+            targets: raceText,
+            scaleX: 1.05,
+            scaleY: 1.05,
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
     }
     
     private createTimerDisplay(width: number, height: number): void {
-        // Timer with vivid high-contrast design
-        this.timerDisplay = this.scene.add.container(width - 120, 80);
+        // Premium circular timer design - moved to top-right with better margin
+        this.timerDisplay = this.scene.add.container(width - 130, 70);
         this.timerDisplay.setDepth(Z_LAYERS.UI + 10);
         
-        // Timer with bright colors
-        const bgBar = this.scene.add.graphics();
+        // Circular timer background with premium styling - larger and more prominent
+        const timerBg = this.scene.add.graphics();
         
-        // Strong shadow
-        bgBar.fillStyle(0x000000, 0.6);
-        bgBar.fillRoundedRect(-82, -13, 164, 34, 14);
+        // Outer glow - larger
+        timerBg.fillStyle(0x000000, 0.4);
+        timerBg.fillCircle(0, 0, 50);
         
-        // Bright orange background
-        bgBar.fillStyle(0xff6600, 0.95);
-        bgBar.fillRoundedRect(-80, -15, 160, 30, 12);
+        // Main circular frame with gradient - larger
+        timerBg.fillGradientStyle(0x1a1a2e, 0x16213e, 0x0f3460, 0x16213e, 1);
+        timerBg.fillCircle(0, 0, 45);
         
-        // Yellow accent
-        bgBar.fillStyle(0xffff00, 0.25);
-        bgBar.fillRoundedRect(-78, -13, 156, 26, 11);
+        // Inner circle for progress track - larger
+        timerBg.fillStyle(0x000000, 0.4);
+        timerBg.fillCircle(0, 0, 40);
         
-        // White highlight
-        bgBar.fillStyle(0xffffff, 0.2);
-        bgBar.fillRoundedRect(-78, -13, 156, 10, 11);
+        // Highlight ring - more prominent
+        timerBg.lineStyle(3, 0xffd700, 0.9);
+        timerBg.strokeCircle(0, 0, 45);
         
-        // Bright yellow border
-        bgBar.lineStyle(3, 0xffff00, 1);
-        bgBar.strokeRoundedRect(-80, -15, 160, 30, 12);
-        bgBar.lineStyle(1.5, 0xffffff, 0.8);
-        bgBar.strokeRoundedRect(-78, -13, 156, 26, 11);
+        // Inner detail ring
+        timerBg.lineStyle(1, 0xffffff, 0.4);
+        timerBg.strokeCircle(0, 0, 42);
         
-        this.timerDisplay.add(bgBar);
+        // Clock decorations (hour markers) - adjusted for larger size
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2 - Math.PI / 2;
+            const x = Math.cos(angle) * 37;
+            const y = Math.sin(angle) * 37;
+            const size = i % 3 === 0 ? 3 : 1.5; // Bigger markers at 12, 3, 6, 9
+            timerBg.fillStyle(0xffd700, 0.7);
+            timerBg.fillCircle(x, y, size);
+        }
         
-        // Progress bar
+        this.timerDisplay.add(timerBg);
+        
+        // Progress arc (will be updated dynamically)
         this.timerBar = this.scene.add.graphics();
         this.timerDisplay.add(this.timerBar);
         
-        // Timer text with high contrast
+        // Timer text with premium styling - larger for better visibility
         this.timerText = this.scene.add.text(0, 0, '3:00', {
-            fontSize: '24px',
+            fontSize: '22px',
             fontFamily: 'Arial Black',
-            color: '#ffffff',  // White for contrast
+            color: '#ffd700',
             stroke: '#000000',
             strokeThickness: 3,
-            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 3, fill: true }
         });
         this.timerText.setOrigin(0.5);
         this.timerDisplay.add(this.timerText);
     }
     
     private createComboDisplay(width: number, height: number): void {
-        // Position combo display on the right side, below timer
-        this.comboDisplay = this.scene.add.container(width - 120, 135);
+        // Position combo display on the right side, below timer (adjusted for larger timer)
+        this.comboDisplay = this.scene.add.container(width - 120, 120);
         this.comboDisplay.setDepth(Z_LAYERS.UI + 2);
         this.comboDisplay.setVisible(false);
         
@@ -422,7 +549,7 @@ export class UIManager extends BaseGameSystem {
     }
     
     private setupEventListeners(): void {
-        // Score events
+        // Score events - still track internally for end-game stats
         this.eventBus.on('score-update', (data) => this.updateScore(data));
         
         // Gem events
@@ -496,9 +623,9 @@ export class UIManager extends BaseGameSystem {
             
             if (data.isReset) {
                 // Flash red when gems are removed due to reset
-                this.playerGemText.setColor('#FF0000');
+                this.playerGemText.setColor('#ef4444');
                 this.scene.time.delayedCall(500, () => {
-                    this.playerGemText?.setColor('#00ffff'); // Player cyan
+                    this.playerGemText?.setColor('#4facfe'); // Player cyan
                 });
                 
                 // Shake animation
@@ -518,9 +645,9 @@ export class UIManager extends BaseGameSystem {
             
             if (data.isReset) {
                 // Flash red when gems are removed due to reset
-                this.opponentGemText.setColor('#FF0000');
+                this.opponentGemText.setColor('#ef4444');
                 this.scene.time.delayedCall(500, () => {
-                    this.opponentGemText?.setColor('#ff0066'); // Opponent bright red
+                    this.opponentGemText?.setColor('#f43f5e'); // Opponent bright red
                 });
             }
         }
@@ -532,13 +659,26 @@ export class UIManager extends BaseGameSystem {
             if (this.playerGemText) {
                 this.playerGemText.setText(this.playerGems.toString());
                 
-                // Check win condition
+                // Check win condition with enhanced visual feedback
                 if (this.playerGems >= 15) {
-                    this.playerGemText.setColor('#00FF00');
+                    this.playerGemText.setColor('#10b981');
                     this.showNotification({ 
-                        text: 'VICTORY IMMINENT!', 
+                        text: '🎉 15 STARS! YOU WIN! 🎉', 
                         type: 'success' 
                     });
+                } else if (this.playerGems >= 13) {
+                    // Visual milestone at 13 stars (2 away from victory)
+                    this.playerGemText.setColor('#f59e0b'); // Golden warning
+                    this.showNotification({ 
+                        text: '⚡ 2 MORE STARS TO WIN! ⚡', 
+                        type: 'warning' 
+                    });
+                } else if (this.playerGems >= 10) {
+                    // Visual milestone at 10 stars
+                    this.playerGemText.setColor('#06b6d4'); // Bright cyan
+                } else if (this.playerGems >= 5) {
+                    // Visual milestone at 5 stars
+                    this.playerGemText.setColor('#8b5cf6'); // Purple milestone
                 }
                 
                 // Epic collection animation
@@ -559,7 +699,7 @@ export class UIManager extends BaseGameSystem {
                     onUpdate: (tween) => {
                         const value = tween.getValue();
                         const color = Phaser.Display.Color.Interpolate.ColorWithColor(
-                            { r: 0, g: 255, b: 255 },  // Cyan
+                            { r: 79, g: 172, b: 254 },  // Modern cyan
                             { r: 255, g: 255, b: 255 },
                             1,
                             value
@@ -571,9 +711,9 @@ export class UIManager extends BaseGameSystem {
                     onComplete: () => {
                         // Return to player cyan unless at 15 gems
                         if (this.playerGems >= 15) {
-                            this.playerGemText?.setColor('#00ff00'); // Bright green
+                            this.playerGemText?.setColor('#10b981'); // Modern green
                         } else {
-                            this.playerGemText?.setColor('#00ffff'); // Normal player cyan
+                            this.playerGemText?.setColor('#4facfe'); // Modern cyan
                         }
                     }
                 });
@@ -586,13 +726,23 @@ export class UIManager extends BaseGameSystem {
             if (this.opponentGemText) {
                 this.opponentGemText.setText(this.opponentGems.toString());
                 
-                // Check danger
+                // Check danger with enhanced warnings
                 if (this.opponentGems >= 15) {
-                    this.opponentGemText.setColor('#FF0000');
+                    this.opponentGemText.setColor('#ef4444');
                     this.showNotification({ 
-                        text: 'DANGER! Opponent near victory!', 
+                        text: '💀 OPPONENT HAS 15 STARS! 💀', 
                         type: 'danger' 
                     });
+                } else if (this.opponentGems >= 13) {
+                    // Critical warning at 13 stars
+                    this.opponentGemText.setColor('#dc2626'); // Dark red danger
+                    this.showNotification({ 
+                        text: '🚨 OPPONENT NEEDS 2 MORE! 🚨', 
+                        type: 'danger' 
+                    });
+                } else if (this.opponentGems >= 10) {
+                    // Warning at 10 stars
+                    this.opponentGemText.setColor('#f97316'); // Orange warning
                 }
                 
                 // Pulse animation for opponent gems
@@ -613,7 +763,7 @@ export class UIManager extends BaseGameSystem {
                     onUpdate: (tween) => {
                         const value = tween.getValue();
                         const color = Phaser.Display.Color.Interpolate.ColorWithColor(
-                            { r: 255, g: 0, b: 102 },  // Bright red
+                            { r: 244, g: 63, b: 94 },  // Modern red
                             { r: 255, g: 255, b: 255 },
                             1,
                             value
@@ -625,9 +775,9 @@ export class UIManager extends BaseGameSystem {
                     onComplete: () => {
                         // Return to opponent bright red unless at 15 gems
                         if (this.opponentGems >= 15) {
-                            this.opponentGemText?.setColor('#ff0000'); // Danger red
+                            this.opponentGemText?.setColor('#ef4444'); // Danger red
                         } else {
-                            this.opponentGemText?.setColor('#ff0066'); // Normal opponent bright red
+                            this.opponentGemText?.setColor('#f43f5e'); // Modern red
                         }
                     }
                 });
@@ -662,15 +812,15 @@ export class UIManager extends BaseGameSystem {
             
             // Change color based on time with smooth transitions
             if (remaining <= 30000) { // Last 30 seconds - urgent red
-                this.timerText.setColor('#ff4444');
+                this.timerText.setColor('#ef4444');
                 // Pulse effect for urgency
                 if (!this.timerText.getData('pulsing')) {
                     this.timerText.setData('pulsing', true);
                     this.scene.tweens.add({
                         targets: this.timerText,
-                        scaleX: 1.1,
-                        scaleY: 1.1,
-                        duration: 500,
+                        scaleX: 1.15,
+                        scaleY: 1.15,
+                        duration: 400,
                         yoyo: true,
                         repeat: -1,
                         ease: 'Sine.easeInOut'
@@ -679,28 +829,56 @@ export class UIManager extends BaseGameSystem {
             } else if (this.gameTime >= this.suddenDeathTime) { // Sudden death - golden
                 this.timerText.setColor('#ffd700');
             } else {
-                this.timerText.setColor('#fbbf24');
+                this.timerText.setColor('#ffd700');
                 this.timerText.setData('pulsing', false);
             }
         }
         
-        // Update timer bar
+        // Update circular timer progress
         if (this.timerBar) {
             this.timerBar.clear();
             
             const progress = Math.min(1, this.gameTime / this.maxGameTime);
-            const barWidth = 140 * (1 - progress);
+            const remainingProgress = 1 - progress;
             
-            // Choose color based on game phase
-            let barColor = 0x00FF00; // Green
+            // Choose color based on game phase with smooth transitions
+            let barColor = 0x4ade80; // Green
+            let glowColor = 0x4ade80;
+            
             if (this.gameTime >= this.suddenDeathTime) {
-                barColor = 0xFFD700; // Gold for sudden death
+                barColor = 0xffd700; // Gold for sudden death
+                glowColor = 0xffd700;
             } else if (this.gameTime >= this.maxGameTime - 30000) {
-                barColor = 0xFF0000; // Red for final 30 seconds
+                barColor = 0xef4444; // Red for final 30 seconds
+                glowColor = 0xef4444;
+            } else if (this.gameTime >= this.maxGameTime - 60000) {
+                barColor = 0xf59e0b; // Orange for final minute
+                glowColor = 0xf59e0b;
             }
             
-            this.timerBar.fillStyle(barColor, 0.7);
-            this.timerBar.fillRoundedRect(-70, -7, barWidth, 14, 3);
+            // Draw circular progress arc - adjusted for larger timer
+            if (remainingProgress > 0) {
+                const startAngle = -Math.PI / 2; // Start at top
+                const endAngle = startAngle + (remainingProgress * Math.PI * 2);
+                
+                // Outer glow effect - larger
+                this.timerBar.lineStyle(8, glowColor, 0.4);
+                this.timerBar.beginPath();
+                this.timerBar.arc(0, 0, 35, startAngle, endAngle, false);
+                this.timerBar.strokePath();
+                
+                // Main progress arc - larger
+                this.timerBar.lineStyle(5, barColor, 0.9);
+                this.timerBar.beginPath();
+                this.timerBar.arc(0, 0, 35, startAngle, endAngle, false);
+                this.timerBar.strokePath();
+                
+                // Inner bright core - larger
+                this.timerBar.lineStyle(3, 0xffffff, 0.7);
+                this.timerBar.beginPath();
+                this.timerBar.arc(0, 0, 35, startAngle, endAngle, false);
+                this.timerBar.strokePath();
+            }
         }
     }
     
@@ -937,7 +1115,7 @@ export class UIManager extends BaseGameSystem {
         if (this.opponentScoreText) this.opponentScoreText.setText('0');
         if (this.playerGemText) this.playerGemText.setText('0').setColor('#4facfe');
         if (this.opponentGemText) this.opponentGemText.setText('0').setColor('#f43f5e');
-        if (this.timerText) this.timerText.setText('3:00').setColor('#FFFFFF');
+        if (this.timerText) this.timerText.setText('3:00').setColor('#ffd700');
         if (this.comboDisplay) this.comboDisplay.setVisible(false);
         
         // Clear notifications
@@ -957,28 +1135,45 @@ export class UIManager extends BaseGameSystem {
      * Create particle burst effect when collecting gems
      */
     private createGemBurst(x: number, y: number, isPlayer: boolean): void {
-        const particleCount = 8;
-        const color = isPlayer ? 0x4facfe : 0xf43f5e;
+        const particleCount = 12;
+        const primaryColor = isPlayer ? 0x4facfe : 0xf43f5e;
+        const secondaryColor = isPlayer ? 0x93c5fd : 0xfda4af;
         
         for (let i = 0; i < particleCount; i++) {
             const angle = (Math.PI * 2 * i) / particleCount;
-            const speed = 100;
+            const distance = 35 + Math.random() * 15;
+            const size = 2 + Math.random() * 3;
+            const color = i % 2 === 0 ? primaryColor : secondaryColor;
             
-            const particle = this.scene.add.circle(
-                x, y, 3, color
-            );
+            const particle = this.scene.add.circle(x, y, size, color);
             particle.setDepth(Z_LAYERS.UI + 9);
             
-            // Animate outward
+            // Add sparkle effect
+            const sparkle = this.scene.add.circle(x, y, 1, 0xffffff);
+            sparkle.setDepth(Z_LAYERS.UI + 10);
+            
+            // Animate particles outward with premium feel
             this.scene.tweens.add({
                 targets: particle,
-                x: x + Math.cos(angle) * 30,
-                y: y + Math.sin(angle) * 30,
+                x: x + Math.cos(angle) * distance,
+                y: y + Math.sin(angle) * distance,
                 alpha: { from: 1, to: 0 },
-                scale: { from: 1, to: 0 },
-                duration: 600,
+                scale: { from: 1, to: 0.2 },
+                duration: 800,
                 ease: 'Power2',
                 onComplete: () => particle.destroy()
+            });
+            
+            // Animate sparkles
+            this.scene.tweens.add({
+                targets: sparkle,
+                x: x + Math.cos(angle) * (distance * 0.7),
+                y: y + Math.sin(angle) * (distance * 0.7),
+                alpha: { from: 1, to: 0 },
+                scale: { from: 1, to: 0 },
+                duration: 500,
+                ease: 'Power2',
+                onComplete: () => sparkle.destroy()
             });
         }
     }
