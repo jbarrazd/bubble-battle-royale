@@ -982,12 +982,12 @@ export class ObjectiveManager extends BaseGameSystem {
             }
         });
         
-        // Flash effect
+        // Flash effect with space theme
         const flash = this.scene.add.circle(
             this.objective.x,
             this.objective.y,
             40,
-            0xFFD700,
+            0x00ccff,  // Space blue color
             0.8
         );
         flash.setDepth(this.objective.depth - 1);
@@ -1182,7 +1182,7 @@ export class ObjectiveManager extends BaseGameSystem {
             // Iterate through all children and tint them
             this.objective.each((child: any) => {
                 if (child.setTint) {
-                    child.setTint(0xFFD700); // Golden tint
+                    child.setTint(0x00ccff); // Space blue tint
                 }
             });
         }
