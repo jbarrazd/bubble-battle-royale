@@ -32,6 +32,19 @@ export class PreloadScene extends Scene {
         
         this.createPlaceholderAssets();
         
+        // Load background music from AssetManifest
+        this.load.audio('background-music', 'assets/audio/background_music.mp3');
+        
+        // Also load UFO sounds
+        this.load.audio('ufo-arrives', 'assets/audio/ufo-arrives.mp3');
+        this.load.audio('ufo-sound', 'assets/audio/ufo-sound.mp3');
+        this.load.audio('chest-arrival', 'assets/audio/chest-arrival.mp3');
+        this.load.audio('shine', 'assets/audio/shine.mp3');
+        
+        // Load victory and defeat sounds
+        this.load.audio('victory', 'assets/sounds/victory.mp3');
+        this.load.audio('defeat', 'assets/sounds/defeat.mp3');
+        
         this.assetLoader.loadAssets((progress: number) => {
             this.updateProgress(progress);
         });

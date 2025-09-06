@@ -5,7 +5,6 @@
  */
 
 import { Scene } from 'phaser';
-import { ArenaSystem } from './ArenaSystem';
 import { Bubble } from '@/gameObjects/Bubble';
 import { MysteryBubble } from '@/gameObjects/MysteryBubble';
 import { BUBBLE_CONFIG, ARENA_CONFIG, GRID_CONFIG } from '@/config/ArenaConfig';
@@ -19,7 +18,7 @@ export interface RowSpawnConfig {
 
 export class RowSpawnSystem {
     private scene: Scene;
-    private arenaSystem: ArenaSystem;
+    private arenaSystem: any; // Reference to ArenaCoordinator
     private spawnTimer: Phaser.Time.TimerEvent | null = null;
     private spawnInterval: number = 6000; // Default 6 seconds
     private isPaused: boolean = false;
@@ -59,7 +58,7 @@ export class RowSpawnSystem {
     private readonly MIN_INTERVAL = 8000; // Minimum spawn interval (8 seconds) - much more manageable
     private readonly ACCELERATION_RATE = 0.98; // Each spawn makes next one 2% faster - even slower acceleration
 
-    constructor(scene: Scene, arenaSystem: ArenaSystem) {
+    constructor(scene: Scene, arenaSystem: any) {
         this.scene = scene;
         this.arenaSystem = arenaSystem;
         this.centerY = scene.cameras.main.centerY;

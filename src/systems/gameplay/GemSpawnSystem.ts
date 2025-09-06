@@ -96,9 +96,9 @@ export class GemSpawnSystem {
     private autoCollectGem(gem: Gem): void {
         if (!gem.isCollectable()) return;
         
-        // Animate gem flying to score area before disappearing
-        const targetY = 50; // Top of screen
-        const targetX = this.scene.cameras.main.width / 2;
+        // Animate gem flying to gem counter (bottom left - updated position)
+        const targetY = this.scene.cameras.main.height - 110;
+        const targetX = 110;
         
         this.scene.tweens.add({
             targets: gem,

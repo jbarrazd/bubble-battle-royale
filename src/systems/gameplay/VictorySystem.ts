@@ -218,6 +218,13 @@ export class VictorySystem {
         this.gameEnded = true;
         console.log(`🏆 GAME OVER! ${isPlayerVictory ? 'PLAYER' : 'OPPONENT'} WINS! Reason: ${reason}`);
         
+        // Play victory or defeat sound
+        if (isPlayerVictory) {
+            this.scene.sound.play('victory', { volume: 0.7 });
+        } else {
+            this.scene.sound.play('defeat', { volume: 0.7 });
+        }
+        
         // DO NOT pause physics or remove time events
         // We want animations to continue in the background
         // Only stop game progression, not rendering

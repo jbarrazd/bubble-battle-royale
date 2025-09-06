@@ -104,147 +104,179 @@ export class UIManager extends BaseGameSystem {
     }
     
     private createScoreDisplay(width: number, height: number): void {
-        this.scoreDisplay = this.scene.add.container(width / 2, 50);
-        this.scoreDisplay.setDepth(Z_LAYERS.UI);
+        // Score display - positioned at top right
+        this.scoreDisplay = this.scene.add.container(width - 120, 35);
+        this.scoreDisplay.setDepth(Z_LAYERS.UI + 5);
         
-        // Background panel
+        // Compact background panel
         const bg = this.scene.add.graphics();
-        bg.fillStyle(0x000000, 0.7);
-        bg.fillRoundedRect(-150, -30, 300, 60, 10);
+        bg.fillStyle(0x0f172a, 0.9);
+        bg.fillRoundedRect(-100, -20, 200, 40, 10);
+        bg.lineStyle(2, 0x3b82f6, 0.5);
+        bg.strokeRoundedRect(-100, -20, 200, 40, 10);
         this.scoreDisplay.add(bg);
         
-        // Player score (left)
-        this.playerScoreText = this.scene.add.text(-100, 0, '0', {
+        // Player score
+        this.playerScoreText = this.scene.add.text(-60, 0, '0', {
             fontSize: '28px',
             fontFamily: 'Arial Black',
-            color: '#00AAFF'
+            color: '#60a5fa',
+            stroke: '#1e40af',
+            strokeThickness: 2
         });
         this.playerScoreText.setOrigin(0.5);
         this.scoreDisplay.add(this.playerScoreText);
         
         // VS text
         const vsText = this.scene.add.text(0, 0, 'VS', {
-            fontSize: '20px',
-            fontFamily: 'Arial',
-            color: '#FFFFFF'
+            fontSize: '18px',
+            fontFamily: 'Arial Black',
+            color: '#94a3b8'
         });
         vsText.setOrigin(0.5);
         this.scoreDisplay.add(vsText);
         
-        // Opponent score (right)
-        this.opponentScoreText = this.scene.add.text(100, 0, '0', {
+        // Opponent score
+        this.opponentScoreText = this.scene.add.text(60, 0, '0', {
             fontSize: '28px',
             fontFamily: 'Arial Black',
-            color: '#FF4444'
+            color: '#f87171',
+            stroke: '#991b1b',
+            strokeThickness: 2
         });
         this.opponentScoreText.setOrigin(0.5);
         this.scoreDisplay.add(this.opponentScoreText);
     }
     
     private createGemCounter(width: number, height: number): void {
-        this.gemCounter = this.scene.add.container(width - 120, 100);
-        this.gemCounter.setDepth(Z_LAYERS.UI);
+        // Position gem counter bottom left where gems fly to - PROMINENT
+        this.gemCounter = this.scene.add.container(110, height - 110);
+        this.gemCounter.setDepth(Z_LAYERS.UI + 8); // Higher priority
         
-        // Background
+        // Larger, more prominent background with glow effect
         const bg = this.scene.add.graphics();
-        bg.fillStyle(0x000000, 0.7);
-        bg.fillRoundedRect(-60, -60, 120, 120, 10);
+        bg.fillStyle(0x1f2937, 0.9);
+        bg.fillRoundedRect(-70, -55, 140, 110, 12);
+        bg.lineStyle(3, 0xfbbf24, 0.8);
+        bg.strokeRoundedRect(-70, -55, 140, 110, 12);
         this.gemCounter.add(bg);
         
-        // Gem icon
-        const gemIcon = this.scene.add.star(0, -20, 6, 15, 25, 0xFFD700);
+        // Large gem icon with shine effect
+        const gemIcon = this.scene.add.star(0, -20, 6, 12, 25, 0xFFD700);
+        gemIcon.setScale(1.2);
         this.gemCounter.add(gemIcon);
         
-        // Player gems
+        // Shine effect on gem
+        this.scene.tweens.add({
+            targets: gemIcon,
+            scaleX: 1.3,
+            scaleY: 1.3,
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+        
+        // Player gems - LARGE and prominent
         this.playerGemText = this.scene.add.text(-25, 15, '0', {
-            fontSize: '24px',
+            fontSize: '36px',
             fontFamily: 'Arial Black',
-            color: '#00AAFF'
+            color: '#60a5fa',
+            stroke: '#1e40af',
+            strokeThickness: 3
         });
         this.playerGemText.setOrigin(0.5);
         this.gemCounter.add(this.playerGemText);
         
         // Divider
         const divider = this.scene.add.text(0, 15, '/', {
-            fontSize: '20px',
-            fontFamily: 'Arial',
-            color: '#FFFFFF'
+            fontSize: '24px',
+            fontFamily: 'Arial Black',
+            color: '#ffffff'
         });
         divider.setOrigin(0.5);
         this.gemCounter.add(divider);
         
-        // Opponent gems
+        // Opponent gems - LARGE and prominent
         this.opponentGemText = this.scene.add.text(25, 15, '0', {
-            fontSize: '24px',
+            fontSize: '36px',
             fontFamily: 'Arial Black',
-            color: '#FF4444'
+            color: '#f87171',
+            stroke: '#991b1b',
+            strokeThickness: 3
         });
         this.opponentGemText.setOrigin(0.5);
         this.gemCounter.add(this.opponentGemText);
         
-        // Win condition text
-        const winText = this.scene.add.text(0, 40, 'First to 15', {
-            fontSize: '12px',
-            fontFamily: 'Arial',
-            color: '#AAAAAA'
+        // Win condition text - more visible
+        const winText = this.scene.add.text(0, 45, 'First to 15 Wins!', {
+            fontSize: '14px',
+            fontFamily: 'Arial Black',
+            color: '#fbbf24'
         });
         winText.setOrigin(0.5);
         this.gemCounter.add(winText);
     }
     
     private createTimerDisplay(width: number, height: number): void {
-        this.timerDisplay = this.scene.add.container(width / 2, 100);
-        this.timerDisplay.setDepth(Z_LAYERS.UI);
+        // Timer at the top right, above the score
+        this.timerDisplay = this.scene.add.container(width - 120, 80);
+        this.timerDisplay.setDepth(Z_LAYERS.UI + 10);
         
-        // Background bar
+        // Compact timer background
         const bgBar = this.scene.add.graphics();
-        bgBar.fillStyle(0x000000, 0.5);
-        bgBar.fillRoundedRect(-100, -15, 200, 30, 5);
+        bgBar.fillStyle(0x1f2937, 0.9);
+        bgBar.fillRoundedRect(-80, -15, 160, 30, 8);
+        bgBar.lineStyle(2, 0xfbbf24, 0.6);
+        bgBar.strokeRoundedRect(-80, -15, 160, 30, 8);
         this.timerDisplay.add(bgBar);
         
         // Progress bar
         this.timerBar = this.scene.add.graphics();
         this.timerDisplay.add(this.timerBar);
         
-        // Timer text
+        // Timer text - clear and visible
         this.timerText = this.scene.add.text(0, 0, '3:00', {
-            fontSize: '20px',
+            fontSize: '22px',
             fontFamily: 'Arial Black',
-            color: '#FFFFFF',
+            color: '#ffffff',
             stroke: '#000000',
-            strokeThickness: 4
+            strokeThickness: 3
         });
         this.timerText.setOrigin(0.5);
         this.timerDisplay.add(this.timerText);
     }
     
     private createComboDisplay(width: number, height: number): void {
-        this.comboDisplay = this.scene.add.container(120, height - 100);
-        this.comboDisplay.setDepth(Z_LAYERS.UI);
+        // Position combo display on the right side, below timer
+        this.comboDisplay = this.scene.add.container(width - 120, 120);
+        this.comboDisplay.setDepth(Z_LAYERS.UI + 2);
         this.comboDisplay.setVisible(false);
         
-        // Background
+        // Compact background with style
         const bg = this.scene.add.graphics();
-        bg.fillStyle(0x000000, 0.7);
-        bg.fillRoundedRect(-80, -40, 160, 80, 10);
+        bg.fillStyle(0x1f2937, 0.85);
+        bg.fillRoundedRect(-60, -30, 120, 60, 8);
+        bg.lineStyle(1, 0x10b981, 0.6);
+        bg.strokeRoundedRect(-60, -30, 120, 60, 8);
         this.comboDisplay.add(bg);
         
-        // Combo text
-        this.comboText = this.scene.add.text(0, -10, 'COMBO!', {
-            fontSize: '18px',
+        // Combo text - smaller
+        this.comboText = this.scene.add.text(0, -8, 'COMBO!', {
+            fontSize: '14px',
             fontFamily: 'Arial Black',
-            color: '#FFD700'
+            color: '#fbbf24'
         });
         this.comboText.setOrigin(0.5);
         this.comboDisplay.add(this.comboText);
         
-        // Multiplier
-        this.comboMultiplier = this.scene.add.text(0, 15, 'x2', {
-            fontSize: '32px',
+        // Multiplier - smaller but visible
+        this.comboMultiplier = this.scene.add.text(0, 10, 'x2', {
+            fontSize: '24px',
             fontFamily: 'Arial Black',
-            color: '#FFFF00',
-            stroke: '#FF8800',
-            strokeThickness: 4
+            color: '#fef08a',
+            stroke: '#f59e0b',
+            strokeThickness: 3
         });
         this.comboMultiplier.setOrigin(0.5);
         this.comboDisplay.add(this.comboMultiplier);
@@ -370,13 +402,14 @@ export class UIManager extends BaseGameSystem {
                     });
                 }
                 
-                // Pulse animation
+                // Big pulse animation for emphasis
                 this.scene.tweens.add({
                     targets: this.playerGemText,
-                    scaleX: 1.5,
-                    scaleY: 1.5,
-                    duration: 200,
-                    yoyo: true
+                    scaleX: 1.8,
+                    scaleY: 1.8,
+                    duration: 300,
+                    yoyo: true,
+                    ease: 'Back.easeOut'
                 });
             }
         } else {
@@ -392,6 +425,15 @@ export class UIManager extends BaseGameSystem {
                         type: 'danger' 
                     });
                 }
+                
+                // Pulse animation for opponent gems too
+                this.scene.tweens.add({
+                    targets: this.opponentGemText,
+                    scaleX: 1.5,
+                    scaleY: 1.5,
+                    duration: 200,
+                    yoyo: true
+                });
             }
         }
         
@@ -399,8 +441,14 @@ export class UIManager extends BaseGameSystem {
         // No need to update here as it would cause duplication
     }
     
-    private updateTimer(data: { time: number, maxTime?: number }): void {
-        this.gameTime = data.time;
+    private updateTimer(data: { time?: number, elapsed?: number, maxTime?: number }): void {
+        // Handle elapsed time from ArenaCoordinator
+        if (data.elapsed !== undefined) {
+            this.gameTime = data.elapsed;
+        } else if (data.time !== undefined) {
+            this.gameTime = data.time;
+        }
+        
         if (data.maxTime) {
             this.maxGameTime = data.maxTime;
         }
@@ -427,7 +475,7 @@ export class UIManager extends BaseGameSystem {
             this.timerBar.clear();
             
             const progress = Math.min(1, this.gameTime / this.maxGameTime);
-            const barWidth = 190 * (1 - progress);
+            const barWidth = 140 * (1 - progress);
             
             // Choose color based on game phase
             let barColor = 0x00FF00; // Green
@@ -437,8 +485,8 @@ export class UIManager extends BaseGameSystem {
                 barColor = 0xFF0000; // Red for final 30 seconds
             }
             
-            this.timerBar.fillStyle(barColor, 0.8);
-            this.timerBar.fillRoundedRect(-95, -10, barWidth, 20, 3);
+            this.timerBar.fillStyle(barColor, 0.7);
+            this.timerBar.fillRoundedRect(-70, -7, barWidth, 14, 3);
         }
     }
     
@@ -625,8 +673,8 @@ export class UIManager extends BaseGameSystem {
         // Update displays
         if (this.playerScoreText) this.playerScoreText.setText('0');
         if (this.opponentScoreText) this.opponentScoreText.setText('0');
-        if (this.playerGemText) this.playerGemText.setText('0').setColor('#00AAFF');
-        if (this.opponentGemText) this.opponentGemText.setText('0').setColor('#FF4444');
+        if (this.playerGemText) this.playerGemText.setText('0').setColor('#60a5fa');
+        if (this.opponentGemText) this.opponentGemText.setText('0').setColor('#f87171');
         if (this.timerText) this.timerText.setText('3:00').setColor('#FFFFFF');
         if (this.comboDisplay) this.comboDisplay.setVisible(false);
         

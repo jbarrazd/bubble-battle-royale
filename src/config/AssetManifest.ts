@@ -226,7 +226,7 @@ export function createAssetManifest(): IAssetManifest {
             },
             {
                 key: ASSET_KEYS.AUDIO.BACKGROUND_MUSIC,
-                url: 'assets/sounds/background-music.mp3',
+                url: 'assets/audio/background_music.mp3',
                 type: 'audio',
                 data: {}
             }

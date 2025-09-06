@@ -1,11 +1,8 @@
 import { Scene } from 'phaser';
 import { SceneKeys, ISceneData, GameEvents } from '@/types/GameTypes';
 import { SceneManager } from '@/systems/core/SceneManager';
-import { ArenaSystem, AIDifficulty } from '@/systems/gameplay/ArenaSystem';
 import { ArenaCoordinator } from '@/coordinators/ArenaCoordinator';
-import { ArenaSystemAdapter } from '@/migration/ArenaSystemAdapter';
-import { migrationConfig } from '@/config/MigrationConfig';
-import { RowSpawnSystem } from '@/systems/gameplay/RowSpawnSystem';
+import { AIDifficulty } from '@/systems/gameplay/AIOpponentSystem';
 import { PerformanceMonitor } from '@/utils/PerformanceMonitor';
 import { OptimizationMonitor, getOptimizationStats } from '@/optimization';
 import { RealSoundSystem } from '@/systems/audio/RealSoundSystem';
@@ -17,13 +14,10 @@ export class GameScene extends Scene {
     private sceneManager!: SceneManager;
     private performanceMonitor!: PerformanceMonitor;
     private optimizationMonitor?: OptimizationMonitor;
-    private arenaSystem!: ArenaSystem;
-    private arenaCoordinator?: ArenaCoordinator;
-    private isUsingNewArchitecture: boolean = true; // Switch to new architecture
-    private rowSpawnSystem!: RowSpawnSystem;
+    private arenaCoordinator!: ArenaCoordinator;
     private soundSystem!: RealSoundSystem;
     private backgroundSystem!: BackgroundSystem;
-    private backgroundMusic: Phaser.Sound.BaseSound | undefined;
+    private backgroundMusic?: Phaser.Sound.BaseSound;
     private fpsText!: Phaser.GameObjects.Text;
     private frameCount: number = 0;
     private lastFPSUpdate: number = 0;
@@ -37,24 +31,21 @@ export class GameScene extends Scene {
     }
 
     public preload(): void {
-        // No background image loading needed - using procedural graphics
-        
-        // Cannon sprite loading disabled - using procedural graphics
-        // this.load.image('cannon', 'assets/sprites/cannon2_transparent.png');
-        
-        // Load background music
-        // Note: Place background_music.mp3 in public/assets/audio/
-        this.load.audio('background-music', 'assets/audio/background_music.mp3');
+        // Load background music with error handling
+        if (!this.cache.audio.exists('background-music')) {
+            this.load.audio('background-music', 'assets/audio/background_music.mp3');
+            
+            // Add load error handler
+            this.load.on('loaderror', (file: any) => {
+                if (file.key === 'background-music') {
+                    console.warn('GameScene: Failed to load background music, continuing without it');
+                }
+            });
+        }
     }
 
     public init(data: ISceneData): void {
         
-        // Clean up any existing background music before reinitializing
-        if (this.backgroundMusic) {
-            this.backgroundMusic.stop();
-            this.backgroundMusic.destroy();
-            this.backgroundMusic = undefined;
-        }
         
         // Store theme selection if provided
         if (data && (data as any).theme) {
@@ -116,26 +107,62 @@ export class GameScene extends Scene {
     
     private createBackgroundMusic(): void {
         try {
-            // Stop any existing background music first to prevent overlapping
+            // Stop any existing background music first
             if (this.backgroundMusic) {
                 this.backgroundMusic.stop();
                 this.backgroundMusic.destroy();
                 this.backgroundMusic = undefined;
             }
             
-            // Use the sound system to play background music
-            if (this.soundSystem) {
-                this.backgroundMusic = this.soundSystem.playBackgroundMusic();
-                if (this.backgroundMusic) {
-                    console.log('GameScene: Background music started');
+            // Check if audio is already loaded
+            if (this.cache.audio.exists('background-music')) {
+                this.backgroundMusic = this.sound.add('background-music', {
+                    volume: 0.3,
+                    loop: true
+                });
+                
+                // Handle locked audio context (browser requirement)
+                if (this.sound.locked) {
+                    console.log('GameScene: Audio context locked, waiting for user interaction');
+                    
+                    // Add visual indicator that audio is locked
+                    const unlockText = this.add.text(
+                        this.cameras.main.centerX,
+                        50,
+                        'Click to enable sound',
+                        {
+                            fontSize: '16px',
+                            color: '#ffffff',
+                            backgroundColor: '#000000',
+                            padding: { x: 10, y: 5 }
+                        }
+                    ).setOrigin(0.5).setDepth(10000);
+                    
+                    // Listen for unlock
+                    this.sound.once('unlocked', () => {
+                        console.log('GameScene: Audio unlocked, starting background music');
+                        unlockText.destroy();
+                        this.backgroundMusic?.play();
+                    });
+                    
+                    // Also try to unlock on first click
+                    this.input.once('pointerdown', () => {
+                        if (this.sound.locked) {
+                            this.sound.unlock();
+                        }
+                    });
                 } else {
-                    console.log('GameScene: No background music available');
+                    console.log('GameScene: Starting background music immediately');
+                    this.backgroundMusic.play();
                 }
+            } else {
+                console.warn('GameScene: Background music not loaded, skipping');
             }
         } catch (error) {
             console.error('GameScene: Failed to create background music:', error);
         }
     }
+    
 
     private createBackground(): void {
         // Detect device performance for quality settings
@@ -246,34 +273,11 @@ export class GameScene extends Scene {
 
     private createArena(): void {
         try {
-            if (this.isUsingNewArchitecture) {
-                // Use new modular ArenaCoordinator
-                console.log('GameScene: Using NEW ArenaCoordinator (Modular Architecture)...');
-                this.arenaCoordinator = new ArenaCoordinator(this);
-                
-                this.arenaCoordinator.initialize(true, AIDifficulty.HARD);
-            } else {
-                // Fallback to original ArenaSystem
-                console.log('GameScene: Using ArenaSystem...');
-                this.arenaSystem = new ArenaSystem(this);
-                
-                console.log('GameScene: Setting up arena with AI opponent (HARD)...');
-                // Setup single player mode with AI difficulty - Always HARD
-                this.arenaSystem.setupArena(true, AIDifficulty.HARD);
-            }
+            console.log('GameScene: Creating ArenaCoordinator...');
+            this.arenaCoordinator = new ArenaCoordinator(this);
             
-            
-            if (!this.isUsingNewArchitecture) {
-                // Initialize the row spawning system for old architecture
-                this.rowSpawnSystem = new RowSpawnSystem(this, this.arenaSystem);
-                
-                // Start automatic row spawning after a longer delay  
-                this.time.delayedCall(8000, () => {
-                    console.log('GameScene: Starting automatic row spawning...');
-                    this.rowSpawnSystem.startSpawning();
-                });
-            }
-            // New architecture handles row spawning internally
+            console.log('GameScene: Initializing arena with AI opponent (HARD)...');
+            this.arenaCoordinator.initialize(true, AIDifficulty.HARD);
             
             // Setup combo events to pause spawning
             this.setupRowSpawnEvents();
@@ -281,8 +285,7 @@ export class GameScene extends Scene {
             // Connect sound system to game events
             this.setupSoundEvents();
             
-            const archType = this.isUsingNewArchitecture ? 'NEW Modular Architecture' : 'Original ArenaSystem';
-            console.log(`GameScene: Arena created successfully with ${archType} and AI opponent`);
+            console.log('GameScene: Arena created successfully with AI opponent');
         } catch (error) {
             console.error('GameScene: Error creating arena:', error);
             throw error;
@@ -290,28 +293,8 @@ export class GameScene extends Scene {
     }
     
     private setupRowSpawnEvents(): void {
-        // Pause row spawning during combos
-        this.events.on('combo-start', () => {
-            console.log('GameScene: Pausing row spawn for combo');
-            this.rowSpawnSystem?.pause();
-        });
-        
-        this.events.on('combo-complete', () => {
-            console.log('GameScene: Resuming row spawn after combo');
-            this.rowSpawnSystem?.resume();
-        });
-        
-        // Also pause during match detection
-        this.game.events.on('match-started', () => {
-            this.rowSpawnSystem?.pause();
-        });
-        
-        this.game.events.on('match-completed', () => {
-            // Resume after a short delay to allow for cascades
-            this.time.delayedCall(500, () => {
-                this.rowSpawnSystem?.resume();
-            });
-        });
+        // Row spawn events are now handled internally by ArenaCoordinator
+        // This method is kept for potential future use
     }
     
     private setupSoundEvents(): void {
@@ -481,8 +464,6 @@ export class GameScene extends Scene {
         // M key to toggle mute
         this.input.keyboard?.on('keydown-M', () => {
             const muted = this.soundSystem?.toggleMute();
-            
-            // Also mute/unmute background music
             if (this.backgroundMusic) {
                 if (muted) {
                     this.backgroundMusic.pause();
@@ -490,7 +471,6 @@ export class GameScene extends Scene {
                     this.backgroundMusic.resume();
                 }
             }
-            
             console.log(`Audio ${muted ? 'muted' : 'unmuted'}`);
         });
         
@@ -503,11 +483,10 @@ export class GameScene extends Scene {
             const centerY = this.cameras.main.centerY;
             
             // Trigger the UFO delivery animation
-            if (this.arenaSystem) {
+            if (this.arenaCoordinator) {
                 // Call the UFO delivery method directly for testing
-                (this.arenaSystem as any).createUFODelivery(centerX, centerY, () => {
-                    console.log('UFO delivery animation complete');
-                });
+                // TODO: Implement UFO delivery in ArenaCoordinator if needed
+                console.log('UFO delivery test - not yet implemented in ArenaCoordinator');
             }
         });
         
@@ -555,7 +534,7 @@ export class GameScene extends Scene {
 
     private testBubblePop(): void {
         // Test bubble popping animation
-        const bubbles = this.arenaSystem.getBubbles();
+        const bubbles = this.arenaCoordinator?.getAllBubbles() || [];
         if (bubbles.length > 0) {
             const randomBubble = bubbles[Math.floor(Math.random() * bubbles.length)];
             if (randomBubble) {
@@ -626,14 +605,12 @@ export class GameScene extends Scene {
     }
 
     private returnToMenu(): void {
-        // Properly cleanup background music
         if (this.backgroundMusic) {
             this.backgroundMusic.stop();
             this.backgroundMusic.destroy();
             this.backgroundMusic = undefined;
         }
-        
-        this.arenaSystem?.destroy();
+        this.arenaCoordinator?.cleanup();
         this.soundSystem?.destroy();
         this.sceneManager.transitionTo(SceneKeys.MENU);
     }
@@ -644,13 +621,9 @@ export class GameScene extends Scene {
         // Update FPS counter
         this.updateFPSDisplay();
         
-        // Update arena system - continue updating even after game ends
+        // Update arena coordinator - continue updating even after game ends
         // This is necessary for UI interactions and animations
-        if (this.isUsingNewArchitecture) {
-            this.arenaCoordinator?.update(time, delta);
-        } else {
-            this.arenaSystem?.update(time, delta);
-        }
+        this.arenaCoordinator?.update(time, delta);
         
         // Record optimization metrics every frame
         if (this.optimizationMonitor) {
@@ -696,7 +669,7 @@ export class GameScene extends Scene {
     }
     
     public shutdown(): void {
-        // Properly cleanup background music
+        // Stop and cleanup background music
         if (this.backgroundMusic) {
             this.backgroundMusic.stop();
             this.backgroundMusic.destroy();
@@ -704,15 +677,8 @@ export class GameScene extends Scene {
         }
         
         // Clean up systems
-        if (this.isUsingNewArchitecture) {
-            this.arenaCoordinator?.destroy();
-            this.arenaCoordinator = undefined as any; // Clear reference
-        } else {
-            this.rowSpawnSystem?.destroy();
-            this.rowSpawnSystem = undefined;
-            this.arenaSystem?.destroy();
-            this.arenaSystem = undefined;
-        }
+        this.arenaCoordinator?.cleanup();
+        this.arenaCoordinator = undefined as any; // Clear reference
         this.soundSystem?.destroy();
         this.soundSystem = undefined;
         this.backgroundSystem?.destroy();

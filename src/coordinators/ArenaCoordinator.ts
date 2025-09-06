@@ -8,6 +8,7 @@ import { Scene } from 'phaser';
 import { SystemRegistry } from '@/core/SystemRegistry';
 import { GameEventBus } from '@/core/EventBus';
 import { GameStateManager } from '@/core/GameStateManager';
+import { Bubble } from '@/gameObjects/Bubble';
 
 // Managers
 import { BubbleManager } from '@/managers/BubbleManager';
@@ -131,7 +132,7 @@ export class ArenaCoordinator {
     // Game timer
     private gameStartTime: number = 0;
     private gameElapsedTime: number = 0;
-    private timerText?: Phaser.GameObjects.Text;
+    private suddenDeathTriggered: boolean = false;
     private readonly GAME_DURATION: number = 180000; // 3 minutes
     private readonly SUDDEN_DEATH_TIME: number = 150000; // 2:30 for sudden death
     
@@ -252,8 +253,7 @@ export class ArenaCoordinator {
         // Grid Attachment System
         this.gridAttachmentSystem = new GridAttachmentSystem(
             this.scene,
-            this.bubbleGrid,
-            this.bubbleManager
+            this.bubbleGrid
         );
         
         // Match Detection System
@@ -297,9 +297,7 @@ export class ArenaCoordinator {
         // Cascade System
         this.cascadeSystem = new CascadeSystem(
             this.scene,
-            this.gridAttachmentSystem,
-            this.matchDetectionSystem,
-            this.bubbleGrid
+            this.gridAttachmentSystem
         );
         
         // Reset System
@@ -341,8 +339,7 @@ export class ArenaCoordinator {
         
         // Victory System
         this.victorySystem = new VictorySystem(
-            this.scene,
-            this.resetSystem
+            this.scene
         );
         
         // Row Spawn System
@@ -359,8 +356,7 @@ export class ArenaCoordinator {
             this.scene,
             this.shootingSystem,
             this.gridAttachmentSystem,
-            this.matchDetectionSystem,
-            this.bubbleGrid
+            this.matchDetectionSystem
         );
         
     }
@@ -719,36 +715,15 @@ export class ArenaCoordinator {
      * Create timer display UI
      */
     private createTimerDisplay(): void {
-        // Clean up any existing timer first to prevent duplicates
-        if (this.timerText) {
-            this.timerText.destroy();
-            this.timerText = undefined;
-        }
-        
-        // Create timer text at top center
-        this.timerText = this.scene.add.text(
-            this.scene.cameras.main.centerX,
-            30,
-            '3:00',
-            {
-                fontSize: '28px',
-                color: '#FFFFFF',
-                fontFamily: 'Arial Black',
-                fontStyle: 'bold',
-                stroke: '#000000',
-                strokeThickness: 4
-            }
-        );
-        this.timerText.setOrigin(0.5);
-        this.timerText.setDepth(1000);
-        this.timerText.setShadow(2, 2, '#000000', 2, true, true);
+        // Timer is now managed by UIManager
+        // This method is kept for compatibility but does nothing
     }
     
     /**
      * Update game timer
      */
     private updateTimer(): void {
-        if (!this.timerText || this.isGameEnded) return;
+        if (this.isGameEnded) return;
         
         // Calculate elapsed time
         this.gameElapsedTime = Date.now() - this.gameStartTime;
@@ -756,39 +731,16 @@ export class ArenaCoordinator {
         // Calculate remaining time (3 minutes total)
         const remainingTime = Math.max(0, this.GAME_DURATION - this.gameElapsedTime);
         
-        // Format time as MM:SS
-        const minutes = Math.floor(remainingTime / 60000);
-        const seconds = Math.floor((remainingTime % 60000) / 1000);
-        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        
-        this.timerText.setText(timeString);
-        
-        // Change color based on time remaining
-        if (remainingTime <= 30000) {
-            // Last 30 seconds - red and pulsing
-            this.timerText.setColor('#FF0000');
-            if (!this.timerText.getData('pulsing')) {
-                this.timerText.setData('pulsing', true);
-                this.scene.tweens.add({
-                    targets: this.timerText,
-                    scale: { from: 1, to: 1.1 },
-                    duration: 500,
-                    yoyo: true,
-                    repeat: -1
-                });
-            }
-        } else if (remainingTime <= 60000) {
-            // Last minute - yellow
-            this.timerText.setColor('#FFFF00');
-        } else {
-            // Normal time - white
-            this.timerText.setColor('#FFFFFF');
-        }
+        // Emit timer update event for UIManager to handle display
+        this.eventBus.emit('timer-update', {
+            elapsed: this.gameElapsedTime,
+            remaining: remainingTime,
+            total: this.GAME_DURATION
+        });
         
         // Check for sudden death (at 2:30)
-        if (!this.timerText.getData('suddenDeathTriggered') && 
-            this.gameElapsedTime >= this.SUDDEN_DEATH_TIME) {
-            this.timerText.setData('suddenDeathTriggered', true);
+        if (!this.suddenDeathTriggered && this.gameElapsedTime >= this.SUDDEN_DEATH_TIME) {
+            this.suddenDeathTriggered = true;
             this.triggerSuddenDeath();
         }
         
@@ -1477,6 +1429,9 @@ export class ArenaCoordinator {
             }
             
             try {
+                // Play victory sound
+                this.scene.sound.play('victory', { volume: 0.7 });
+                
                 this.victoryScreen = new VictoryScreen(
                     this.scene,
                     playerScore,
@@ -1497,6 +1452,9 @@ export class ArenaCoordinator {
         } else {
             
             try {
+                // Play defeat sound
+                this.scene.sound.play('defeat', { volume: 0.7 });
+                
                 this.defeatScreen = new DefeatScreen(
                     this.scene,
                     playerScore,
@@ -1837,11 +1795,7 @@ export class ArenaCoordinator {
             this.tieScreen = undefined;
         }
         
-        // Clean up timer
-        if (this.timerText) {
-            this.timerText.destroy();
-            this.timerText = undefined;
-        }
+        // Timer is now managed by UIManager, no cleanup needed here
         
         // Stop all active systems
         this.rowSpawnSystem?.stopSpawning();
