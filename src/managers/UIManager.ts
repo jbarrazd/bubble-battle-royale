@@ -108,54 +108,51 @@ export class UIManager extends BaseGameSystem {
         this.scoreDisplay = this.scene.add.container(width - 120, 35);
         this.scoreDisplay.setDepth(Z_LAYERS.UI + 5);
         
-        // Bubble-themed background with iridescent effect
+        // High contrast vivid bubble background
         const bg = this.scene.add.graphics();
         
-        // Outer bubble shadow
-        bg.fillStyle(0x000000, 0.3);
+        // Strong black shadow for contrast
+        bg.fillStyle(0x000000, 0.6);
         bg.fillRoundedRect(-102, -18, 204, 44, 20);
         
-        // Main bubble body with deep blue
-        bg.fillStyle(0x1e3a8a, 0.9);
+        // Vivid bright blue background
+        bg.fillStyle(0x0066ff, 0.95);
         bg.fillRoundedRect(-100, -20, 200, 40, 18);
         
-        // Inner bubble gradient layer
-        bg.fillStyle(0x3b82f6, 0.3);
+        // Bright cyan accent layer
+        bg.fillStyle(0x00ffff, 0.25);
         bg.fillRoundedRect(-98, -18, 196, 36, 17);
         
-        // Glossy bubble surface
-        bg.fillStyle(0xffffff, 0.15);
+        // Strong white highlight for pop
+        bg.fillStyle(0xffffff, 0.3);
         bg.fillRoundedRect(-95, -17, 190, 15, 15);
-        bg.fillStyle(0xffffff, 0.1);
-        bg.fillEllipse(-60, -10, 30, 8);
-        bg.fillEllipse(60, -10, 30, 8);
         
-        // Iridescent bubble border
-        bg.lineStyle(2, 0x60a5fa, 0.8);
+        // Vivid yellow border for high contrast
+        bg.lineStyle(3, 0xffff00, 1);
         bg.strokeRoundedRect(-100, -20, 200, 40, 18);
-        bg.lineStyle(1, 0xffffff, 0.3);
+        bg.lineStyle(1.5, 0xffffff, 0.8);
         bg.strokeRoundedRect(-98, -18, 196, 36, 17);
         
         this.scoreDisplay.add(bg);
         
-        // Player score with enhanced bubble theme
+        // Player score with vivid colors
         this.playerScoreText = this.scene.add.text(-60, 0, '0', {
             fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#60a5fa',
-            stroke: '#1e3a8a',
-            strokeThickness: 3,
-            shadow: { offsetX: 0, offsetY: 0, color: '#60a5fa', blur: 8, fill: true }
+            color: '#00ffff',  // Bright cyan
+            stroke: '#000000',
+            strokeThickness: 4,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.playerScoreText.setOrigin(0.5);
         this.scoreDisplay.add(this.playerScoreText);
         
-        // VS text with bubble pop style
-        const vsText = this.scene.add.text(0, 0, '⚡VS⚡', {
-            fontSize: '16px',
+        // VS text with high contrast
+        const vsText = this.scene.add.text(0, 0, 'VS', {
+            fontSize: '20px',
             fontFamily: 'Arial Black',
-            color: '#fbbf24',
-            stroke: '#1e3a8a',
+            color: '#ffff00',  // Bright yellow
+            stroke: '#000000',
             strokeThickness: 3
         });
         vsText.setOrigin(0.5);
@@ -172,14 +169,14 @@ export class UIManager extends BaseGameSystem {
             ease: 'Sine.easeInOut'
         });
         
-        // Opponent score with enhanced bubble theme  
+        // Opponent score with vivid colors  
         this.opponentScoreText = this.scene.add.text(60, 0, '0', {
             fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#f87171',
-            stroke: '#1e3a8a',
-            strokeThickness: 3,
-            shadow: { offsetX: 0, offsetY: 0, color: '#f87171', blur: 8, fill: true }
+            color: '#ff00ff',  // Bright magenta
+            stroke: '#000000',
+            strokeThickness: 4,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.opponentScoreText.setOrigin(0.5);
         this.scoreDisplay.add(this.opponentScoreText);
@@ -190,43 +187,39 @@ export class UIManager extends BaseGameSystem {
         this.gemCounter = this.scene.add.container(110, height - 110);
         this.gemCounter.setDepth(Z_LAYERS.UI + 8); // Higher priority
         
-        // Create magical bubble-themed gem container
+        // Vivid high-contrast gem container
         const bg = this.scene.add.graphics();
         
-        // Outer shadow for depth
-        bg.fillStyle(0x000000, 0.4);
+        // Strong black shadow
+        bg.fillStyle(0x000000, 0.7);
         bg.fillRoundedRect(-74, -55, 148, 118, 22);
         
-        // Main bubble container with rich purple
-        bg.fillStyle(0x4c1d95, 0.95);
+        // Bright purple background
+        bg.fillStyle(0x9900ff, 0.95);
         bg.fillRoundedRect(-72, -57, 144, 114, 20);
         
-        // Inner magical glow layers
-        bg.fillStyle(0x7c3aed, 0.3);
+        // Vivid pink accent
+        bg.fillStyle(0xff00ff, 0.3);
         bg.fillRoundedRect(-69, -54, 138, 108, 19);
-        bg.fillStyle(0xa78bfa, 0.2);
-        bg.fillRoundedRect(-66, -51, 132, 102, 18);
         
-        // Bubble shine effect
-        bg.fillStyle(0xffffff, 0.12);
+        // Strong white highlight
+        bg.fillStyle(0xffffff, 0.25);
         bg.fillRoundedRect(-69, -54, 138, 35, 19);
-        bg.fillStyle(0xffffff, 0.08);
-        bg.fillEllipse(0, -35, 60, 15);
         
-        // Magical golden border
-        bg.lineStyle(3, 0xfbbf24, 1);
+        // Bright yellow border for maximum contrast
+        bg.lineStyle(4, 0xffff00, 1);
         bg.strokeRoundedRect(-72, -57, 144, 114, 20);
         
-        // Inner shimmer border
-        bg.lineStyle(1.5, 0xfde68a, 0.6);
+        // White inner border
+        bg.lineStyle(2, 0xffffff, 0.8);
         bg.strokeRoundedRect(-69, -54, 138, 108, 19);
         
-        // Add small bubble decorations
+        // Bright decoration dots
         for (let i = 0; i < 3; i++) {
             const x = -50 + i * 50;
             const y = -45;
-            bg.fillStyle(0xffffff, 0.15);
-            bg.fillCircle(x, y, 3);
+            bg.fillStyle(0x00ffff, 0.8);
+            bg.fillCircle(x, y, 4);
         }
         
         this.gemCounter.add(bg);
@@ -327,83 +320,81 @@ export class UIManager extends BaseGameSystem {
             }
         });
         
-        // Player gems - LARGE with glow effect
+        // Player gems - VIVID BLUE
         this.playerGemText = this.scene.add.text(-25, 15, '0', {
-            fontSize: '40px',
+            fontSize: '42px',
             fontFamily: 'Arial Black',
-            color: '#4facfe',
-            stroke: '#ffffff',
-            strokeThickness: 1,
-            shadow: { offsetX: 0, offsetY: 0, color: '#4facfe', blur: 10, fill: true }
+            color: '#00ffff',  // Bright cyan
+            stroke: '#000000',
+            strokeThickness: 3,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.playerGemText.setOrigin(0.5);
         this.gemCounter.add(this.playerGemText);
         
-        // Stylized divider
+        // High contrast divider
         const divider = this.scene.add.text(0, 15, '/', {
-            fontSize: '28px',
+            fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#ffd700',
-            stroke: '#6b21a8',
-            strokeThickness: 2
+            color: '#ffff00',  // Bright yellow
+            stroke: '#000000',
+            strokeThickness: 3
         });
         divider.setOrigin(0.5);
         this.gemCounter.add(divider);
         
-        // Opponent gems - LARGE with glow effect
+        // Opponent gems - VIVID RED
         this.opponentGemText = this.scene.add.text(25, 15, '0', {
-            fontSize: '40px',
+            fontSize: '42px',
             fontFamily: 'Arial Black',
-            color: '#f43f5e',
-            stroke: '#ffffff',
-            strokeThickness: 1,
-            shadow: { offsetX: 0, offsetY: 0, color: '#f43f5e', blur: 10, fill: true }
+            color: '#ff0066',  // Bright pink-red
+            stroke: '#000000',
+            strokeThickness: 3,
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.opponentGemText.setOrigin(0.5);
         this.gemCounter.add(this.opponentGemText);
         
-        // Win condition text with bubble style
+        // Win condition text with high contrast
         const winText = this.scene.add.text(0, 45, '⭐ First to 15 Wins! ⭐', {
-            fontSize: '12px',
+            fontSize: '14px',
             fontFamily: 'Arial Black',
-            color: '#ffd700',
-            stroke: '#6b21a8',
-            strokeThickness: 2
+            color: '#ffff00',  // Bright yellow
+            stroke: '#000000',
+            strokeThickness: 3
         });
         winText.setOrigin(0.5);
         this.gemCounter.add(winText);
     }
     
     private createTimerDisplay(width: number, height: number): void {
-        // Timer at the top right with enhanced bubble design
+        // Timer with vivid high-contrast design
         this.timerDisplay = this.scene.add.container(width - 120, 80);
         this.timerDisplay.setDepth(Z_LAYERS.UI + 10);
         
-        // Timer with magical bubble theme
+        // Timer with bright colors
         const bgBar = this.scene.add.graphics();
         
-        // Shadow layer
-        bgBar.fillStyle(0x000000, 0.3);
+        // Strong shadow
+        bgBar.fillStyle(0x000000, 0.6);
         bgBar.fillRoundedRect(-82, -13, 164, 34, 14);
         
-        // Main timer bubble
-        bgBar.fillStyle(0x581c87, 0.95);
+        // Bright orange background
+        bgBar.fillStyle(0xff6600, 0.95);
         bgBar.fillRoundedRect(-80, -15, 160, 30, 12);
         
-        // Inner glow
-        bgBar.fillStyle(0x7c3aed, 0.3);
+        // Yellow accent
+        bgBar.fillStyle(0xffff00, 0.25);
         bgBar.fillRoundedRect(-78, -13, 156, 26, 11);
         
-        // Bubble shine
-        bgBar.fillStyle(0xffffff, 0.1);
+        // White highlight
+        bgBar.fillStyle(0xffffff, 0.2);
         bgBar.fillRoundedRect(-78, -13, 156, 10, 11);
-        bgBar.fillStyle(0xffffff, 0.06);
-        bgBar.fillEllipse(0, -8, 80, 6);
         
-        // Animated golden timer border
-        bgBar.lineStyle(2, 0xfbbf24, 1);
+        // Bright yellow border
+        bgBar.lineStyle(3, 0xffff00, 1);
         bgBar.strokeRoundedRect(-80, -15, 160, 30, 12);
-        bgBar.lineStyle(1, 0xfde68a, 0.4);
+        bgBar.lineStyle(1.5, 0xffffff, 0.8);
         bgBar.strokeRoundedRect(-78, -13, 156, 26, 11);
         
         this.timerDisplay.add(bgBar);
@@ -412,14 +403,14 @@ export class UIManager extends BaseGameSystem {
         this.timerBar = this.scene.add.graphics();
         this.timerDisplay.add(this.timerBar);
         
-        // Timer text with glow effect
+        // Timer text with high contrast
         this.timerText = this.scene.add.text(0, 0, '3:00', {
             fontSize: '24px',
             fontFamily: 'Arial Black',
-            color: '#fbbf24',
-            stroke: '#451a03',
+            color: '#ffffff',  // White for contrast
+            stroke: '#000000',
             strokeThickness: 3,
-            shadow: { offsetX: 0, offsetY: 0, color: '#fbbf24', blur: 8, fill: true }
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.timerText.setOrigin(0.5);
         this.timerDisplay.add(this.timerText);
@@ -431,54 +422,52 @@ export class UIManager extends BaseGameSystem {
         this.comboDisplay.setDepth(Z_LAYERS.UI + 2);
         this.comboDisplay.setVisible(false);
         
-        // Explosive bubble combo background
+        // High contrast combo background
         const bg = this.scene.add.graphics();
         
-        // Shadow for floating effect
-        bg.fillStyle(0x000000, 0.3);
+        // Strong shadow
+        bg.fillStyle(0x000000, 0.6);
         bg.fillRoundedRect(-62, -28, 124, 64, 17);
         
-        // Main combo bubble with energy gradient
-        bg.fillStyle(0xdc2626, 0.95);
+        // Bright red combo background
+        bg.fillStyle(0xff0000, 0.95);
         bg.fillRoundedRect(-60, -30, 120, 60, 15);
         
-        // Inner energy layers
-        bg.fillStyle(0xf87171, 0.3);
+        // Yellow accent layer
+        bg.fillStyle(0xffff00, 0.3);
         bg.fillRoundedRect(-58, -28, 116, 56, 14);
-        bg.fillStyle(0xfca5a5, 0.2);
-        bg.fillRoundedRect(-56, -26, 112, 52, 13);
         
-        // Bubble shine
-        bg.fillStyle(0xffffff, 0.15);
+        // White highlight
+        bg.fillStyle(0xffffff, 0.25);
         bg.fillRoundedRect(-58, -28, 116, 20, 14);
         
-        // Electric golden border
-        bg.lineStyle(2.5, 0xfbbf24, 1);
+        // Bright yellow border
+        bg.lineStyle(3, 0xffff00, 1);
         bg.strokeRoundedRect(-60, -30, 120, 60, 15);
-        bg.lineStyle(1.5, 0xfef3c7, 0.6);
+        bg.lineStyle(2, 0xffffff, 0.8);
         bg.strokeRoundedRect(-58, -28, 116, 56, 14);
         
         this.comboDisplay.add(bg);
         
-        // Combo text with bubble pop energy
-        this.comboText = this.scene.add.text(0, -8, '✨ COMBO ✨', {
-            fontSize: '14px',
+        // Combo text with high contrast
+        this.comboText = this.scene.add.text(0, -8, 'COMBO', {
+            fontSize: '16px',
             fontFamily: 'Arial Black',
-            color: '#fde047',
-            stroke: '#7f1d1d',
-            strokeThickness: 2
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3
         });
         this.comboText.setOrigin(0.5);
         this.comboDisplay.add(this.comboText);
         
-        // Multiplier with explosive glow
+        // Multiplier with bright colors
         this.comboMultiplier = this.scene.add.text(0, 10, 'x2', {
             fontSize: '32px',
             fontFamily: 'Arial Black',
-            color: '#fbbf24',
-            stroke: '#dc2626',
+            color: '#ffff00',  // Bright yellow
+            stroke: '#000000',
             strokeThickness: 3,
-            shadow: { offsetX: 0, offsetY: 0, color: '#fbbf24', blur: 20, fill: true }
+            shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 0, fill: true }
         });
         this.comboMultiplier.setOrigin(0.5);
         this.comboDisplay.add(this.comboMultiplier);
@@ -580,7 +569,7 @@ export class UIManager extends BaseGameSystem {
                 // Flash red when gems are removed due to reset
                 this.playerGemText.setColor('#FF0000');
                 this.scene.time.delayedCall(500, () => {
-                    this.playerGemText?.setColor('#4facfe'); // Player blue
+                    this.playerGemText?.setColor('#00ffff'); // Player cyan
                 });
                 
                 // Shake animation
@@ -602,7 +591,7 @@ export class UIManager extends BaseGameSystem {
                 // Flash red when gems are removed due to reset
                 this.opponentGemText.setColor('#FF0000');
                 this.scene.time.delayedCall(500, () => {
-                    this.opponentGemText?.setColor('#f43f5e'); // Opponent red
+                    this.opponentGemText?.setColor('#ff0066'); // Opponent bright red
                 });
             }
         }
@@ -641,7 +630,7 @@ export class UIManager extends BaseGameSystem {
                     onUpdate: (tween) => {
                         const value = tween.getValue();
                         const color = Phaser.Display.Color.Interpolate.ColorWithColor(
-                            { r: 79, g: 172, b: 254 },
+                            { r: 0, g: 255, b: 255 },  // Cyan
                             { r: 255, g: 255, b: 255 },
                             1,
                             value
@@ -651,11 +640,11 @@ export class UIManager extends BaseGameSystem {
                         );
                     },
                     onComplete: () => {
-                        // Return to player blue unless at 15 gems
+                        // Return to player cyan unless at 15 gems
                         if (this.playerGems >= 15) {
-                            this.playerGemText?.setColor('#00FF00'); // Victory green
+                            this.playerGemText?.setColor('#00ff00'); // Bright green
                         } else {
-                            this.playerGemText?.setColor('#4facfe'); // Normal player blue
+                            this.playerGemText?.setColor('#00ffff'); // Normal player cyan
                         }
                     }
                 });
@@ -695,7 +684,7 @@ export class UIManager extends BaseGameSystem {
                     onUpdate: (tween) => {
                         const value = tween.getValue();
                         const color = Phaser.Display.Color.Interpolate.ColorWithColor(
-                            { r: 244, g: 63, b: 94 },  // Opponent red
+                            { r: 255, g: 0, b: 102 },  // Bright red
                             { r: 255, g: 255, b: 255 },
                             1,
                             value
@@ -705,11 +694,11 @@ export class UIManager extends BaseGameSystem {
                         );
                     },
                     onComplete: () => {
-                        // Return to opponent red unless at 15 gems
+                        // Return to opponent bright red unless at 15 gems
                         if (this.opponentGems >= 15) {
-                            this.opponentGemText?.setColor('#FF0000'); // Danger red
+                            this.opponentGemText?.setColor('#ff0000'); // Danger red
                         } else {
-                            this.opponentGemText?.setColor('#f43f5e'); // Normal opponent red
+                            this.opponentGemText?.setColor('#ff0066'); // Normal opponent bright red
                         }
                     }
                 });
@@ -794,57 +783,55 @@ export class UIManager extends BaseGameSystem {
         );
         banner.setDepth(Z_LAYERS.FLOATING_UI);
         
-        // Dramatic bubble background
+        // High contrast sudden death background
         const bg = this.scene.add.graphics();
         
-        // Shadow layer
-        bg.fillStyle(0x000000, 0.5);
+        // Strong black shadow
+        bg.fillStyle(0x000000, 0.7);
         bg.fillRoundedRect(-220, -52, 440, 104, 25);
         
-        // Main bubble with danger gradient
-        bg.fillStyle(0x7f1d1d, 0.95);
+        // Bright red danger background
+        bg.fillStyle(0xff0000, 0.95);
         bg.fillRoundedRect(-200, -50, 400, 100, 20);
         
-        // Inner danger glow
-        bg.fillStyle(0xdc2626, 0.4);
+        // Yellow warning accent
+        bg.fillStyle(0xffff00, 0.3);
         bg.fillRoundedRect(-195, -45, 390, 90, 18);
-        bg.fillStyle(0xef4444, 0.3);
-        bg.fillRoundedRect(-190, -40, 380, 80, 16);
         
-        // Bubble shine effect
-        bg.fillStyle(0xffffff, 0.15);
+        // White highlight
+        bg.fillStyle(0xffffff, 0.25);
         bg.fillRoundedRect(-195, -45, 390, 30, 18);
         
-        // Electric border
-        bg.lineStyle(3, 0xfbbf24, 1);
+        // Bright yellow border
+        bg.lineStyle(4, 0xffff00, 1);
         bg.strokeRoundedRect(-200, -50, 400, 100, 20);
-        bg.lineStyle(2, 0xfef3c7, 0.6);
+        bg.lineStyle(2, 0xffffff, 0.8);
         bg.strokeRoundedRect(-195, -45, 390, 90, 18);
         
         banner.add(bg);
         
-        // Text with explosive style
+        // Text with high contrast
         const text = this.scene.add.text(0, 0, '⚠️ SUDDEN DEATH ⚠️', {
             fontSize: '42px',
             fontFamily: 'Arial Black',
-            color: '#fbbf24',
-            stroke: '#7f1d1d',
-            strokeThickness: 6,
-            shadow: { offsetX: 0, offsetY: 0, color: '#fbbf24', blur: 20, fill: true }
+            color: '#ffffff',  // White text
+            stroke: '#000000',
+            strokeThickness: 5,
+            shadow: { offsetX: 3, offsetY: 3, color: '#000000', blur: 0, fill: true }
         });
         text.setOrigin(0.5);
         banner.add(text);
         
-        // Add warning bubbles floating around
+        // Add bright warning bubbles floating around
         for (let i = 0; i < 6; i++) {
             const angle = (i / 6) * Math.PI * 2;
             const radius = 150;
             const bubble = this.scene.add.circle(
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius,
-                8,
-                0xfbbf24,
-                0.6
+                10,
+                0xffff00,  // Bright yellow
+                0.9
             );
             banner.add(bubble);
             
