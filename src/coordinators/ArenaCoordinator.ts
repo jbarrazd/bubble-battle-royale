@@ -1738,9 +1738,15 @@ export class ArenaCoordinator {
         star.setTint(isPlayer ? 0x00ffff : 0xff0066);  // Cyan for player, pink-red for opponent
         star.setDepth(2000);
         
-        // Target position is always the gem counter (bottom left)
-        const targetX = 110;
-        const targetY = this.scene.cameras.main.height - 110;
+        // Target position depends on whether it's player or opponent
+        // Gem counter is at (130, height - 115)
+        // Player score is at -53 relative to counter, opponent at +53
+        const gemCounterX = 130;
+        const gemCounterY = this.scene.cameras.main.height - 115;
+        const scoreOffsetY = -5; // scoreContainer is at y: -5 within gemCounter
+        
+        const targetX = isPlayer ? (gemCounterX - 53) : (gemCounterX + 53);
+        const targetY = gemCounterY + scoreOffsetY;
         
         // Animate star flying to counter
         this.scene.tweens.add({
