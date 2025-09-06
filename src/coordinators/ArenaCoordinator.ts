@@ -910,14 +910,15 @@ export class ArenaCoordinator {
         if (!objective) return;
         
         
-        // Get all visible bubbles without gems
+        // Get all visible bubbles without gems (excluding MysteryBubbles)
         const eligibleBubbles: any[] = [];
         const playerBubbles: any[] = [];
         const opponentBubbles: any[] = [];
         
         const gridBubbles = this.gridAttachmentSystem.getGridBubbles();
         gridBubbles.forEach((bubble: any) => {
-            if (bubble.visible && !bubble.getHasGem()) {
+            // Skip MysteryBubbles - they already have power-up effects
+            if (bubble.visible && !bubble.getHasGem() && !bubble.isMysteryBubble?.()) {
                 eligibleBubbles.push(bubble);
                 // Separate by zone
                 if (bubble.y > this.scene.cameras.main.centerY) {

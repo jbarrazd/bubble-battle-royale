@@ -140,51 +140,90 @@ export class Bubble extends Phaser.GameObjects.Container {
     private addGemVisual(): void {
         if (!this.scene) return;
         
-        // Position star container in top-right corner of bubble
-        this.gemVisual = this.scene.add.container(12, -12);
+        // Position star container at center of bubble
+        this.gemVisual = this.scene.add.container(0, 0);
         
-        // Subtle shadow behind star
-        const starShadow = this.scene.add.circle(1, 1, 8, 0x000000, 0.2);
+        // Main star sprite (optimized 48x48 size)
+        const star = this.scene.add.image(0, 0, 'star-bubble');
+        star.setScale(1.0); // No scaling needed, already at perfect size
         
-        // Star sprite (bigger and more visible)
-        const star = this.scene.add.image(0, 0, 'star-small');
-        star.setScale(1.0); // Larger scale for better visibility
+        // Create sparkles similar to star3 asset - 4 corner sparkles
+        const createSparkle = (x: number, y: number, size: number = 1) => {
+            const sparkleContainer = this.scene.add.container(x, y);
+            
+            // Cross shape sparkle
+            const hLine = this.scene.add.rectangle(0, 0, size * 8, size, 0x00E5FF, 0.6);
+            const vLine = this.scene.add.rectangle(0, 0, size, size * 8, 0x00E5FF, 0.6);
+            
+            sparkleContainer.add([hLine, vLine]);
+            return sparkleContainer;
+        };
         
-        // Small sparkle effect
-        const sparkle = this.scene.add.star(2, -2, 4, 2, 4, 0xFFFFFF, 0.9);
-        sparkle.setScale(0.3);
+        // Add sparkles at diagonal positions like in star3
+        const sparkle1 = createSparkle(12, -12, 0.8);
+        const sparkle2 = createSparkle(-12, -12, 0.6);
+        const sparkle3 = createSparkle(12, 12, 0.6);
+        const sparkle4 = createSparkle(-12, 12, 0.8);
         
-        this.gemVisual.add([starShadow, star, sparkle]);
+        // Additional smaller sparkles for more shine
+        const miniSparkle1 = this.scene.add.circle(8, -8, 1, 0xFFFFFF, 0.7);
+        const miniSparkle2 = this.scene.add.circle(-8, 8, 1, 0xFFFFFF, 0.5);
+        
+        this.gemVisual.add([star, sparkle1, sparkle2, sparkle3, sparkle4, miniSparkle1, miniSparkle2]);
         this.add(this.gemVisual);
         
-        // Subtle floating animation for the whole container
+        // Star trying to escape - bouncing against bubble edges
+        const bounceRadius = 8; // How far it moves from center
+        
+        // Create a circular motion that looks like bouncing
         this.scene.tweens.add({
-            targets: this.gemVisual,
-            y: { from: -12, to: -8 },
-            duration: 2000,
+            targets: star,
+            x: {
+                value: bounceRadius,
+                duration: 2000,
+                yoyo: true,
+                ease: 'Sine.easeInOut'
+            },
+            y: {
+                value: -bounceRadius,
+                duration: 1800,
+                yoyo: true,
+                ease: 'Sine.easeInOut'
+            },
+            repeat: -1
+        });
+        
+        // Add a slight rotation as it moves
+        this.scene.tweens.add({
+            targets: star,
+            angle: { from: -10, to: 10 },
+            duration: 900,
             yoyo: true,
             repeat: -1,
             ease: 'Sine.easeInOut'
         });
         
-        // Star rotation animation
+        // Sparkles follow the star with a slight delay
         this.scene.tweens.add({
-            targets: star,
-            rotation: Math.PI * 2,
-            duration: 3000,
-            repeat: -1,
-            ease: 'Linear'
-        });
-        
-        // Sparkle pulse
-        this.scene.tweens.add({
-            targets: sparkle,
-            scale: { from: 0.3, to: 0.5 },
-            alpha: { from: 0.7, to: 1 },
+            targets: [sparkle1, sparkle2, sparkle3, sparkle4],
+            scale: { from: 0.8, to: 1.2 },
+            alpha: { from: 0.4, to: 0.8 },
             duration: 1500,
             yoyo: true,
             repeat: -1,
-            ease: 'Sine.easeInOut'
+            ease: 'Sine.easeInOut',
+            delay: this.scene.tweens.stagger(300)
+        });
+        
+        // Mini sparkles pulse more rapidly
+        this.scene.tweens.add({
+            targets: [miniSparkle1, miniSparkle2],
+            scale: { from: 0.5, to: 1.5 },
+            alpha: { from: 0.3, to: 0.9 },
+            duration: 600,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Power1'
         });
     }
     

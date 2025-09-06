@@ -49,6 +49,8 @@ export class PreloadScene extends Scene {
         this.load.image('star-small', 'assets/images/star_small.png');
         this.load.image('star-medium', 'assets/images/star_medium.png');
         this.load.image('star-large', 'assets/images/star_large.png');
+        this.load.image('star3', 'assets/images/star3_small.png'); // Star with built-in sparkles (optimized size)
+        this.load.image('star-bubble', 'assets/images/star_bubble_36.png'); // Optimized star for bubbles (36x36)
         
         this.assetLoader.loadAssets((progress: number) => {
             this.updateProgress(progress);
