@@ -15,6 +15,8 @@ interface UIConfig {
     showTimer: boolean;
     showPowerUps: boolean;
     showCombo: boolean;
+    playerName?: string;  // Player's display name
+    opponentName?: string;  // Opponent's display name
 }
 
 export class UIManager extends BaseGameSystem {
@@ -33,6 +35,8 @@ export class UIManager extends BaseGameSystem {
     private gemCounter?: Phaser.GameObjects.Container;
     private playerGemText?: Phaser.GameObjects.Text;
     private opponentGemText?: Phaser.GameObjects.Text;
+    private playerNameText?: Phaser.GameObjects.Text;
+    private opponentNameText?: Phaser.GameObjects.Text;
     
     private timerDisplay?: Phaser.GameObjects.Container;
     private timerText?: Phaser.GameObjects.Text;
@@ -51,6 +55,8 @@ export class UIManager extends BaseGameSystem {
     private playerGems: number = 0;
     private opponentGems: number = 0;
     private currentCombo: number = 0;
+    private playerName: string = 'Player';
+    private opponentName: string = 'Opponent';
     private gameTime: number = 0;
     private maxGameTime: number = 180000; // 3 minutes
     private suddenDeathTime: number = 150000; // 2:30
@@ -65,6 +71,10 @@ export class UIManager extends BaseGameSystem {
             showCombo: true,
             ...config
         };
+        
+        // Set player names from config or use defaults
+        this.playerName = config?.playerName || 'Player';
+        this.opponentName = config?.opponentName || 'Opponent';
     }
     
     public initialize(): void {
@@ -263,7 +273,7 @@ export class UIManager extends BaseGameSystem {
         this.gemCounter.add(bg);
         
         // Add floating star particles around the container
-        this.createFloatingParticles();
+        // this.createFloatingParticles(); // Disabled - distracting animation
         
         // Corner star decorations - repositioned for compact design
         const starPositions = [
@@ -292,7 +302,7 @@ export class UIManager extends BaseGameSystem {
         });
         
         // Premium gem counter display - more horizontally spaced
-        const scoreContainer = this.scene.add.container(0, 5);
+        const scoreContainer = this.scene.add.container(0, -5);
         
         // Star as background behind the scores - more subtle and beautiful
         const starBg = this.scene.add.container(0, 0);
@@ -304,10 +314,10 @@ export class UIManager extends BaseGameSystem {
         
         starBg.add([outerGlow, midGlow, innerGlow]);
         
-        // Main star icon - elegant background element
+        // Main star icon - more visible background element
         const starIcon = this.scene.add.image(0, 0, 'star-bubble');
         starIcon.setScale(2.0);
-        starIcon.setAlpha(0.35);
+        starIcon.setAlpha(0.6); // More visible but still background
         starIcon.setTint(0x66ccff); // Subtle cyan tint
         starBg.add(starIcon);
         
@@ -325,30 +335,23 @@ export class UIManager extends BaseGameSystem {
             stagger: 200
         });
         
-        // Subtle star rotation for life
-        this.scene.tweens.add({
-            targets: starIcon,
-            rotation: Math.PI * 2,
-            duration: 15000,
-            repeat: -1,
-            ease: 'Linear'
-        });
+        // No rotation - keep star completely static for cleaner look
         
         // Player gem section - moved further left for more spacing
         const playerGemBg = this.scene.add.graphics();
         playerGemBg.fillStyle(0x4facfe, 0.25);
-        playerGemBg.fillRoundedRect(-70, -20, 45, 40, 20);
+        playerGemBg.fillRoundedRect(-75, -20, 45, 40, 20);
         playerGemBg.lineStyle(2, 0x4facfe, 0.8);
-        playerGemBg.strokeRoundedRect(-70, -20, 45, 40, 20);
+        playerGemBg.strokeRoundedRect(-75, -20, 45, 40, 20);
         
         // Add subtle inner glow to player section
         playerGemBg.fillStyle(0xffffff, 0.1);
-        playerGemBg.fillRoundedRect(-68, -18, 41, 36, 18);
+        playerGemBg.fillRoundedRect(-73, -18, 41, 36, 18);
         
         scoreContainer.add(playerGemBg);
         
-        this.playerGemText = this.scene.add.text(-48, 0, '0', {
-            fontSize: '34px',
+        this.playerGemText = this.scene.add.text(-53, 0, '0', {
+            fontSize: '30px',
             fontFamily: 'Arial Black',
             color: '#4facfe',
             stroke: '#000000',
@@ -360,7 +363,7 @@ export class UIManager extends BaseGameSystem {
         
         // VS divider with subtle glow effect
         const divider = this.scene.add.text(0, 0, 'VS', {
-            fontSize: '20px',
+            fontSize: '14px',  // Smaller to show more of the star
             fontFamily: 'Arial Black',
             color: '#ffffff',
             stroke: '#000033',
@@ -384,18 +387,18 @@ export class UIManager extends BaseGameSystem {
         // Opponent gem section - moved further right for more spacing
         const opponentGemBg = this.scene.add.graphics();
         opponentGemBg.fillStyle(0xf43f5e, 0.25);
-        opponentGemBg.fillRoundedRect(25, -20, 45, 40, 20);
+        opponentGemBg.fillRoundedRect(30, -20, 45, 40, 20);
         opponentGemBg.lineStyle(2, 0xf43f5e, 0.8);
-        opponentGemBg.strokeRoundedRect(25, -20, 45, 40, 20);
+        opponentGemBg.strokeRoundedRect(30, -20, 45, 40, 20);
         
         // Add subtle inner glow to opponent section
         opponentGemBg.fillStyle(0xffffff, 0.1);
-        opponentGemBg.fillRoundedRect(27, -18, 41, 36, 18);
+        opponentGemBg.fillRoundedRect(32, -18, 41, 36, 18);
         
         scoreContainer.add(opponentGemBg);
         
-        this.opponentGemText = this.scene.add.text(48, 0, '0', {
-            fontSize: '34px',
+        this.opponentGemText = this.scene.add.text(53, 0, '0', {
+            fontSize: '30px',
             fontFamily: 'Arial Black',
             color: '#f43f5e',
             stroke: '#000000',
@@ -406,6 +409,33 @@ export class UIManager extends BaseGameSystem {
         scoreContainer.add(this.opponentGemText);
         
         this.gemCounter.add(scoreContainer);
+        
+        // Add player names below the scores
+        const nameContainer = this.scene.add.container(0, 20);
+        
+        // Player name
+        this.playerNameText = this.scene.add.text(-53, 0, this.playerName, {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#4facfe',
+            stroke: '#000022',
+            strokeThickness: 2
+        });
+        this.playerNameText.setOrigin(0.5);
+        nameContainer.add(this.playerNameText);
+        
+        // Opponent name  
+        this.opponentNameText = this.scene.add.text(53, 0, this.opponentName, {
+            fontSize: '12px',
+            fontFamily: 'Arial',
+            color: '#f43f5e',
+            stroke: '#000022',
+            strokeThickness: 2
+        });
+        this.opponentNameText.setOrigin(0.5);
+        nameContainer.add(this.opponentNameText);
+        
+        this.gemCounter.add(nameContainer);
         
         // Enhanced "RACE TO 15" banner - more compact and premium
         const raceBanner = this.scene.add.graphics();
@@ -1321,4 +1351,34 @@ export class UIManager extends BaseGameSystem {
     public getOpponentGems(): number { return this.opponentGems; }
     public getCurrentCombo(): number { return this.currentCombo; }
     public getGameTime(): number { return this.gameTime; }
+    
+    /**
+     * Updates player names dynamically during gameplay
+     * Useful for online multiplayer when player names are received from server
+     */
+    public updatePlayerNames(playerName?: string, opponentName?: string): void {
+        if (playerName !== undefined) {
+            this.playerName = playerName;
+            if (this.playerNameText) {
+                this.playerNameText.setText(playerName);
+            }
+        }
+        
+        if (opponentName !== undefined) {
+            this.opponentName = opponentName;
+            if (this.opponentNameText) {
+                this.opponentNameText.setText(opponentName);
+            }
+        }
+    }
+    
+    /**
+     * Get current player names
+     */
+    public getPlayerNames(): { player: string; opponent: string } {
+        return {
+            player: this.playerName,
+            opponent: this.opponentName
+        };
+    }
 }
